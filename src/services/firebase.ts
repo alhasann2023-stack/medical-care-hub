@@ -1,0 +1,428 @@
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  Firestore, 
+  doc, 
+  getDoc,
+  getDocFromServer,
+  getDocs, 
+  setDoc,
+  collection, 
+  query, 
+  where, 
+  orderBy, 
+  onSnapshot, 
+  Unsubscribe,
+  QueryConstraint,
+  limit as limitTo
+} from 'firebase/firestore';
+import { getAuth, Auth } from 'firebase/auth';
+import firebaseConfig from '../../firebase-applet-config.json';
+import { 
+  User, 
+  Doctor, 
+  Patient, 
+  Staff, 
+  Appointment, 
+  Consultation, 
+  MedicalReport, 
+  MedicalTest, 
+  MedicalExamination, 
+  Prescription, 
+  AppNotification, 
+  AuditLog, 
+  Specialty, 
+  MedicalService 
+} from '../types/medical';
+
+// Initialize Firebase App instance
+export const app: FirebaseApp = getApps().length === 0
+  ? initializeApp(firebaseConfig)
+  : getApp();
+
+// Initialize Firestore with custom database ID from config
+export const db: Firestore = firebaseConfig.firestoreDatabaseId
+  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+  : getFirestore(app);
+
+// Initialize Firebase Authentication
+export const auth: Auth = getAuth(app);
+
+// Collection Names Constants
+export const FIRESTORE_COLLECTIONS = {
+  USERS: 'users',
+  PATIENTS: 'patients',
+  DOCTORS: 'doctors',
+  STAFF: 'staff',
+  SPECIALTIES: 'specialties',
+  SERVICES: 'services',
+  APPOINTMENTS: 'appointments',
+  CONSULTATIONS: 'consultations',
+  EXAMINATIONS: 'examinations',
+  TESTS: 'tests',
+  REPORTS: 'reports',
+  PRESCRIPTIONS: 'prescriptions',
+  NOTIFICATIONS: 'notifications',
+  AUDIT_LOGS: 'auditLogs'
+} as const;
+
+// Test Firestore Connection Helper
+export async function testFirestoreConnection(): Promise<boolean> {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+    return true;
+  } catch (error: any) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.warn('Firebase client is offline or database is unreachable:', error.message);
+    }
+    return false;
+  }
+}
+
+// ----------------------------------------------------
+// ASYNC FIRESTORE RETRIEVAL FUNCTIONS (getDocs / getDoc)
+// ----------------------------------------------------
+
+/**
+ * Fetch a single document by collection and ID
+ */
+export async function fetchDocById<T>(collectionName: string, docId: string): Promise<T | null> {
+  try {
+    const docRef = doc(db, collectionName, docId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return { id: snap.id, ...snap.data() } as unknown as T;
+    }
+    return null;
+  } catch (err) {
+    console.warn(`[Firestore] fetchDocById error (${collectionName}/${docId}):`, err);
+    return null;
+  }
+}
+
+/**
+ * Fetch documents from a collection with query constraints (where, orderBy, limit)
+ */
+export async function fetchDocsWithFilter<T>(
+  collectionName: string,
+  constraints: QueryConstraint[] = []
+): Promise<T[]> {
+  try {
+    const colRef = collection(db, collectionName);
+    const q = query(colRef, ...constraints);
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as unknown as T));
+  } catch (err) {
+    console.warn(`[Firestore] fetchDocsWithFilter error in ${collectionName}:`, err);
+    return [];
+  }
+}
+
+/**
+ * Retrieve user by specific UID (checks both docId and uid field)
+ */
+export async function getUserByUid(uid: string): Promise<User | null> {
+  if (!uid) return null;
+  try {
+    // 1. Direct doc ID lookup
+    const userDoc = await fetchDocById<User>(FIRESTORE_COLLECTIONS.USERS, uid);
+    if (userDoc) return userDoc;
+
+    // 2. Query by 'id' or 'uid' field
+    const colRef = collection(db, FIRESTORE_COLLECTIONS.USERS);
+    const q = query(colRef, where('id', '==', uid));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      const d = snap.docs[0];
+      return { id: d.id, ...d.data() } as unknown as User;
+    }
+
+    const qUid = query(colRef, where('uid', '==', uid));
+    const snapUid = await getDocs(qUid);
+    if (!snapUid.empty) {
+      const d = snapUid.docs[0];
+      return { id: d.id, ...d.data() } as unknown as User;
+    }
+
+    return null;
+  } catch (err) {
+    console.warn('[Firestore] getUserByUid error:', err);
+    return null;
+  }
+}
+
+/**
+ * Retrieve user by email or phone identifier
+ */
+export async function getUserByEmailOrPhone(identifier: string): Promise<User | null> {
+  if (!identifier) return null;
+  const cleanId = identifier.trim().toLowerCase();
+  try {
+    const colRef = collection(db, FIRESTORE_COLLECTIONS.USERS);
+    
+    // Check email
+    const emailQuery = query(colRef, where('email', '==', cleanId));
+    const emailSnap = await getDocs(emailQuery);
+    if (!emailSnap.empty) {
+      const d = emailSnap.docs[0];
+      return { id: d.id, ...d.data() } as unknown as User;
+    }
+
+    // Check phone
+    const phoneQuery = query(colRef, where('phone', '==', identifier.trim()));
+    const phoneSnap = await getDocs(phoneQuery);
+    if (!phoneSnap.empty) {
+      const d = phoneSnap.docs[0];
+      return { id: d.id, ...d.data() } as unknown as User;
+    }
+
+    return null;
+  } catch (err) {
+    console.warn('[Firestore] getUserByEmailOrPhone error:', err);
+    return null;
+  }
+}
+
+/**
+ * Retrieve patient profile by user ID or patient ID
+ */
+export async function getPatientByUserId(userId: string): Promise<Patient | null> {
+  if (!userId) return null;
+  try {
+    const directDoc = await fetchDocById<Patient>(FIRESTORE_COLLECTIONS.PATIENTS, userId);
+    if (directDoc) return directDoc;
+
+    const colRef = collection(db, FIRESTORE_COLLECTIONS.PATIENTS);
+    const q = query(colRef, where('userId', '==', userId));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      const d = snap.docs[0];
+      return { id: d.id, ...d.data() } as unknown as Patient;
+    }
+    return null;
+  } catch (err) {
+    console.warn('[Firestore] getPatientByUserId error:', err);
+    return null;
+  }
+}
+
+/**
+ * Retrieve doctor profile by user ID or doctor ID
+ */
+export async function getDoctorByUserId(userId: string): Promise<Doctor | null> {
+  if (!userId) return null;
+  try {
+    const directDoc = await fetchDocById<Doctor>(FIRESTORE_COLLECTIONS.DOCTORS, userId);
+    if (directDoc) return directDoc;
+
+    const colRef = collection(db, FIRESTORE_COLLECTIONS.DOCTORS);
+    const q = query(colRef, where('userId', '==', userId));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      const d = snap.docs[0];
+      return { id: d.id, ...d.data() } as unknown as Doctor;
+    }
+    return null;
+  } catch (err) {
+    console.warn('[Firestore] getDoctorByUserId error:', err);
+    return null;
+  }
+}
+
+/**
+ * Retrieve all doctors with optional filters
+ */
+export async function getDoctorsWithFilter(options?: { specialtyId?: string; activeOnly?: boolean }): Promise<Doctor[]> {
+  try {
+    const constraints: QueryConstraint[] = [];
+    if (options?.specialtyId) {
+      constraints.push(where('specialtyId', '==', options.specialtyId));
+    }
+    if (options?.activeOnly) {
+      constraints.push(where('isActive', '==', true));
+    }
+    return await fetchDocsWithFilter<Doctor>(FIRESTORE_COLLECTIONS.DOCTORS, constraints);
+  } catch (err) {
+    console.warn('[Firestore] getDoctorsWithFilter error:', err);
+    return [];
+  }
+}
+
+/**
+ * Retrieve appointments with filter constraints
+ */
+export async function getAppointmentsWithFilter(filter?: { patientId?: string; doctorId?: string; status?: string }): Promise<Appointment[]> {
+  try {
+    const constraints: QueryConstraint[] = [];
+    if (filter?.patientId) constraints.push(where('patientId', '==', filter.patientId));
+    if (filter?.doctorId) constraints.push(where('doctorId', '==', filter.doctorId));
+    if (filter?.status) constraints.push(where('status', '==', filter.status));
+    return await fetchDocsWithFilter<Appointment>(FIRESTORE_COLLECTIONS.APPOINTMENTS, constraints);
+  } catch (err) {
+    console.warn('[Firestore] getAppointmentsWithFilter error:', err);
+    return [];
+  }
+}
+
+/**
+ * Retrieve consultations with filter constraints
+ */
+export async function getConsultationsWithFilter(filter?: { patientId?: string; doctorId?: string; status?: string }): Promise<Consultation[]> {
+  try {
+    const constraints: QueryConstraint[] = [];
+    if (filter?.patientId) constraints.push(where('patientId', '==', filter.patientId));
+    if (filter?.doctorId) constraints.push(where('doctorId', '==', filter.doctorId));
+    if (filter?.status) constraints.push(where('status', '==', filter.status));
+    return await fetchDocsWithFilter<Consultation>(FIRESTORE_COLLECTIONS.CONSULTATIONS, constraints);
+  } catch (err) {
+    console.warn('[Firestore] getConsultationsWithFilter error:', err);
+    return [];
+  }
+}
+
+// ----------------------------------------------------
+// REALTIME SNAPSHOT SUBSCRIPTIONS (onSnapshot)
+// ----------------------------------------------------
+
+/**
+ * Realtime subscription to a collection with optional filters
+ */
+export function subscribeToCollection<T>(
+  collectionName: string,
+  callback: (items: T[]) => void,
+  constraints: QueryConstraint[] = []
+): Unsubscribe {
+  try {
+    const colRef = collection(db, collectionName);
+    const q = query(colRef, ...constraints);
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as unknown as T));
+        callback(items);
+      },
+      (error) => {
+        console.warn(`[Firestore onSnapshot] ${collectionName} subscription error:`, error);
+      }
+    );
+  } catch (err) {
+    console.warn(`[Firestore onSnapshot setup] error in ${collectionName}:`, err);
+    return () => {};
+  }
+}
+
+/**
+ * Realtime subscription to a single document
+ */
+export function subscribeToDoc<T>(
+  collectionName: string,
+  docId: string,
+  callback: (item: T | null) => void
+): Unsubscribe {
+  if (!docId) return () => {};
+  try {
+    const docRef = doc(db, collectionName, docId);
+    return onSnapshot(
+      docRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          callback({ id: snapshot.id, ...snapshot.data() } as unknown as T);
+        } else {
+          callback(null);
+        }
+      },
+      (error) => {
+        console.warn(`[Firestore onSnapshot doc] ${collectionName}/${docId} error:`, error);
+      }
+    );
+  } catch (err) {
+    console.warn(`[Firestore onSnapshot doc setup] error:`, err);
+    return () => {};
+  }
+}
+
+/**
+ * Realtime subscription to user profile by UID
+ */
+export function subscribeToUser(uid: string, callback: (user: User | null) => void): Unsubscribe {
+  return subscribeToDoc<User>(FIRESTORE_COLLECTIONS.USERS, uid, callback);
+}
+
+/**
+ * Realtime subscription to doctors list
+ */
+export function subscribeToDoctors(
+  callback: (doctors: Doctor[]) => void,
+  options?: { specialtyId?: string; activeOnly?: boolean }
+): Unsubscribe {
+  const constraints: QueryConstraint[] = [];
+  if (options?.specialtyId) constraints.push(where('specialtyId', '==', options.specialtyId));
+  if (options?.activeOnly) constraints.push(where('isActive', '==', true));
+  return subscribeToCollection<Doctor>(FIRESTORE_COLLECTIONS.DOCTORS, callback, constraints);
+}
+
+/**
+ * Realtime subscription to patient appointments
+ */
+export function subscribeToAppointments(
+  filter: { patientId?: string; doctorId?: string; status?: string },
+  callback: (apts: Appointment[]) => void
+): Unsubscribe {
+  const constraints: QueryConstraint[] = [];
+  if (filter.patientId) constraints.push(where('patientId', '==', filter.patientId));
+  if (filter.doctorId) constraints.push(where('doctorId', '==', filter.doctorId));
+  if (filter.status) constraints.push(where('status', '==', filter.status));
+  return subscribeToCollection<Appointment>(FIRESTORE_COLLECTIONS.APPOINTMENTS, callback, constraints);
+}
+
+/**
+ * Realtime subscription to consultations
+ */
+export function subscribeToConsultations(
+  filter: { patientId?: string; doctorId?: string; status?: string },
+  callback: (cns: Consultation[]) => void
+): Unsubscribe {
+  const constraints: QueryConstraint[] = [];
+  if (filter.patientId) constraints.push(where('patientId', '==', filter.patientId));
+  if (filter.doctorId) constraints.push(where('doctorId', '==', filter.doctorId));
+  if (filter.status) constraints.push(where('status', '==', filter.status));
+  return subscribeToCollection<Consultation>(FIRESTORE_COLLECTIONS.CONSULTATIONS, callback, constraints);
+}
+
+/**
+ * Realtime subscription to notifications by user ID
+ */
+export function subscribeToNotifications(
+  userId: string,
+  callback: (notifs: AppNotification[]) => void
+): Unsubscribe {
+  const constraints: QueryConstraint[] = [];
+  if (userId) constraints.push(where('userId', '==', userId));
+  return subscribeToCollection<AppNotification>(FIRESTORE_COLLECTIONS.NOTIFICATIONS, callback, constraints);
+}
+
+export { firebaseConfig };
+export default { 
+  app, 
+  db, 
+  auth, 
+  firebaseConfig, 
+  testFirestoreConnection,
+  fetchDocById,
+  fetchDocsWithFilter,
+  getUserByUid,
+  getUserByEmailOrPhone,
+  getPatientByUserId,
+  getDoctorByUserId,
+  getDoctorsWithFilter,
+  getAppointmentsWithFilter,
+  getConsultationsWithFilter,
+  subscribeToCollection,
+  subscribeToDoc,
+  subscribeToUser,
+  subscribeToDoctors,
+  subscribeToAppointments,
+  subscribeToConsultations,
+  subscribeToNotifications
+};
+

@@ -1,0 +1,379 @@
+import {
+  User,
+  Patient,
+  Doctor,
+  Staff,
+  Specialty,
+  MedicalService,
+  Appointment,
+  Consultation,
+  MedicalExamination,
+  MedicalTest,
+  MedicalReport,
+  Prescription,
+  AppNotification,
+  AuditLog
+} from '../types/medical';
+
+export const INITIAL_USERS: User[] = [
+  {
+    id: 'usr-admin-1',
+    email: 'alhasann2023@gmail.com',
+    phone: '+966500001122',
+    fullName: 'المدير العام والمسؤول المعتمد',
+    role: 'HOSPITAL_ADMIN',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    isVerified: true,
+    createdAt: new Date().toISOString(),
+    lastLoginAt: new Date().toISOString()
+  },
+  {
+    id: 'usr-doc-1',
+    email: 'dr.faisal@medicalcarehub.com',
+    phone: '+966501234567',
+    fullName: 'د. فيصل العتيبي',
+    role: 'DOCTOR',
+    avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80',
+    isVerified: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'usr-doc-2',
+    email: 'dr.mona@medicalcarehub.com',
+    phone: '+966502345678',
+    fullName: 'د. منى الغامدي',
+    role: 'DOCTOR',
+    avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=200&auto=format&fit=crop&q=80',
+    isVerified: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'usr-doc-3',
+    email: 'dr.tariq@medicalcarehub.com',
+    phone: '+966503456789',
+    fullName: 'د. طارق الشهري',
+    role: 'DOCTOR',
+    avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=200&auto=format&fit=crop&q=80',
+    isVerified: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'usr-doc-4',
+    email: 'dr.reem@medicalcarehub.com',
+    phone: '+966504567890',
+    fullName: 'د. ريم الحربي',
+    role: 'DOCTOR',
+    avatar: 'https://images.unsplash.com/photo-1594824813590-78929e7943d0?w=200&auto=format&fit=crop&q=80',
+    isVerified: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'usr-cs-1',
+    email: 'staff@medicalcarehub.com',
+    phone: '+966507778899',
+    fullName: 'نورة السعيد',
+    role: 'CUSTOMER_SERVICE',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
+    isVerified: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'usr-pat-1',
+    email: 'sarah.mansoor@example.com',
+    phone: '+966501112233',
+    fullName: 'سارة خالد المنصور',
+    role: 'PATIENT',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    isVerified: true,
+    createdAt: new Date().toISOString()
+  }
+];
+
+export const INITIAL_PATIENTS: Patient[] = [
+  {
+    id: 'pat-1',
+    userId: 'usr-pat-1',
+    mrn: 'MRN-2026-8801',
+    fullName: 'سارة خالد المنصور',
+    phone: '+966501112233',
+    email: 'sarah.mansoor@example.com',
+    nationalId: '1088776655',
+    birthDate: '1992-05-14',
+    gender: 'FEMALE',
+    bloodType: 'A+',
+    allergies: ['البنسلين'],
+    chronicDiseases: ['حساسية موسمية'],
+    address: 'الرياض، حي النخيل',
+    emergencyContact: {
+      name: 'خالد المنصور',
+      phone: '+966509998877',
+      relation: 'والد'
+    },
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    createdAt: new Date().toISOString()
+  }
+];
+
+export const INITIAL_SPECIALTIES: Specialty[] = [
+  {
+    id: 'spec-cardio',
+    nameAr: 'أمراض القلب والأوعية الدموية',
+    nameEn: 'Cardiology & Vascular Medicine',
+    descriptionAr: 'تشخيص وعلاج اضطرابات القلب، ضغط الدم، تخطيط القلب وقسطرة الشرايين.',
+    descriptionEn: 'Diagnosis and management of cardiac disorders, hypertension, ECG and catheterization.',
+    iconName: 'HeartPulse',
+    code: 'CARD'
+  },
+  {
+    id: 'spec-internal',
+    nameAr: 'الطب الباطني والغدد الصماء',
+    nameEn: 'Internal Medicine & Endocrinology',
+    descriptionAr: 'رعاية شاملة للأمراض المزمنة، داء السكري، اضطرابات الغدة والتمثيل الغذائي.',
+    descriptionEn: 'Comprehensive care for chronic diseases, diabetes, thyroid and metabolic disorders.',
+    iconName: 'Activity',
+    code: 'INTM'
+  },
+  {
+    id: 'spec-ortho',
+    nameAr: 'جراحة العظام والمفاصل والعمود الفقري',
+    nameEn: 'Orthopedics & Joint Surgery',
+    descriptionAr: 'علاج آلام المفاصل، خشونة الركبة، الإصابات الرياضية، وعلاج العمود الفقري.',
+    descriptionEn: 'Treatment of joint pain, sports injuries, knee arthrosis, and spine disorders.',
+    iconName: 'Bone',
+    code: 'ORTH'
+  },
+  {
+    id: 'spec-peds',
+    nameAr: 'طب الأطفال والنمو وحديثي الولادة',
+    nameEn: 'Pediatrics & Neonatology',
+    descriptionAr: 'رعاية صحة الطفل، متابعة مراحل النمو والتطعيمات، والأمراض التنفسية عند الأطفال.',
+    descriptionEn: 'Child wellness, growth milestones, vaccinations, and pediatric care.',
+    iconName: 'Baby',
+    code: 'PEDS'
+  },
+  {
+    id: 'spec-derma',
+    nameAr: 'الجلدية والليزر والتجميل الطبي',
+    nameEn: 'Dermatology & Medical Cosmetology',
+    descriptionAr: 'علاج الأمراض الجلدية المزمنة، حب الشباب، الأكزيما، والتقنيات العلاجية الحديثة.',
+    descriptionEn: 'Management of skin conditions, acne, eczema, and advanced dermatological laser.',
+    iconName: 'Sparkles',
+    code: 'DERM'
+  },
+  {
+    id: 'spec-neuro',
+    nameAr: 'المخ والأعصاب والاضطرابات الحركية',
+    nameEn: 'Neurology & Motor Disorders',
+    descriptionAr: 'تشخيص الصداع النصفي، اضطرابات النوم، التصلب المتعدد، واعتلالات الأعصاب.',
+    descriptionEn: 'Diagnosis of migraine, sleep disorders, multiple sclerosis, and neuropathies.',
+    iconName: 'Brain',
+    code: 'NEUR'
+  }
+];
+
+export const INITIAL_SERVICES: MedicalService[] = [
+  {
+    id: 'srv-1',
+    specialtyId: 'spec-cardio',
+    nameAr: 'كشف استشاري قلب مع تخطيط قلب كهربائي (ECG)',
+    nameEn: 'Cardiology Consultation + Resting ECG',
+    descriptionAr: 'فحص سريري شامل لعضلة القلب والشرايين مع فحص تخطيط القلب المباشر.',
+    descriptionEn: 'Comprehensive clinical examination with a resting 12-lead ECG.',
+    price: 350,
+    durationMinutes: 30,
+    isActive: true
+  },
+  {
+    id: 'srv-2',
+    specialtyId: 'spec-cardio',
+    nameAr: 'فحص إيكو للقلب بالموجات الصوتية (Echocardiogram)',
+    nameEn: 'Echocardiogram Diagnostic Imaging',
+    descriptionAr: 'تصوير دقيق لصمامات القلب وعضلة القلب وقياس كفاءة الضخ.',
+    descriptionEn: 'High-resolution ultrasound imaging of heart valves and cardiac ejection fraction.',
+    price: 600,
+    durationMinutes: 45,
+    isActive: true
+  },
+  {
+    id: 'srv-3',
+    specialtyId: 'spec-internal',
+    nameAr: 'كشف باطني شامل مع متابعة السكري وضغط الدم',
+    nameEn: 'Internal Medicine Comprehensive Follow-up',
+    descriptionAr: 'معاينة متخصصة لضبط مستويات السكر في الدم وضبط أدوية الضغط.',
+    descriptionEn: 'Detailed metabolic and glycemic balance review and therapy adjustment.',
+    price: 250,
+    durationMinutes: 25,
+    isActive: true
+  },
+  {
+    id: 'srv-4',
+    specialtyId: 'spec-ortho',
+    nameAr: 'استشارة عظام ومفاصل وفحص الإصابات الحركية',
+    nameEn: 'Orthopedic & Joint Consultation',
+    descriptionAr: 'فحص سريري متكامل للمفاصل والأربطة مع تقييم درجات الحركة والألم.',
+    descriptionEn: 'Full musculoskeletal and joint evaluation with mobility assessment.',
+    price: 300,
+    durationMinutes: 30,
+    isActive: true
+  },
+  {
+    id: 'srv-5',
+    specialtyId: 'spec-peds',
+    nameAr: 'فحص نمو وصحة الطفل واستشارة طب الأطفال',
+    nameEn: 'Pediatric Health & Growth Examination',
+    descriptionAr: 'تقييم معايير النمو والوزن والتطور الحركي للأطفال مع فحص العلامات الحيوية.',
+    descriptionEn: 'Comprehensive developmental growth milestones check and physical exam.',
+    price: 220,
+    durationMinutes: 25,
+    isActive: true
+  },
+  {
+    id: 'srv-6',
+    specialtyId: 'spec-derma',
+    nameAr: 'كشف جلدية وفحص البشرة المتقدم',
+    nameEn: 'Dermatological Consultation & Skin Scan',
+    descriptionAr: 'تشخيص دقيق لمشاكل البشرة والشعر والحساسية الجلدية بأجهزة فحص الجلد.',
+    descriptionEn: 'Skin, hair and dermatosis clinical evaluation with dermoscopy.',
+    price: 280,
+    durationMinutes: 20,
+    isActive: true
+  },
+  {
+    id: 'srv-7',
+    specialtyId: 'spec-neuro',
+    nameAr: 'كشف مخ وأعصاب واستشارة متخصصة',
+    nameEn: 'Neurology Consultation',
+    descriptionAr: 'تقييم المنعكسات العصبية، التوازن، الصداع النصفي والاضطرابات العصبية.',
+    descriptionEn: 'Assessment of neurological reflexes, motor pathways, headache and neuropathy.',
+    price: 380,
+    durationMinutes: 35,
+    isActive: true
+  }
+];
+
+export const INITIAL_DOCTORS: Doctor[] = [
+  {
+    id: 'doc-1',
+    userId: 'usr-doc-1',
+    fullName: 'د. فيصل العتيبي',
+    email: 'dr.faisal@medicalcarehub.com',
+    phone: '+966501234567',
+    specialtyId: 'spec-cardio',
+    specialtyNameAr: 'أمراض القلب والأوعية الدموية',
+    specialtyNameEn: 'Cardiology & Vascular Medicine',
+    title: 'استشاري أول أمراض وقسطرة القلب',
+    qualifications: ['البورد الأمريكي في أمراض القلب', 'زمالة الكلية الملكية للأطباء'],
+    experienceYears: 16,
+    bioAr: 'استشاري أول لأمراض القلب، خبير في فحوصات القلب الدقيقة وقسطرة وتخطيط صمامات القلب.',
+    bioEn: 'Senior Consultant Cardiologist with over 16 years of expertise in clinical cardiology.',
+    consultationFee: 350,
+    avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80',
+    roomNumber: 'عيادة 201 - جناح القلب',
+    rating: 4.9,
+    reviewsCount: 142,
+    availableDays: ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء'],
+    availableHours: '09:00 ص - 03:30 م',
+    isActive: true
+  },
+  {
+    id: 'doc-2',
+    userId: 'usr-doc-2',
+    fullName: 'د. منى الغامدي',
+    email: 'dr.mona@medicalcarehub.com',
+    phone: '+966502345678',
+    specialtyId: 'spec-internal',
+    specialtyNameAr: 'الطب الباطني والغدد الصماء',
+    specialtyNameEn: 'Internal Medicine & Endocrinology',
+    title: 'استشارية الباطنية والسكري والغدد الصماء',
+    qualifications: ['البورد السعودي في الطب الباطني', 'زمالة جامعة تورنتو في الغدد والسكري'],
+    experienceYears: 13,
+    bioAr: 'متخصصة في علاج وضبط داء السكري واعتلالات الغدة الدرقية وضغط الدم المزمن.',
+    bioEn: 'Specialist in metabolic health, diabetes management, and chronic endocrine conditions.',
+    consultationFee: 300,
+    avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=200&auto=format&fit=crop&q=80',
+    roomNumber: 'عيادة 104 - العيادات الباطنية',
+    rating: 4.8,
+    reviewsCount: 98,
+    availableDays: ['الإثنين', 'الثلاثاء', 'الخميس'],
+    availableHours: '10:00 ص - 04:00 م',
+    isActive: true
+  },
+  {
+    id: 'doc-3',
+    userId: 'usr-doc-3',
+    fullName: 'د. طارق الشهري',
+    email: 'dr.tariq@medicalcarehub.com',
+    phone: '+966503456789',
+    specialtyId: 'spec-ortho',
+    specialtyNameAr: 'جراحة العظام والمفاصل والعمود الفقري',
+    specialtyNameEn: 'Orthopedics & Joint Surgery',
+    title: 'استشاري جراحة العظام والمفاصل والطب الرياضي',
+    qualifications: ['الزمالة البريطانية لجراحة العظام FRCS', 'دبلوم الطب الرياضي وإصابات الملاعب'],
+    experienceYears: 15,
+    bioAr: 'خبير في جراحات استبدال المفاصل، علاج خشونة الركبة، والإصابات الرياضية الحركية.',
+    bioEn: 'Leading orthopedic surgeon specializing in joint replacement and sports trauma.',
+    consultationFee: 320,
+    avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=200&auto=format&fit=crop&q=80',
+    roomNumber: 'عيادة 302 - قسم العظام',
+    rating: 4.9,
+    reviewsCount: 167,
+    availableDays: ['الأحد', 'الثلاثاء', 'الأربعاء'],
+    availableHours: '09:30 ص - 03:00 م',
+    isActive: true
+  },
+  {
+    id: 'doc-4',
+    userId: 'usr-doc-4',
+    fullName: 'د. ريم الحربي',
+    email: 'dr.reem@medicalcarehub.com',
+    phone: '+966504567890',
+    specialtyId: 'spec-peds',
+    specialtyNameAr: 'طب الأطفال والنمو وحديثي الولادة',
+    specialtyNameEn: 'Pediatrics & Neonatology',
+    title: 'استشارية طب الأطفال والتغذية العلاجية',
+    qualifications: ['البورد العربي في طب الأطفال', 'شهادة الرعاية الحرجة لحديثي الولادة'],
+    experienceYears: 11,
+    bioAr: 'رعاية صحة ونمو الطفل، علاج الحساسية التنفسية، وجداول التطعيمات المتكاملة.',
+    bioEn: 'Compassionate pediatric care focusing on growth milestones and respiratory health.',
+    consultationFee: 250,
+    avatar: 'https://images.unsplash.com/photo-1594824813590-78929e7943d0?w=200&auto=format&fit=crop&q=80',
+    roomNumber: 'عيادة 101 - عيادة الأطفال',
+    rating: 5.0,
+    reviewsCount: 210,
+    availableDays: ['الأحد', 'الإثنين', 'الأربعاء', 'الخميس'],
+    availableHours: '08:30 ص - 02:30 م',
+    isActive: true
+  }
+];
+
+export const INITIAL_STAFF: Staff[] = [
+  {
+    id: 'stf-1',
+    userId: 'usr-cs-1',
+    fullName: 'نورة السعيد',
+    phone: '+966507778899',
+    email: 'staff@medicalcarehub.com',
+    department: 'مركز تنسيق المواعيد وخدمة العملاء',
+    roleTitle: 'منسق خدمة عملاء أول',
+    shift: 'MORNING',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
+    isActive: true,
+    createdAt: new Date().toISOString()
+  }
+];
+
+export const INITIAL_APPOINTMENTS: Appointment[] = [];
+
+export const INITIAL_CONSULTATIONS: Consultation[] = [];
+
+export const INITIAL_EXAMINATIONS: MedicalExamination[] = [];
+
+export const INITIAL_TESTS: MedicalTest[] = [];
+
+export const INITIAL_REPORTS: MedicalReport[] = [];
+
+export const INITIAL_PRESCRIPTIONS: Prescription[] = [];
+
+export const INITIAL_NOTIFICATIONS: AppNotification[] = [];
+
+export const INITIAL_AUDIT_LOGS: AuditLog[] = [];
