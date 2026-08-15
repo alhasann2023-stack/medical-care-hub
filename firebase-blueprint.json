@@ -1,0 +1,91 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Medical platform authenticated user record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["PATIENT", "DOCTOR", "CUSTOMER_SERVICE", "HOSPITAL_ADMIN"] },
+        "nationalId": { "type": "string" },
+        "avatar": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "fullName", "email", "role"]
+    },
+    "Patient": {
+      "title": "Patient",
+      "description": "Medical patient electronic health file and history",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "medicalRecordNumber": { "type": "string" },
+        "fullName": { "type": "string" },
+        "bloodType": { "type": "string" },
+        "birthDate": { "type": "string" },
+        "gender": { "type": "string" },
+        "chronicDiseases": { "type": "string" },
+        "allergies": { "type": "string" },
+        "insuranceProvider": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "medicalRecordNumber"]
+    },
+    "Doctor": {
+      "title": "Doctor",
+      "description": "Healthcare provider consultant or specialist profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "title": { "type": "string" },
+        "specialtyId": { "type": "string" },
+        "specialtyNameAr": { "type": "string" },
+        "consultationFee": { "type": "number" },
+        "rating": { "type": "number" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "fullName", "specialtyId"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Clinic and telemedicine appointments booking record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "patientId", "doctorId", "date", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile collection"
+    },
+    "/patients/{patientId}": {
+      "schema": "Patient",
+      "description": "Patient EHR medical history collection"
+    },
+    "/doctors/{doctorId}": {
+      "schema": "Doctor",
+      "description": "Doctors and medical consultants directory"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Scheduled in-clinic and virtual consultations"
+    }
+  }
+}
