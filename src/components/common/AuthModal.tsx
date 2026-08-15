@@ -158,7 +158,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div 
         id="auth-modal-dialog"
-        className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-900 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
       >
         {/* Modal Top Header */}
         <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-slate-900 text-white p-6 relative">
@@ -344,18 +344,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </button>
 
               {/* Admin quick login info */}
-              <div className="pt-4 border-t border-slate-100">
-                <div
-                  onClick={() => handleQuickFill('alhasann2023@gmail.com')}
-                  className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100/70 text-start text-xs transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-amber-900 block">alhasann2023@gmail.com</span>
-                    <span className="px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 font-bold text-[10px]">المدير العام والمسؤول</span>
-                  </div>
-                  <span className="text-amber-800 text-[11px] mt-0.5 block">حساب المشرف العام لإدارة المستشفى والصلاحيات</span>
-                </div>
-              </div>
+
             </form>
           )}
 
@@ -380,7 +369,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2">
                 <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <span>
-                  <strong>تنويه للأطباء والاستشاريين:</strong> حسابات الأطباء والاستشاريين وموظفي خدمة العملاء يتم إنشاؤها ومنح صلاحياتها حصراً عبر لوحة الإدارة من قبل المشرف العام للموقع (<span className="font-mono font-bold">alhasann2023@gmail.com</span>).
+                  <strong>تنويه للأطباء والاستشاريين:</strong> حسابات الأطباء والاستشاريين وموظفي خدمة العملاء يتم إنشاؤها ومنح صلاحياتها حصراً عبر لوحة الإدارة من قبل المشرف العام للموقع (<span className="font-mono font-bold"></span>).
                 </span>
               </div>
 
@@ -399,7 +388,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     placeholder="مثال: عبد العزيز بن محمد الغامدي"
                     value={regFullName}
                     onChange={(e) => setRegFullName(e.target.value)}
-                    className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
+                    className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-400 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
                   />
                 </div>
               </div>
@@ -420,7 +409,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="patient@domain.com"
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
-                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
+                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-400 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
                     />
                   </div>
                 </div>
@@ -438,7 +427,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="0501234567"
                       value={regPhone}
                       onChange={(e) => setRegPhone(e.target.value)}
-                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
+                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-400 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
                     />
                   </div>
                 </div>
@@ -460,7 +449,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="••••••••"
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
-                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
+                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-400 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
                     />
                   </div>
                 </div>
@@ -479,7 +468,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="••••••••"
                       value={regConfirmPassword}
                       onChange={(e) => setRegConfirmPassword(e.target.value)}
-                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
+                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-400 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
                     />
                   </div>
                 </div>
@@ -503,7 +492,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <select
                       value={regGender}
                       onChange={(e) => setRegGender(e.target.value as any)}
-                      className="w-full py-2 px-2 rounded-lg border border-slate-200 bg-white text-xs font-medium outline-none"
+                      className="w-full py-2 px-2 rounded-lg border border-slate-400 bg-white text-xs font-medium outline-none"
                     >
                       <option value="MALE">ذكر</option>
                       <option value="FEMALE">أنثى</option>
@@ -515,7 +504,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <select
                       value={regBloodType}
                       onChange={(e) => setRegBloodType(e.target.value)}
-                      className="w-full py-2 px-2 rounded-lg border border-slate-200 bg-white text-xs font-medium outline-none"
+                      className="w-full py-2 px-2 rounded-lg border border-slate-400 bg-white text-xs font-medium outline-none"
                     >
                       <option value="O+">O+</option>
                       <option value="A+">A+</option>
@@ -534,7 +523,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       type="date"
                       value={regBirthDate}
                       onChange={(e) => setRegBirthDate(e.target.value)}
-                      className="w-full py-2 px-2 rounded-lg border border-slate-200 bg-white text-xs font-medium outline-none"
+                      className="w-full py-2 px-2 rounded-lg border border-slate-400 bg-white text-xs font-medium outline-none"
                     />
                   </div>
                 </div>

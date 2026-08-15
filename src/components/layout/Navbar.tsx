@@ -345,19 +345,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Role Switcher Selector Dropdown */}
             <div className="relative">
-              <button
-                onClick={() => { setIsRoleMenuOpen(!isRoleMenuOpen); setIsUserMenuOpen(false); }}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                  role ? roleConfigs[role]?.bg : 'bg-slate-100 border-slate-200'
-                }`}
-                title="تبديل الصلاحية للتجربة"
-              >
-                {role && React.createElement(roleConfigs[role].icon, { className: `w-4 h-4 ${roleConfigs[role].color}` })}
-                <span className={`hidden md:inline ${role ? roleConfigs[role].color : 'text-slate-700'}`}>
-                  {role ? roleConfigs[role].label : 'اختر الدور'}
-                </span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
-              </button>
+
 
               {isRoleMenuOpen && (
                 <div className="absolute left-0 sm:right-0 mt-2 w-64 rounded-xl bg-white border border-slate-200 shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100">

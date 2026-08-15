@@ -40,7 +40,7 @@
       "avatar": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80",
       "isVerified": true,
       "createdAt": "2026-08-15T13:34:55.286Z",
-      "lastLoginAt": "2026-08-15T19:44:17.796Z"
+      "lastLoginAt": "2026-08-15T21:47:17.224Z"
     },
     {
       "id": "usr-patient-1786801019333",
@@ -51,7 +51,7 @@
       "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=%D8%AE%D8%A7%D9%84%D8%AF%20%D8%B3%D8%B9%D9%8A%D8%AF",
       "isVerified": true,
       "createdAt": "2026-08-15T13:36:59.333Z",
-      "lastLoginAt": "2026-08-15T13:38:58.880Z"
+      "lastLoginAt": "2026-08-15T21:52:05.313Z"
     }
   ],
   "patients": [
@@ -392,6 +392,85 @@
   ],
   "consultations": [
     {
+      "id": "cns-2026-147",
+      "patientId": "pat-1786801019333",
+      "patientName": "خالد سعيد",
+      "patientPhone": "777744441",
+      "patientMrn": "MRN-2026-6048",
+      "patientAge": 31,
+      "patientGender": "MALE",
+      "doctorId": "doc-1786800895286",
+      "doctorName": "وليد راوح",
+      "doctorSpecialty": "أمراض القلب والأوعية الدموية",
+      "title": "سمعيااااااااااااااااااااااااااات",
+      "problemDescription": "سمعيااااااااااااااااااااااااااااات",
+      "symptoms": [
+        "خفقان",
+        "إجهاد خفيف"
+      ],
+      "duration": "منذ 4 أيام",
+      "status": "ANSWERED",
+      "attachments": [],
+      "messages": [
+        {
+          "id": "msg-1786830637287",
+          "consultationId": "cns-2026-147",
+          "senderId": "pat-1786801019333",
+          "senderName": "خالد سعيد",
+          "senderRole": "PATIENT",
+          "message": "سمعيااااااااااااااااااااااااااااات",
+          "attachments": [],
+          "createdAt": "2026-08-15T21:50:37.287Z"
+        },
+        {
+          "id": "msg-1786830703991",
+          "consultationId": "cns-2026-147",
+          "senderId": "doc-1786800895286",
+          "senderName": "وليد راوح",
+          "senderRole": "DOCTOR",
+          "message": "يمكنك زيارتنا",
+          "createdAt": "2026-08-15T21:51:43.991Z"
+        }
+      ],
+      "createdAt": "2026-08-15T21:50:37.287Z",
+      "doctorAdvice": "يمكنك زيارتنا",
+      "answeredAt": "2026-08-15T21:51:43.991Z"
+    },
+    {
+      "id": "cns-2026-546",
+      "patientId": "pat-1786801019333",
+      "patientName": "خالد سعيد",
+      "patientPhone": "777744441",
+      "patientMrn": "MRN-2026-6048",
+      "patientAge": 31,
+      "patientGender": "MALE",
+      "doctorId": "doc-1786800895286",
+      "doctorName": "وليد راوح",
+      "doctorSpecialty": "أمراض القلب والأوعية الدموية",
+      "title": "معاااااااااااااااااااااااااينة",
+      "problemDescription": "معااااااااااااااااااااااااااااينة",
+      "symptoms": [
+        "خفقان",
+        "إجهاد خفيف"
+      ],
+      "duration": "منذ 4 أيام",
+      "status": "PENDING",
+      "attachments": [],
+      "messages": [
+        {
+          "id": "msg-1786830564602",
+          "consultationId": "cns-2026-546",
+          "senderId": "pat-1786801019333",
+          "senderName": "خالد سعيد",
+          "senderRole": "PATIENT",
+          "message": "معااااااااااااااااااااااااااااينة",
+          "attachments": [],
+          "createdAt": "2026-08-15T21:49:24.602Z"
+        }
+      ],
+      "createdAt": "2026-08-15T21:49:24.602Z"
+    },
+    {
       "id": "cns-2026-480",
       "patientId": "usr-patient-1786795135992",
       "patientName": "المريض الزائر",
@@ -468,6 +547,56 @@
   ],
   "prescriptions": [],
   "notifications": [
+    {
+      "id": "notif-1786830703991-520",
+      "userId": "usr-patient-1786801019333",
+      "title": "رد الطبيب على استشارتك الطبية",
+      "message": "قام وليد راوح بالرد على استشارتك: \"سمعيااااااااااااااااااااااااااات\". اضغط لعرض التوجيه الطبي.",
+      "type": "CONSULTATION",
+      "isRead": true,
+      "relatedId": "cns-2026-147",
+      "createdAt": "2026-08-15T21:51:43.991Z"
+    },
+    {
+      "id": "notif-1786830637287-694",
+      "userId": "usr-patient-1786801019333",
+      "title": "تم إرسال استشارتك بنجاح",
+      "message": "تم إرسال استشارتك إلى وليد راوح. ستصلك إشعار فور رد الطبيب.",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-147",
+      "createdAt": "2026-08-15T21:50:37.287Z"
+    },
+    {
+      "id": "notif-1786830637287-645",
+      "userId": "usr-doc-1786800895286",
+      "title": "استشارة طبية جديدة بانتظار الرد",
+      "message": "وصلتك استشارة جديدة من المريض خالد سعيد بخصوص \"سمعيااااااااااااااااااااااااااات\".",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-147",
+      "createdAt": "2026-08-15T21:50:37.287Z"
+    },
+    {
+      "id": "notif-1786830564602-24",
+      "userId": "usr-patient-1786801019333",
+      "title": "تم إرسال استشارتك بنجاح",
+      "message": "تم إرسال استشارتك إلى وليد راوح. ستصلك إشعار فور رد الطبيب.",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-546",
+      "createdAt": "2026-08-15T21:49:24.602Z"
+    },
+    {
+      "id": "notif-1786830564602-422",
+      "userId": "usr-doc-1786800895286",
+      "title": "استشارة طبية جديدة بانتظار الرد",
+      "message": "وصلتك استشارة جديدة من المريض خالد سعيد بخصوص \"معاااااااااااااااااااااااااينة\".",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-546",
+      "createdAt": "2026-08-15T21:49:24.602Z"
+    },
     {
       "id": "notif-1786801323791-852",
       "userId": "usr-patient-1786801019333",
@@ -589,6 +718,90 @@
     }
   ],
   "auditLogs": [
+    {
+      "id": "log-1786830725315-35",
+      "userId": "usr-patient-1786801019333",
+      "userName": "خالد سعيد",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1786801019333",
+      "details": "تسجيل دخول ناجح عبر البريد الإلكتروني wwwww@gmail.com",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-15T21:52:05.315Z"
+    },
+    {
+      "id": "log-1786830703991-611",
+      "userId": "doc-1786800895286",
+      "userName": "وليد راوح",
+      "userRole": "DOCTOR",
+      "action": "REPLY_CONSULTATION",
+      "entityType": "CONSULTATION",
+      "entityId": "cns-2026-147",
+      "details": "الرد على استشارة سمعيااااااااااااااااااااااااااات للمريض خالد سعيد",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-15T21:51:43.991Z"
+    },
+    {
+      "id": "log-1786830637287-441",
+      "userId": "usr-patient-1786801019333",
+      "userName": "خالد سعيد",
+      "userRole": "PATIENT",
+      "action": "CREATE_CONSULTATION",
+      "entityType": "CONSULTATION",
+      "entityId": "cns-2026-147",
+      "details": "إرسال استشارة طبية إلى وليد راوح: سمعيااااااااااااااااااااااااااات",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-15T21:50:37.287Z"
+    },
+    {
+      "id": "log-1786830614327-366",
+      "userId": "usr-patient-1786801019333",
+      "userName": "خالد سعيد",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1786801019333",
+      "details": "تسجيل دخول ناجح عبر البريد الإلكتروني wwwww@gmail.com",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-15T21:50:14.327Z"
+    },
+    {
+      "id": "log-1786830564602-372",
+      "userId": "usr-patient-1786801019333",
+      "userName": "خالد سعيد",
+      "userRole": "PATIENT",
+      "action": "CREATE_CONSULTATION",
+      "entityType": "CONSULTATION",
+      "entityId": "cns-2026-546",
+      "details": "إرسال استشارة طبية إلى وليد راوح: معاااااااااااااااااااااااااينة",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-15T21:49:24.602Z"
+    },
+    {
+      "id": "log-1786830517711-982",
+      "userId": "usr-patient-1786801019333",
+      "userName": "خالد سعيد",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1786801019333",
+      "details": "تسجيل دخول ناجح عبر البريد الإلكتروني wwwww@gmail.com",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-15T21:48:37.711Z"
+    },
+    {
+      "id": "log-1786830437225-388",
+      "userId": "usr-doc-1786800895286",
+      "userName": "وليد راوح",
+      "userRole": "DOCTOR",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-doc-1786800895286",
+      "details": "تسجيل دخول ناجح عبر البريد الإلكتروني waleed@gmail.com",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-15T21:47:17.226Z"
+    },
     {
       "id": "log-1786801323791-521",
       "userId": "usr-doc-1786800895286",
