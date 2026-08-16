@@ -344,57 +344,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
 
             {/* Role Switcher Selector Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => { setIsRoleMenuOpen(!isRoleMenuOpen); setIsUserMenuOpen(false); }}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                  role ? roleConfigs[role]?.bg : 'bg-slate-100 border-slate-200'
-                }`}
-                title="تبديل الصلاحية للتجربة"
-              >
-                {role && React.createElement(roleConfigs[role].icon, { className: `w-4 h-4 ${roleConfigs[role].color}` })}
-                <span className={`hidden md:inline ${role ? roleConfigs[role].color : 'text-slate-700'}`}>
-                  {role ? roleConfigs[role].label : 'اختر الدور'}
-                </span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
-              </button>
-
-              {isRoleMenuOpen && (
-                <div className="absolute left-0 sm:right-0 mt-2 w-64 rounded-xl bg-white border border-slate-200 shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
-                  <div className="px-2 py-1.5 border-b border-slate-100 mb-1">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      تبديل الصلاحيات المباشرة (Demo RBAC)
-                    </span>
-                  </div>
-
-                  {(['PATIENT', 'DOCTOR', 'CUSTOMER_SERVICE', 'HOSPITAL_ADMIN'] as UserRole[]).map((r) => {
-                    const cfg = roleConfigs[r];
-                    const isCurrent = role === r;
-                    const Icon = cfg.icon;
-                    return (
-                      <button
-                        key={r}
-                        onClick={() => handleRoleSelect(r)}
-                        className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors text-start cursor-pointer ${
-                          isCurrent ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
-                        }`}
-                      >
-                        <div className={`p-1 rounded-md ${cfg.bg}`}>
-                          <Icon className={`w-4 h-4 ${cfg.color}`} />
-                        </div>
-                        <div className="flex-1">
-                          <p>{cfg.label}</p>
-                          <span className="text-[10px] text-slate-400 font-normal">
-                            {r === 'PATIENT' ? 'أحمد المنصوري (MRN-0891)' : r === 'DOCTOR' ? 'د. خالد الغامدي (استشاري)' : r === 'CUSTOMER_SERVICE' ? 'منى الحربي (منسقة المواعيد)' : 'د. طارق (مدير المستشفى)'}
-                          </span>
-                        </div>
-                        {isCurrent && <span className="w-2 h-2 rounded-full bg-blue-600"></span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+         
 
             {/* Mobile menu toggle */}
             <button

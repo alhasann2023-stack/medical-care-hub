@@ -181,7 +181,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
 
           {/* Mode Switch Tabs */}
-          <div className="grid grid-cols-2 gap-2 mt-6 p-1 bg-blue-950/60 rounded-xl border border-blue-700/50">
+          <div className="grid grid-cols-2 gap-2 mt-4 p-1 bg-blue-950/60 rounded-xl border border-blue-700/50">
             <button
               type="button"
               onClick={() => { setMode('login'); setErrorMessage(null); }}
@@ -284,7 +284,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     placeholder="example@domain.com"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
+                    className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-blue-400 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
                   />
                 </div>
               </div>
@@ -304,7 +304,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     placeholder="••••••••"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full pr-10 pl-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
+                    className="w-full pr-10 pl-10 py-2.5 rounded-xl border border-blue-400 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
                   />
                   <button
                     type="button"
@@ -344,18 +344,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </button>
 
               {/* Admin quick login info */}
-              <div className="pt-4 border-t border-slate-100">
-                <div
-                  onClick={() => handleQuickFill('alhasann2023@gmail.com')}
-                  className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100/70 text-start text-xs transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-amber-900 block">alhasann2023@gmail.com</span>
-                    <span className="px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 font-bold text-[10px]">المدير العام والمسؤول</span>
-                  </div>
-                  <span className="text-amber-800 text-[11px] mt-0.5 block">حساب المشرف العام لإدارة المستشفى والصلاحيات</span>
-                </div>
-              </div>
+ 
             </form>
           )}
 
