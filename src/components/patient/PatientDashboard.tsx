@@ -16,10 +16,15 @@ import {
   MessageSquare,
   Building2,
   Heart,
-  Phone
+  Phone,
+  Bell,
+  Volume2,
+  Settings,
+  Trash2
 } from 'lucide-react';
 import { 
   Patient, 
+  Doctor,
   Appointment, 
   Consultation, 
   MedicalTest, 
@@ -31,6 +36,8 @@ import { useAuth } from '../../context/AuthContext';
 import { AICallout } from '../common/AICallout';
 import { PrintableReportModal } from '../common/PrintableReportModal';
 import { PrintablePrescriptionModal } from '../common/PrintablePrescriptionModal';
+import { ConsultationReminderBanner } from './ConsultationReminderBanner';
+import { localReminderService, ReminderItem } from '../../services/localReminderService';
 
 interface PatientDashboardProps {
   onOpenBooking: () => void;
@@ -50,10 +57,17 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const { user, patientProfile } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
+  const [doctorsList, setDoctorsList] = useState<Doctor[]>([]);
   const [tests, setTests] = useState<MedicalTest[]>([]);
   const [reports, setReports] = useState<MedicalReport[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isClearing, setIsClearing] = useState<boolean>(false);
+
+  // Local Reminders State (30 minutes alert)
+  const [activeReminders, setActiveReminders] = useState<ReminderItem[]>([]);
+  const [isReminderSettingsOpen, setIsReminderSettingsOpen] = useState<boolean>(false);
+  const [reminderSettings, setReminderSettings] = useState(localReminderService.getSettings());
 
   // Modals
   const [selectedReport, setSelectedReport] = useState<MedicalReport | null>(null);
@@ -66,28 +80,118 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
     // Subscribe to real-time updates for patient's appointments and consultations
     const unsubApts = api.subscribeAppointments({ patientId }, (liveApts) => {
-      if (liveApts) setAppointments(liveApts);
+      if (liveApts) {
+        setAppointments(liveApts);
+        checkForReminders(liveApts, consultations, doctorsList);
+      }
     });
 
     const unsubCns = api.subscribeConsultations({ patientId }, (liveCns) => {
-      if (liveCns) setConsultations(liveCns);
+      if (liveCns) {
+        setConsultations(liveCns);
+        checkForReminders(appointments, liveCns, doctorsList);
+      }
     });
+
+    // Check reminders every 30 seconds
+    const interval = setInterval(() => {
+      checkForReminders(appointments, consultations, doctorsList);
+    }, 30000);
 
     return () => {
       unsubApts();
       unsubCns();
+      clearInterval(interval);
     };
   }, [patientId]);
+
+  const checkForReminders = (apts: Appointment[], cns: Consultation[], docs: Doctor[] = doctorsList) => {
+    const found = localReminderService.findUpcomingReminders(
+      apts, 
+      cns, 
+      reminderSettings.leadTimeMinutes || 30,
+      docs
+    );
+    setActiveReminders(prev => {
+      // Keep any active test reminders
+      const testReminders = prev.filter(r => r.isTest);
+      return [...testReminders, ...found.filter(f => !testReminders.some(t => t.id === f.id))];
+    });
+  };
+
+  const handleDismissReminder = (id: string) => {
+    localReminderService.dismissReminder(id);
+    setActiveReminders(prev => prev.filter(r => r.id !== id));
+  };
+
+  const handleSnoozeReminder = (id: string) => {
+    localReminderService.snoozeReminder(id, 5);
+    setActiveReminders(prev => prev.filter(r => r.id !== id));
+  };
+
+  const handleTriggerTestReminder = () => {
+    // Determine the doctor selected by the patient:
+    // 1. From patient's latest appointment
+    // 2. From patient's latest consultation
+    // 3. Or from the registered hospital specialist doctors
+    const selectedApt = appointments.find(a => a.doctorName);
+    const selectedCns = consultations.find(c => c.doctorName);
+    const fallbackDoc = doctorsList[0];
+
+    const targetDoctorName = selectedApt?.doctorName || selectedCns?.doctorName || fallbackDoc?.fullName || 'د. فيصل العتيبي';
+    const targetDoctorSpecialty = selectedApt?.doctorSpecialty || selectedCns?.doctorSpecialty || fallbackDoc?.specialtyNameAr || 'أمراض القلب والأوعية الدموية';
+    const targetClinicRoom = selectedApt?.clinicRoom || fallbackDoc?.roomNumber || 'عيادة 201 - جناح القلب';
+
+    const testItem: ReminderItem = {
+      id: `test-remind-${Date.now()}`,
+      type: selectedCns && !selectedApt ? 'CONSULTATION' : 'APPOINTMENT',
+      title: `موعد استشارة: ${targetDoctorName} (تنبيه تجريبي)`,
+      doctorName: targetDoctorName,
+      doctorSpecialty: targetDoctorSpecialty,
+      targetDateTime: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      timeRemainingMinutes: 30,
+      clinicRoom: targetClinicRoom,
+      status: 'CONFIRMED',
+      notes: 'تذكير طبي مسبق: يرجى تجهيز قائمة الاستفسارات ونتائج الفحوصات قبل بدء الاستشارة.',
+      isTest: true
+    };
+
+    localReminderService.playReminderChime();
+    localReminderService.sendBrowserNotification(
+      'تذكير بموعد الاستشارة (قبل 30 دقيقة)',
+      `موعد استشارتك الطبية مع ${targetDoctorName} سيبدأ خلال 30 دقيقة.`
+    );
+
+    setActiveReminders(prev => [testItem, ...prev.filter(r => r.id !== testItem.id)]);
+  };
+
+  const handleClearAllMockData = async () => {
+    if (!window.confirm('هل أنت متأكد من رغبتك في مسح كافة البيانات التجريبية والبدء بصفحة نظيفة تماماً؟')) {
+      return;
+    }
+    setIsClearing(true);
+    try {
+      await api.clearAllData();
+      localReminderService.clearDismissedReminders();
+      setActiveReminders([]);
+      await loadDashboardData();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      const [aptRes, cnsRes, tstRes, repRes, rxRes] = await Promise.all([
+      const [aptRes, cnsRes, tstRes, repRes, rxRes, docsRes] = await Promise.all([
         api.getAppointments({ patientId }),
         api.getConsultations({ patientId }),
         api.getTests(patientId),
         api.getReports(patientId),
-        api.getPrescriptions(patientId)
+        api.getPrescriptions(patientId),
+        api.getDoctors(undefined, true)
       ]);
 
       setAppointments(aptRes);
@@ -95,6 +199,8 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
       setTests(tstRes);
       setReports(repRes);
       setPrescriptions(rxRes);
+      setDoctorsList(docsRes);
+      checkForReminders(aptRes, cnsRes, docsRes);
     } catch (err) {
       console.error('Failed to load patient dashboard:', err);
     } finally {
@@ -109,8 +215,33 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const recentConsultation = consultations[0];
   const activePrescription = prescriptions.find(p => p.status === 'ACTIVE') || prescriptions[0];
 
+  const handleOpenReminderTarget = (reminder: ReminderItem) => {
+    if (reminder.type === 'CONSULTATION') {
+      onOpenConsultation();
+    } else {
+      onNavigateToTimeline();
+    }
+  };
+
+  const handleSaveSettings = (newSettings: any) => {
+    const saved = localReminderService.saveSettings(newSettings);
+    setReminderSettings(saved);
+    setIsReminderSettingsOpen(false);
+  };
+
   return (
     <div className="space-y-6">
+      {/* 30-Minute Local Consultation / Appointment Reminder Banner */}
+      {activeReminders.length > 0 && (
+        <ConsultationReminderBanner
+          reminders={activeReminders}
+          onDismiss={handleDismissReminder}
+          onSnooze={handleSnoozeReminder}
+          onOpenConsultationOrAppointment={handleOpenReminderTarget}
+          onTriggerTestReminder={handleTriggerTestReminder}
+        />
+      )}
+
       {/* Welcome Header */}
       <div className="bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
         {/* Background decorative pulse circles */}
@@ -142,8 +273,32 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
             </div>
           </div>
 
-          {/* Primary Quick Action Buttons */}
+          {/* Primary Quick Action Buttons & Reminder Trigger */}
           <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={handleTriggerTestReminder}
+              className="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all border border-white/20 flex items-center gap-1.5 cursor-pointer"
+              title="تجربة نظام التنبيه قبل الموعد بـ 30 دقيقة ورنين التذكير"
+            >
+              <Bell className="w-4 h-4 text-yellow-300 animate-pulse" />
+              <span>تجربة تنبيه (30 دقيقة)</span>
+            </button>
+            <button
+              onClick={() => setIsReminderSettingsOpen(true)}
+              className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+              title="إعدادات تنبيهات المواعيد"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleClearAllMockData}
+              disabled={isClearing}
+              className="px-3 py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 hover:text-white font-bold text-xs transition-all border border-rose-400/30 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="مسح وتصفير كافة السجلات والبيانات التجريبية"
+            >
+              <Trash2 className="w-4 h-4 text-rose-300" />
+              <span>{isClearing ? 'جارِ التصفير...' : 'تصفير البيانات التجريبية'}</span>
+            </button>
             <button
               onClick={onOpenConsultation}
               className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs sm:text-sm transition-all shadow-md shadow-cyan-500/20 flex items-center gap-2 cursor-pointer"
@@ -415,6 +570,141 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
         onClose={() => setSelectedPrescription(null)}
         prescription={selectedPrescription}
       />
+
+      {/* Reminder Settings Modal */}
+      {isReminderSettingsOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200 text-start">
+            <div className="p-5 bg-gradient-to-r from-amber-600 to-orange-600 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                  <Bell className="w-4 h-4 text-amber-200" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">إعدادات تذكير الاستشارات والمواعيد</h3>
+                  <p className="text-[11px] text-amber-100">نظام التنبيهات المحلي الذكي</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsReminderSettingsOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-100 text-amber-950 space-y-1">
+                <strong className="block font-bold">تنبيهات الاستشارة المباشرة:</strong>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  يقوم النظام بإرسال إشعار مرئي وتشغيل نغمة تنبيه لطيفة قبل موعد الاستشارة بـ 30 دقيقة لمساعدتك على الاستعداد والتواجد في الموعد المحدد.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  <div>
+                    <strong className="block text-slate-900">تفعيل نظام التنبيهات المحلي</strong>
+                    <span className="text-[11px] text-slate-500">إظهار شريط التنبيه عند اقتراب موعد الاستشارة</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={reminderSettings.enabled}
+                    onChange={(e) => setReminderSettings(prev => ({ ...prev, enabled: e.target.checked }))}
+                    className="w-4 h-4 text-amber-600 rounded cursor-pointer"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  <div>
+                    <strong className="block text-slate-900">وقت التذكير المسبق</strong>
+                    <span className="text-[11px] text-slate-500">المدة الزمنية قبل بدء الاستشارة</span>
+                  </div>
+                  <select
+                    value={reminderSettings.leadTimeMinutes}
+                    onChange={(e) => setReminderSettings(prev => ({ ...prev, leadTimeMinutes: Number(e.target.value) }))}
+                    className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-bold text-xs outline-none"
+                  >
+                    <option value={15}>قبل 15 دقيقة</option>
+                    <option value={30}>قبل 30 دقيقة (الموصى به)</option>
+                    <option value={45}>قبل 45 دقيقة</option>
+                    <option value={60}>قبل ساعة كاملة</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  <div>
+                    <strong className="block text-slate-900">نغمة التنبيه الصوتية (Audio Chime)</strong>
+                    <span className="text-[11px] text-slate-500">تشغيل نغمة هادئة فور حلول وقت التذكير</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => localReminderService.playReminderChime()}
+                      className="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                      title="تجربة النغمة"
+                    >
+                      <Volume2 className="w-3 h-3" />
+                      <span>تجربة</span>
+                    </button>
+                    <input
+                      type="checkbox"
+                      checked={reminderSettings.soundEnabled}
+                      onChange={(e) => setReminderSettings(prev => ({ ...prev, soundEnabled: e.target.checked }))}
+                      className="w-4 h-4 text-amber-600 rounded cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  <div>
+                    <strong className="block text-slate-900">إشعارات المتصفح (Browser Push)</strong>
+                    <span className="text-[11px] text-slate-500">استقبال تنبيه حتى في حال تصغير النافذة</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const granted = await localReminderService.requestNotificationPermission();
+                      setReminderSettings(prev => ({ ...prev, browserNotifications: granted }));
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs cursor-pointer"
+                  >
+                    {reminderSettings.browserNotifications ? 'مفعلة ✓' : 'طلب الإذن'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={handleTriggerTestReminder}
+                  className="px-3 py-2 rounded-xl bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold text-xs flex items-center gap-1 cursor-pointer"
+                >
+                  <Bell className="w-3.5 h-3.5" />
+                  <span>تجربة التنبيه الآن</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsReminderSettingsOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs cursor-pointer"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveSettings(reminderSettings)}
+                    className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs cursor-pointer shadow-md"
+                  >
+                    حفظ الإعدادات
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

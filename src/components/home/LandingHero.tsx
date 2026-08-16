@@ -51,7 +51,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             <span>المنصة الطبية الذكية والمتكاملة لإدارة الرعاية الصحية</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl lg:text-3xl font-black tracking-tight leading-tight sm:leading-snug">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight sm:leading-snug">
             رعايتك الصحية واستشاراتك الطبية <br className="hidden sm:inline" />
             <span className="bg-gradient-to-r from-cyan-300 via-blue-200 to-white bg-clip-text text-transparent">
               بأعلى معايير الدقة والسرعة
@@ -131,7 +131,98 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
       </section>
 
       {/* Direct Interactive Portals RBAC Switcher */}
+      <section className="space-y-6">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+            بوابات النظام المتكاملة (Direct Roles Preview)
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
+            اختر البوابة للدخول المباشر واستكشاف كافة الصلاحيات والوظائف المخصصة لكل دور
+          </p>
+        </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {/* Patient Portal Card */}
+          <div
+            onClick={() => onSelectRole('PATIENT')}
+            className="p-6 rounded-3xl bg-white border border-blue-200/80 shadow-xs hover:shadow-xl hover:border-blue-500 transition-all text-start group cursor-pointer flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Users className="w-6 h-6" />
+              </div>
+              <h3 className="font-extrabold text-base text-slate-900 mb-1">بوابة المريض (Patient Portal)</h3>
+              <p className="text-xs text-slate-500 leading-relaxed mb-4">
+                حجز المواعيد، طلب الاستشارات، متابعة الفحوصات المخبرية، والاطلاع على السجل الطبي الزمني والتقارير المعتمدة.
+              </p>
+            </div>
+            <div className="flex items-center gap-1 text-xs font-bold text-blue-700 group-hover:translate-x-1 transition-transform">
+              <span>الدخول كـ مريض</span>
+              <ArrowLeft className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Doctor Portal Card */}
+          <div
+            onClick={() => onSelectRole('DOCTOR')}
+            className="p-6 rounded-3xl bg-white border border-emerald-200/80 shadow-xs hover:shadow-xl hover:border-emerald-500 transition-all text-start group cursor-pointer flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Stethoscope className="w-6 h-6" />
+              </div>
+              <h3 className="font-extrabold text-base text-slate-900 mb-1">بوابة الطبيب (Doctor Portal)</h3>
+              <p className="text-xs text-slate-500 leading-relaxed mb-4">
+                معاينة المرضى، الرد على الاستشارات، إصدار التقارير الطبية بمساعدة الذكاء الاصطناعي، وتحرير الوصفات الإلكترونية.
+              </p>
+            </div>
+            <div className="flex items-center gap-1 text-xs font-bold text-emerald-700 group-hover:translate-x-1 transition-transform">
+              <span>الدخول كـ طبيب استشاري</span>
+              <ArrowLeft className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Customer Service Portal Card */}
+          <div
+            onClick={() => onSelectRole('CUSTOMER_SERVICE')}
+            className="p-6 rounded-3xl bg-white border border-purple-200/80 shadow-xs hover:shadow-xl hover:border-purple-500 transition-all text-start group cursor-pointer flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Headphones className="w-6 h-6" />
+              </div>
+              <h3 className="font-extrabold text-base text-slate-900 mb-1">خدمة وتنسيق المواعيد</h3>
+              <p className="text-xs text-slate-500 leading-relaxed mb-4">
+                استقبال طلبات الحجز، التواصل مع المرضى بالهاتف، وتسكين الساعات والعيادات، والبحث برقم الهاتف لفتح الملفات.
+              </p>
+            </div>
+            <div className="flex items-center gap-1 text-xs font-bold text-purple-700 group-hover:translate-x-1 transition-transform">
+              <span>الدخول كـ منسق مواعيد</span>
+              <ArrowLeft className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Hospital Admin Portal Card */}
+          <div
+            onClick={() => onSelectRole('HOSPITAL_ADMIN')}
+            className="p-6 rounded-3xl bg-white border border-amber-200/80 shadow-xs hover:shadow-xl hover:border-amber-500 transition-all text-start group cursor-pointer flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <h3 className="font-extrabold text-base text-slate-900 mb-1">إدارة وحوكمة المستشفى</h3>
+              <p className="text-xs text-slate-500 leading-relaxed mb-4">
+                متابعة الإحصائيات والإيرادات، إدارة الكادر الطبي، دليل الخدمات والأسعار، وسجل التدقيق الأمني الشامل.
+              </p>
+            </div>
+            <div className="flex items-center gap-1 text-xs font-bold text-amber-800 group-hover:translate-x-1 transition-transform">
+              <span>الدخول كـ مدير المستشفى</span>
+              <ArrowLeft className="w-4 h-4" />
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Features Overview */}
       <section className="bg-slate-50 rounded-3xl p-8 sm:p-12 border border-slate-200/80">

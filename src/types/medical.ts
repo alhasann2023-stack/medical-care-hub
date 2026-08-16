@@ -178,6 +178,8 @@ export interface Consultation {
   doctorAdvice?: string;
   doctorNotes?: string; // Internal medical notes
   suggestedAction?: string;
+  treatmentPlan?: string;
+  requireInPersonVisit?: boolean;
   attachments?: {
     name: string;
     url: string;

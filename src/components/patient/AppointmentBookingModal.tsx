@@ -89,8 +89,14 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
     try {
       await api.createAppointment({
         patientId: patientProfile?.id || user?.id || 'pat-1',
+        patientName: patientProfile?.fullName || user?.fullName || 'المريض',
+        patientPhone: patientProfile?.phone || user?.phone || '',
         doctorId: selectedDoctorId,
+        doctorName: selectedDoctor?.fullName,
+        doctorSpecialty: selectedDoctor?.specialtyNameAr,
+        clinicRoom: selectedDoctor?.roomNumber,
         serviceId: selectedServiceId || undefined,
+        serviceName: selectedService?.nameAr,
         preferredDate,
         preferredPeriod,
         reason,

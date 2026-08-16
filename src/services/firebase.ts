@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { 
+  initializeFirestore,
   getFirestore, 
   Firestore, 
   doc, 
@@ -40,10 +41,21 @@ export const app: FirebaseApp = getApps().length === 0
   ? initializeApp(firebaseConfig)
   : getApp();
 
-// Initialize Firestore with custom database ID from config
-export const db: Firestore = firebaseConfig.firestoreDatabaseId
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
+// Initialize Firestore with custom database ID from config and resilient WebChannel polling
+export const db: Firestore = (() => {
+  try {
+    const databaseId = firebaseConfig.firestoreDatabaseId || undefined;
+    return initializeFirestore(app, {
+      experimentalAutoDetectLongPolling: true,
+      experimentalForceLongPolling: false
+    }, databaseId);
+  } catch (e) {
+    console.warn('Firestore custom initialization fallback:', e);
+    return firebaseConfig.firestoreDatabaseId
+      ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+      : getFirestore(app);
+  }
+})();
 
 // Initialize Firebase Authentication
 export const auth: Auth = getAuth(app);

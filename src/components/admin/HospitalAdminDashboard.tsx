@@ -30,6 +30,7 @@ import {
   EyeOff,
   Pencil,
   X,
+  AlertCircle,
   UserX
 } from 'lucide-react';
 import { Doctor, MedicalService, AuditLog, Staff } from '../../types/medical';
@@ -92,6 +93,21 @@ export const HospitalAdminDashboard: React.FC = () => {
   const [staffRoleTitle, setStaffRoleTitle] = useState<string>('منسق خدمة عملاء وحجوزات طبية');
   const [staffDepartment, setStaffDepartment] = useState<string>('مركز خدمة وتنسيق المواعيد');
   const [staffShift, setStaffShift] = useState<string>('الفترة الصباحية (08:00 ص - 04:00 م)');
+
+  // Edit Staff Modal State
+  const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+  const [editStaffFullName, setEditStaffFullName] = useState<string>('');
+  const [editStaffEmail, setEditStaffEmail] = useState<string>('');
+  const [editStaffPhone, setEditStaffPhone] = useState<string>('');
+  const [editStaffRoleTitle, setEditStaffRoleTitle] = useState<string>('منسق خدمة عملاء وحجوزات طبية');
+  const [editStaffDepartment, setEditStaffDepartment] = useState<string>('مركز خدمة وتنسيق المواعيد');
+  const [editStaffShift, setEditStaffShift] = useState<string>('الفترة الصباحية (08:00 ص - 04:00 م)');
+  const [editStaffPassword, setEditStaffPassword] = useState<string>('');
+  const [editStaffIsActive, setEditStaffIsActive] = useState<boolean>(true);
+
+  // Delete Staff Confirmation State
+  const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
+  const [isDeletingStaff, setIsDeletingStaff] = useState<boolean>(false);
 
   // New Service Modal
   const [isNewServiceModalOpen, setIsNewServiceModalOpen] = useState<boolean>(false);
@@ -310,6 +326,65 @@ export const HospitalAdminDashboard: React.FC = () => {
       await loadAdminData();
     } catch (err: any) {
       showNotification('error', 'فشل تعديل حالة الموظف.');
+    }
+  };
+
+  const handleOpenEditStaff = (staff: Staff) => {
+    setEditingStaff(staff);
+    setEditStaffFullName(staff.fullName);
+    setEditStaffEmail(staff.email);
+    setEditStaffPhone(staff.phone || '');
+    setEditStaffRoleTitle(staff.roleTitle || 'منسق خدمة عملاء وحجوزات طبية');
+    setEditStaffDepartment(staff.department || 'مركز خدمة وتنسيق المواعيد');
+    setEditStaffShift(staff.shift || 'الفترة الصباحية (08:00 ص - 04:00 م)');
+    setEditStaffPassword('');
+    setEditStaffIsActive(staff.isActive);
+  };
+
+  const handleUpdateStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStaff) return;
+
+    if (!editStaffFullName.trim() || !editStaffEmail.trim()) {
+      showNotification('error', 'يرجى إدخال اسم الموظف والبريد الإلكتروني.');
+      return;
+    }
+
+    try {
+      await api.updateStaff(editingStaff.id, {
+        fullName: editStaffFullName.trim(),
+        email: editStaffEmail.trim(),
+        phone: editStaffPhone.trim() || '+966560000000',
+        roleTitle: editStaffRoleTitle,
+        department: editStaffDepartment,
+        shift: editStaffShift,
+        isActive: editStaffIsActive,
+        ...(editStaffPassword.trim() ? { password: editStaffPassword.trim() } : {})
+      });
+
+      showNotification('success', `تم تحديث بيانات موظف خدمة العملاء ${editStaffFullName} بنجاح.`);
+      setEditingStaff(null);
+      await loadAdminData();
+    } catch (err: any) {
+      console.error(err);
+      showNotification('error', err.message || 'فشل تحديث بيانات الموظف.');
+    }
+  };
+
+  const handleConfirmDeleteStaff = async () => {
+    if (!deletingStaff) return;
+
+    try {
+      setIsDeletingStaff(true);
+      await api.deleteStaff(deletingStaff.id);
+      showNotification('success', `تم حذف حساب موظف خدمة العملاء ${deletingStaff.fullName} وإلغاء صلاحياته نهائياً.`);
+      setDeletingStaff(null);
+      await loadAdminData();
+    } catch (err: any) {
+      console.error(err);
+      showNotification('error', err.message || 'فشل حذف حساب الموظف.');
+    } finally {
+      setIsDeletingStaff(false);
     }
   };
 
@@ -848,17 +923,33 @@ export const HospitalAdminDashboard: React.FC = () => {
                       </span>
                     </td>
                     <td className="p-3.5 text-center">
-                      <button
-                        onClick={() => handleToggleStaffStatus(stf)}
-                        className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                          stf.isActive 
-                            ? 'text-rose-600 hover:bg-rose-50' 
-                            : 'text-purple-600 hover:bg-purple-50'
-                        }`}
-                        title={stf.isActive ? 'تعطيل الصلاحية' : 'تفعيل الصلاحية'}
-                      >
-                        <Power className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => handleOpenEditStaff(stf)}
+                          className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                          title="تعديل بيانات وصلاحيات الموظف"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleStaffStatus(stf)}
+                          className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                            stf.isActive 
+                              ? 'text-amber-600 hover:bg-amber-50' 
+                              : 'text-emerald-600 hover:bg-emerald-50'
+                          }`}
+                          title={stf.isActive ? 'تعطيل الحساب مؤقتاً' : 'تفعيل الحساب'}
+                        >
+                          <Power className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeletingStaff(stf)}
+                          className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="حذف حساب الموظف نهائياً"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1558,6 +1649,188 @@ export const HospitalAdminDashboard: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT STAFF MODAL */}
+      {editingStaff && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 bg-gradient-to-r from-indigo-800 to-purple-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                  <Pencil className="w-4 h-4 text-indigo-300" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">تعديل بيانات موظف خدمة العملاء</h3>
+                  <p className="text-[11px] text-indigo-200">{editingStaff.fullName} ({editingStaff.email})</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingStaff(null)}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateStaff} className="p-6 space-y-4 text-xs text-start">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">اسم الموظف الثلاثي *</label>
+                <input
+                  type="text"
+                  required
+                  value={editStaffFullName}
+                  onChange={(e) => setEditStaffFullName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-indigo-600 outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">البريد الإلكتروني المهني *</label>
+                  <input
+                    type="email"
+                    required
+                    value={editStaffEmail}
+                    onChange={(e) => setEditStaffEmail(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-indigo-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">رقم الجوال</label>
+                  <input
+                    type="tel"
+                    value={editStaffPhone}
+                    onChange={(e) => setEditStaffPhone(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-indigo-600 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">المسمى الوظيفي</label>
+                  <input
+                    type="text"
+                    value={editStaffRoleTitle}
+                    onChange={(e) => setEditStaffRoleTitle(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">فترة المناوبة (Shift)</label>
+                  <select
+                    value={editStaffShift}
+                    onChange={(e) => setEditStaffShift(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
+                  >
+                    <option value="الفترة الصباحية (08:00 ص - 04:00 م)">الفترة الصباحية (08:00 ص - 04:00 م)</option>
+                    <option value="الفترة المسائية (04:00 م - 12:00 ص)">الفترة المسائية (04:00 م - 12:00 ص)</option>
+                    <option value="فترة الطوارئ الليلية">فترة الطوارئ الليلية</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">تغيير كلمة المرور (اختياري)</label>
+                  <input
+                    type="text"
+                    placeholder="اتركه فارغاً للإبقاء على الحالية"
+                    value={editStaffPassword}
+                    onChange={(e) => setEditStaffPassword(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">حالة الحساب والصلاحية</label>
+                  <select
+                    value={editStaffIsActive ? 'active' : 'inactive'}
+                    onChange={(e) => setEditStaffIsActive(e.target.value === 'active')}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
+                  >
+                    <option value="active">نشط ومصرح له بالعمل</option>
+                    <option value="inactive">معطل وموقوف الصلاحية</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingStaff(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>حفظ التعديلات</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE STAFF CONFIRMATION MODAL */}
+      {deletingStaff && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 bg-gradient-to-r from-rose-600 to-red-700 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                  <AlertCircle className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">تأكيد حذف موظف خدمة العملاء</h3>
+                  <p className="text-[11px] text-rose-100">إلغاء حساب الدخول وسحب الصلاحيات</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDeletingStaff(null)}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs text-start">
+              <p className="text-slate-700 leading-relaxed">
+                هل أنت متأكد من رغبتك في حذف حساب الموظف <strong>{deletingStaff.fullName}</strong> ({deletingStaff.email}) نهائياً؟
+              </p>
+              <p className="text-rose-600 bg-rose-50 p-3 rounded-xl border border-rose-100 font-medium">
+                تنبيه: سيتم إلغاء صلاحيات الدخول فوراً ولن يتمكن الموظف من الوصول للوحة التحكم وتنسيق المواعيد.
+              </p>
+
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeletingStaff(null)}
+                  disabled={isDeletingStaff}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteStaff}
+                  disabled={isDeletingStaff}
+                  className="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>{isDeletingStaff ? 'جاري الحذف...' : 'نعم، احذف الموظف نهائياً'}</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

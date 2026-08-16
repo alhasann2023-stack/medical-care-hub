@@ -234,7 +234,20 @@ async function startServer() {
   const app = express();
   const PORT = 3024;
 
-  app.use(express.json());
+  // Enable CORS for Android WebViews, hybrid apps, and cross-origin requests
+  app.use((req: Request, res: Response, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+
+  // Support large base64 attachments, medical documents and test reports
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // ----------------------------------------------------
   // AUTHENTICATION & DEMO SWITCHER ROUTES
@@ -1246,11 +1259,19 @@ async function startServer() {
 
   // Patient Request Appointment
   app.post('/api/appointments', (req: Request, res: Response) => {
-    const { patientId, doctorId, serviceId, preferredDate, preferredPeriod, reason, patientNotes, patientName, patientPhone } = req.body;
+    const patientId = req.body.patientId || req.body.patient_id || req.body.userId || req.body.uid;
+    const doctorId = req.body.doctorId || req.body.doctor_id;
+    const serviceId = req.body.serviceId || req.body.service_id;
+    const preferredDate = req.body.preferredDate || req.body.preferred_date || req.body.date;
+    const preferredPeriod = req.body.preferredPeriod || req.body.preferred_period || req.body.period || 'MORNING';
+    const reason = req.body.reason || req.body.problem || req.body.title || req.body.serviceName || 'استشارة وفحص طبي';
+    const patientNotes = req.body.patientNotes || req.body.patient_notes || req.body.notes || req.body.description || '';
+    const patientName = req.body.patientName || req.body.patient_name || req.body.fullName || req.body.name;
+    const patientPhone = req.body.patientPhone || req.body.patient_phone || req.body.phone;
 
-    let patient = patients.find(p => p.id === patientId || p.userId === patientId);
+    let patient = patients.find(p => p.id === patientId || p.userId === patientId || (patientPhone && p.phone === patientPhone));
     if (!patient) {
-      const u = users.find(user => user.id === patientId || user.email === patientId);
+      const u = users.find(user => user.id === patientId || user.email === patientId || (patientPhone && user.phone === patientPhone));
       patient = {
         id: patientId || `pat-${Date.now()}`,
         userId: u?.id || patientId || 'usr-pat-1',
@@ -1274,24 +1295,31 @@ async function startServer() {
       patients.push(patient);
     }
 
-    let doctor = doctors.find(d => d.id === doctorId || d.userId === doctorId);
-    if (!doctor) {
-      doctor = doctors[0] || INITIAL_DOCTORS[0];
-    }
+    let doctor = doctors.find(d => 
+      (doctorId && (d.id === doctorId || d.userId === doctorId)) || 
+      (req.body.doctorName && d.fullName?.toLowerCase().trim() === (req.body.doctorName as string)?.toLowerCase().trim()) ||
+      (req.body.doctorName && d.fullName?.includes(req.body.doctorName as string))
+    );
 
-    const service = services.find(s => s.id === serviceId);
+    const docName = req.body.doctorName || doctor?.fullName || (doctors[0] ? doctors[0].fullName : 'الطبيب الاستشاري');
+    const docSpecialty = req.body.doctorSpecialty || doctor?.specialtyNameAr || (doctors[0] ? doctors[0].specialtyNameAr : 'العيادات التخصصية');
+    const docId = doctor?.id || doctorId || (doctors[0] ? doctors[0].id : `doc-${Date.now()}`);
+    const docRoom = req.body.clinicRoom || doctor?.roomNumber || 'عيادة 101';
+
+    const service = services.find(s => s.id === serviceId || (req.body.serviceName && s.nameAr.includes(req.body.serviceName)));
 
     const newAppointment: Appointment = {
-      id: `apt-2026-${Math.floor(100 + Math.random() * 900)}`,
+      id: req.body.id || `apt-2026-${Math.floor(100 + Math.random() * 900)}`,
       patientId: patient.id,
       patientName: patientName || patient.fullName,
       patientPhone: patientPhone || patient.phone,
       patientMrn: patient.mrn,
-      doctorId: doctor.id,
-      doctorName: doctor.fullName,
-      doctorSpecialty: doctor.specialtyNameAr,
+      doctorId: docId,
+      doctorName: docName,
+      doctorSpecialty: docSpecialty,
+      clinicRoom: docRoom,
       serviceId: service?.id,
-      serviceName: service?.nameAr || 'استشارة وفحص طبي عام',
+      serviceName: service?.nameAr || req.body.serviceName || 'استشارة وفحص طبي عام',
       preferredDate: preferredDate || new Date().toISOString().split('T')[0],
       preferredPeriod: preferredPeriod || 'MORNING',
       reason: reason || 'استشارة وفحص طبي',
@@ -1304,14 +1332,14 @@ async function startServer() {
 
     appointments.unshift(newAppointment);
 
-    logAudit(patient.userId || 'guest', patient.fullName, 'PATIENT', 'CREATE_APPOINTMENT', 'APPOINTMENT', newAppointment.id, `تقديم طلب موعد جديد مع ${doctor.fullName}`, req);
+    logAudit(patient.userId || 'guest', patient.fullName, 'PATIENT', 'CREATE_APPOINTMENT', 'APPOINTMENT', newAppointment.id, `تقديم طلب موعد جديد مع ${docName}`, req);
 
     // Notify Customer Service
     staffList.forEach(stf => {
       pushNotification(
         stf.userId,
         'طلب حجز موعد جديد',
-        `طلب موعد جديد من المريض ${patient.fullName} (${patient.phone}) لعيادة ${doctor.fullName}.`,
+        `طلب موعد جديد من المريض ${patient.fullName} (${patient.phone}) لعيادة ${docName}.`,
         'APPOINTMENT',
         newAppointment.id
       );
@@ -1322,7 +1350,7 @@ async function startServer() {
       pushNotification(
         patient.userId,
         'تم استلام طلب الموعد',
-        `تم استلام طلب موعدك لعيادة ${doctor.fullName}. سيتواصل معك فريق خدمة العملاء لتأكيد الموعد المحدد.`,
+        `تم استلام طلب موعدك لعيادة ${docName}. سيتواصل معك فريق خدمة العملاء لتأكيد الموعد المحدد.`,
         'APPOINTMENT',
         newAppointment.id
       );
@@ -1479,15 +1507,24 @@ async function startServer() {
 
   // Patient Create Consultation Request
   app.post('/api/consultations', (req: Request, res: Response) => {
-    const { patientId, doctorId, title, problemDescription, symptoms, duration, attachments, patientName, patientPhone } = req.body;
+    const patientId = req.body.patientId || req.body.patient_id || req.body.userId || req.body.uid;
+    const doctorId = req.body.doctorId || req.body.doctor_id;
+    const title = req.body.title || req.body.subject || req.body.reason || 'استشارة طبية جديدة';
+    const problemDescription = req.body.problemDescription || req.body.problem_description || req.body.description || req.body.problem || req.body.message || req.body.notes || '';
+    const rawSymptoms = req.body.symptoms || req.body.symptomsList || [];
+    const symptoms = Array.isArray(rawSymptoms) 
+      ? rawSymptoms 
+      : typeof rawSymptoms === 'string' 
+        ? rawSymptoms.split(/[,،]+/).map((s: string) => s.trim()).filter(Boolean)
+        : [];
+    const duration = req.body.duration || req.body.period || 'غير محدد';
+    const attachments = req.body.attachments || [];
+    const patientName = req.body.patientName || req.body.patient_name || req.body.fullName || req.body.name;
+    const patientPhone = req.body.patientPhone || req.body.patient_phone || req.body.phone;
 
-    if (!title || !problemDescription) {
-      return res.status(400).json({ error: 'العنوان وتفاصيل المشكلة حقول مطلوبة.' });
-    }
-
-    let patient = patients.find(p => p.id === patientId || p.userId === patientId);
+    let patient = patients.find(p => p.id === patientId || p.userId === patientId || (patientPhone && p.phone === patientPhone));
     if (!patient) {
-      const u = users.find(user => user.id === patientId || user.email === patientId);
+      const u = users.find(user => user.id === patientId || user.email === patientId || (patientPhone && user.phone === patientPhone));
       patient = {
         id: patientId || `pat-${Date.now()}`,
         userId: u?.id || patientId || 'usr-pat-1',
@@ -1511,10 +1548,15 @@ async function startServer() {
       patients.push(patient);
     }
 
-    let doctor = doctors.find(d => d.id === doctorId || d.userId === doctorId);
-    if (!doctor) {
-      doctor = doctors[0] || INITIAL_DOCTORS[0];
-    }
+    let doctor = doctors.find(d => 
+      (doctorId && (d.id === doctorId || d.userId === doctorId)) || 
+      (req.body.doctorName && d.fullName?.toLowerCase().trim() === (req.body.doctorName as string)?.toLowerCase().trim()) ||
+      (req.body.doctorName && d.fullName?.includes(req.body.doctorName as string))
+    );
+
+    const docName = req.body.doctorName || doctor?.fullName || (doctors[0] ? doctors[0].fullName : 'الطبيب الاستشاري');
+    const docSpecialty = req.body.doctorSpecialty || doctor?.specialtyNameAr || (doctors[0] ? doctors[0].specialtyNameAr : 'العيادات التخصصية');
+    const docId = doctor?.id || doctorId || (doctors[0] ? doctors[0].id : `doc-${Date.now()}`);
 
     // Calculate approx age
     const birthYear = patient.birthDate ? new Date(patient.birthDate).getFullYear() : 1992;
@@ -1522,19 +1564,19 @@ async function startServer() {
     const patientAge = Math.max(1, currentYear - birthYear);
 
     const newConsultation: Consultation = {
-      id: `cns-2026-${Math.floor(100 + Math.random() * 900)}`,
+      id: req.body.id || `cns-2026-${Math.floor(100 + Math.random() * 900)}`,
       patientId: patient.id,
       patientName: patientName || patient.fullName,
       patientPhone: patientPhone || patient.phone,
       patientMrn: patient.mrn,
       patientAge,
       patientGender: patient.gender || 'MALE',
-      doctorId: doctor.id,
-      doctorName: doctor.fullName,
-      doctorSpecialty: doctor.specialtyNameAr,
+      doctorId: docId,
+      doctorName: docName,
+      doctorSpecialty: docSpecialty,
       title,
       problemDescription,
-      symptoms: Array.isArray(symptoms) ? symptoms : [symptoms].filter(Boolean),
+      symptoms,
       duration: duration || 'غير محدد',
       status: 'PENDING',
       attachments: attachments || [],
@@ -1545,7 +1587,7 @@ async function startServer() {
           senderId: patient.id,
           senderName: patient.fullName,
           senderRole: 'PATIENT',
-          message: problemDescription,
+          message: problemDescription || title,
           attachments: attachments || [],
           createdAt: new Date().toISOString()
         }
@@ -1556,23 +1598,25 @@ async function startServer() {
     newConsultation.messages[0].consultationId = newConsultation.id;
     consultations.unshift(newConsultation);
 
-    logAudit(patient.userId || 'guest', patient.fullName, 'PATIENT', 'CREATE_CONSULTATION', 'CONSULTATION', newConsultation.id, `إرسال استشارة طبية إلى ${doctor.fullName}: ${title}`, req);
+    logAudit(patient.userId || 'guest', patient.fullName, 'PATIENT', 'CREATE_CONSULTATION', 'CONSULTATION', newConsultation.id, `إرسال استشارة طبية إلى ${docName}: ${title}`, req);
 
     // Notify Doctor
-    pushNotification(
-      doctor.userId,
-      'استشارة طبية جديدة بانتظار الرد',
-      `وصلتك استشارة جديدة من المريض ${patient.fullName} بخصوص "${title}".`,
-      'CONSULTATION',
-      newConsultation.id
-    );
+    if (doctor?.userId) {
+      pushNotification(
+        doctor.userId,
+        'استشارة طبية جديدة بانتظار الرد',
+        `وصلتك استشارة جديدة من المريض ${patient.fullName} بخصوص "${title}".`,
+        'CONSULTATION',
+        newConsultation.id
+      );
+    }
 
     // Notify Patient
     if (patient.userId) {
       pushNotification(
         patient.userId,
         'تم إرسال استشارتك بنجاح',
-        `تم إرسال استشارتك إلى ${doctor.fullName}. ستصلك إشعار فور رد الطبيب.`,
+        `تم إرسال استشارتك إلى ${docName}. ستصلك إشعار فور رد الطبيب.`,
         'CONSULTATION',
         newConsultation.id
       );
@@ -2216,6 +2260,24 @@ async function startServer() {
     const { limit } = req.query;
     const count = limit ? Number(limit) : 50;
     res.json(auditLogs.slice(0, count));
+  });
+
+  // Clear all mock & transactional data endpoint
+  app.post('/api/admin/clear-all-data', (req: Request, res: Response) => {
+    appointments = [];
+    consultations = [];
+    examinations = [];
+    tests = [];
+    reports = [];
+    prescriptions = [];
+    notifications = [];
+    auditLogs = [];
+
+    saveDatabase();
+    res.json({
+      success: true,
+      message: 'تم مسح كافة البيانات التجريبية والمواعيد والاستشارات بنجاح والبدء بسجل نقي تماماً.'
+    });
   });
 
   // ----------------------------------------------------
