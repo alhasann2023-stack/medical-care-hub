@@ -28,6 +28,7 @@ import {
 import { Appointment, Patient, AppointmentStatus, MedicalService } from '../../types/medical';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { playSuccessSound } from '../../utils/sound';
 
 export const CustomerServiceDashboard: React.FC = () => {
   const { staffProfile, user } = useAuth();
@@ -140,6 +141,7 @@ export const CustomerServiceDashboard: React.FC = () => {
       });
 
       showNotification('success', `تم تحديث وتأكيد موعد المريض (${coordinatingAppointment.patientName}) بنجاح.`);
+      playSuccessSound();
       await loadData();
       setCoordinatingAppointment(null);
     } catch (err) {

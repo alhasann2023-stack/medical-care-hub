@@ -38,12 +38,12 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
   const { t } = useLanguage();
 
   return (
-    <div className="space-y-16 py-4">
+    <div className="space-y-4 py-2">
       {/* Hero Section */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-blue-950 via-blue-900 to-slate-900 text-white p-8 sm:p-14 shadow-2xl border border-blue-800/40">
         {/* Abstract Ambient Lights */}
-        <div className="absolute -right-20 -top-20 w-96 h-85 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute -left-20 -bottom-20 w-96 h-85 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -right-20 -top-20 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -left-20 -bottom-20 w-96 h-96 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="relative z-10 max-w-4xl mx-auto text-center space-y-6">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-800/60 border border-blue-700/60 text-xs font-bold text-cyan-300 backdrop-blur-md">
@@ -51,7 +51,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             <span>المنصة الطبية الذكية والمتكاملة لإدارة الرعاية الصحية</span>
           </div>
 
-          <h1 className="text-1 sm:text-1xl lg:text-2xl font-black tracking-tight leading-tight sm:leading-snug">
+          <h1 className="text-1xl sm:text-1xl lg:text-2xl font-black tracking-tight leading-tight sm:leading-snug">
             رعايتك الصحية واستشاراتك الطبية <br className="hidden sm:inline" />
             <span className="bg-gradient-to-r from-cyan-300 via-blue-200 to-white bg-clip-text text-transparent">
               بأعلى معايير الدقة والسرعة
@@ -83,7 +83,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             {!user && (
               <button
                 onClick={() => onOpenAuth('register')}
-                className="px-6 py-2 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer scale-100 hover:scale-105"
+                className="px-4 py-2 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer scale-100 hover:scale-105"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path
@@ -109,7 +109,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
           </div>
 
           {/* Trust Badges */}
-          <div className="pt-2 border-t border-blue-800/60 flex flex-wrap items-center justify-center gap-6 text-xs text-blue-200/70 font-medium">
+          <div className="pt- border-t border-blue-800/60 flex flex-wrap items-center justify-center gap-6 text-xs text-blue-200/70 font-medium">
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
               <span>معتمد ومشفر طبياً 100%</span>
@@ -131,11 +131,11 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
       </section>
 
       {/* Direct Interactive Portals RBAC Switcher */}
-      
+    
 
       {/* Features Overview */}
       <section className="bg-slate-50 rounded-3xl p-8 sm:p-12 border border-slate-200/80">
-        <div className="text-center max-w-2xl mx-auto mb-4 space-y-2">
+        <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
           <h2 className="text-2xl font-black text-slate-900">مميزات منصة Medical Care Hub</h2>
           <p className="text-xs sm:text-sm text-slate-500">
             مصممة بمعايير هندسية وطبية تلبي كافة متطلبات التحول الرقمي الصحي

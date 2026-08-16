@@ -197,15 +197,39 @@ function logAudit(
 
 // Helper: Send Notification
 function pushNotification(
-  userId: string,
+  targetUserIdOrIds: string | string[],
   title: string,
   message: string,
   type: 'APPOINTMENT' | 'CONSULTATION' | 'TEST_RESULT' | 'REPORT' | 'SYSTEM',
   relatedId?: string
 ) {
-  const notif: AppNotification = {
-    id: `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-    userId,
+  const targetIds = Array.isArray(targetUserIdOrIds) ? targetUserIdOrIds : [targetUserIdOrIds];
+  const uniqueIds = Array.from(new Set(targetIds.filter(Boolean)));
+  
+  let lastNotif: AppNotification | null = null;
+  uniqueIds.forEach(targetId => {
+    const notif: AppNotification = {
+      id: `notif-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+      userId: targetId,
+      title,
+      message,
+      type,
+      isRead: false,
+      relatedId,
+      createdAt: new Date().toISOString()
+    };
+    notifications.unshift(notif);
+    lastNotif = notif;
+  });
+
+  // Limit memory notifications
+  if (notifications.length > 300) {
+    notifications.splice(300);
+  }
+
+  return lastNotif || {
+    id: `notif-${Date.now()}`,
+    userId: targetIds[0] || 'all',
     title,
     message,
     type,
@@ -213,8 +237,6 @@ function pushNotification(
     relatedId,
     createdAt: new Date().toISOString()
   };
-  notifications.unshift(notif);
-  return notif;
 }
 
 // Gemini AI Client (Lazy initialization to prevent startup crashes)
@@ -1337,7 +1359,7 @@ async function startServer() {
     // Notify Customer Service
     staffList.forEach(stf => {
       pushNotification(
-        stf.userId,
+        [stf.userId, stf.id],
         'طلب حجز موعد جديد',
         `طلب موعد جديد من المريض ${patient.fullName} (${patient.phone}) لعيادة ${docName}.`,
         'APPOINTMENT',
@@ -1345,16 +1367,25 @@ async function startServer() {
       );
     });
 
-    // Notify Patient
-    if (patient.userId) {
+    // Notify Doctor
+    if (doctor) {
       pushNotification(
-        patient.userId,
-        'تم استلام طلب الموعد',
-        `تم استلام طلب موعدك لعيادة ${docName}. سيتواصل معك فريق خدمة العملاء لتأكيد الموعد المحدد.`,
+        [doctor.userId, doctor.id],
+        'طلب حجز موعد جديد في عيادتك',
+        `طلب موعد جديد من المريض ${patient.fullName} (${patient.phone}) لعيادتك (${docSpecialty}) في تاريخ ${newAppointment.preferredDate}.`,
         'APPOINTMENT',
         newAppointment.id
       );
     }
+
+    // Notify Patient
+    pushNotification(
+      [patient.userId, patient.id],
+      'تم استلام طلب الموعد بنجاح',
+      `تم استلام طلب موعدك لعيادة ${docName} (${docSpecialty}). سيتواصل معك فريق خدمة العملاء لتأكيد الموعد المحدد.`,
+      'APPOINTMENT',
+      newAppointment.id
+    );
 
     saveDatabase();
 
@@ -1428,9 +1459,10 @@ async function startServer() {
 
     // Dynamic Notifications based on status
     if (patient) {
+      const patTargets = [patient.userId, patient.id].filter(Boolean);
       if (apt.status === 'CONFIRMED') {
         pushNotification(
-          patient.userId,
+          patTargets,
           'تم تأكيد موعدك الطبي!',
           `تم تأكيد موعدك مع ${apt.doctorName} يوم ${apt.confirmedDate} الساعة ${apt.confirmedTime} في ${apt.clinicRoom || 'العيادة'}.`,
           'APPOINTMENT',
@@ -1438,7 +1470,7 @@ async function startServer() {
         );
       } else if (apt.status === 'CONTACTED') {
         pushNotification(
-          patient.userId,
+          patTargets,
           'تحديث بخصوص طلب الموعد',
           `قام فريق التنسيق بالتواصل معك بخصوص موعد ${apt.doctorName}. تفاصيل الملاحظة: ${apt.coordinatorNotes || ''}`,
           'APPOINTMENT',
@@ -1446,7 +1478,7 @@ async function startServer() {
         );
       } else if (apt.status === 'CANCELLED') {
         pushNotification(
-          patient.userId,
+          patTargets,
           'إلغاء الموعد الطبي',
           `تم إلغاء الموعد المحدد. السبب/الملاحظة: ${apt.coordinatorNotes || 'بناءً على طلب التنسيق'}`,
           'APPOINTMENT',
@@ -1455,14 +1487,25 @@ async function startServer() {
       }
     }
 
-    if (doctor && apt.status === 'CONFIRMED') {
-      pushNotification(
-        doctor.userId,
-        'موعد مؤكد جديد في جدولك',
-        `تم تأكيد موعد للمريض ${apt.patientName} (${apt.patientMrn}) يوم ${apt.confirmedDate} الساعة ${apt.confirmedTime}.`,
-        'APPOINTMENT',
-        apt.id
-      );
+    if (doctor) {
+      const docTargets = [doctor.userId, doctor.id].filter(Boolean);
+      if (apt.status === 'CONFIRMED') {
+        pushNotification(
+          docTargets,
+          'موعد مؤكد جديد في جدولك',
+          `تم تأكيد موعد للمريض ${apt.patientName} (${apt.patientMrn}) يوم ${apt.confirmedDate} الساعة ${apt.confirmedTime}.`,
+          'APPOINTMENT',
+          apt.id
+        );
+      } else if (apt.status === 'CANCELLED') {
+        pushNotification(
+          docTargets,
+          'إلغاء موعد مجدول',
+          `تم إلغاء موعد المريض ${apt.patientName} المحدد في تاريخ ${apt.confirmedDate || apt.preferredDate}.`,
+          'APPOINTMENT',
+          apt.id
+        );
+      }
     }
 
     saveDatabase();
@@ -1601,26 +1644,35 @@ async function startServer() {
     logAudit(patient.userId || 'guest', patient.fullName, 'PATIENT', 'CREATE_CONSULTATION', 'CONSULTATION', newConsultation.id, `إرسال استشارة طبية إلى ${docName}: ${title}`, req);
 
     // Notify Doctor
-    if (doctor?.userId) {
+    if (doctor) {
       pushNotification(
-        doctor.userId,
+        [doctor.userId, doctor.id],
         'استشارة طبية جديدة بانتظار الرد',
-        `وصلتك استشارة جديدة من المريض ${patient.fullName} بخصوص "${title}".`,
+        `وصلتك استشارة جديدة من المريض ${patient.fullName} بخصوص "${title}". يرجى مراجعة الحالة وتقديم التوجيه الطبي.`,
         'CONSULTATION',
         newConsultation.id
       );
     }
 
     // Notify Patient
-    if (patient.userId) {
+    pushNotification(
+      [patient.userId, patient.id],
+      'تم إرسال استشارتك الطبية بنجاح',
+      `تم إرسال استشارتك إلى ${docName}. ستصلك إشعار وتنبيه فوري عند قيام الطبيب بالرد.`,
+      'CONSULTATION',
+      newConsultation.id
+    );
+
+    // Notify Staff / CS
+    staffList.forEach(stf => {
       pushNotification(
-        patient.userId,
-        'تم إرسال استشارتك بنجاح',
-        `تم إرسال استشارتك إلى ${docName}. ستصلك إشعار فور رد الطبيب.`,
+        [stf.userId, stf.id],
+        'استشارة طبية جديدة مقدمة',
+        `استشارة جديدة مقدمة من المريض ${patient.fullName} موجهة إلى ${docName} بخصوص "${title}".`,
         'CONSULTATION',
         newConsultation.id
       );
-    }
+    });
 
     saveDatabase();
 
@@ -1634,7 +1686,7 @@ async function startServer() {
       return res.status(404).json({ error: 'الاستشارة غير موجودة.' });
     }
 
-    const { doctorAdvice, doctorNotes, suggestedAction, message } = req.body;
+    const { doctorAdvice, doctorNotes, suggestedAction, message, treatmentPlan, requireInPersonVisit } = req.body;
 
     if (!doctorAdvice && !message) {
       return res.status(400).json({ error: 'الرد الطبي مطلوب.' });
@@ -1644,6 +1696,8 @@ async function startServer() {
     consultation.doctorAdvice = replyText;
     if (doctorNotes) consultation.doctorNotes = doctorNotes;
     if (suggestedAction) consultation.suggestedAction = suggestedAction;
+    if (treatmentPlan) consultation.treatmentPlan = treatmentPlan;
+    if (requireInPersonVisit !== undefined) consultation.requireInPersonVisit = requireInPersonVisit;
     consultation.status = 'ANSWERED';
     consultation.answeredAt = new Date().toISOString();
 
@@ -1657,7 +1711,8 @@ async function startServer() {
       createdAt: new Date().toISOString()
     });
 
-    const patient = patients.find(p => p.id === consultation.patientId);
+    const patient = patients.find(p => p.id === consultation.patientId || p.userId === consultation.patientId);
+    const doctor = doctors.find(d => d.id === consultation.doctorId || d.userId === consultation.doctorId);
 
     logAudit(
       consultation.doctorId,
@@ -1670,15 +1725,38 @@ async function startServer() {
       req
     );
 
+    // Notify Patient
     if (patient) {
       pushNotification(
-        patient.userId,
+        [patient.userId, patient.id],
         'رد الطبيب على استشارتك الطبية',
-        `قام ${consultation.doctorName} بالرد على استشارتك: "${consultation.title}". اضغط لعرض التوجيه الطبي.`,
+        `قام ${consultation.doctorName} بالرد على استشارتك: "${consultation.title}". اضغط لعرض التوجيه الطبي والخطة العلاجية.`,
         'CONSULTATION',
         consultation.id
       );
     }
+
+    // Notify Doctor Confirmation
+    if (doctor) {
+      pushNotification(
+        [doctor.userId, doctor.id],
+        'تم إرسال ردك على الاستشارة',
+        `تم إرسال توجيهك الطبي بنجاح للمريض ${consultation.patientName} بخصوص "${consultation.title}".`,
+        'CONSULTATION',
+        consultation.id
+      );
+    }
+
+    // Notify Staff / CS
+    staffList.forEach(stf => {
+      pushNotification(
+        [stf.userId, stf.id],
+        'تم الرد على استشارة طبية',
+        `قام ${consultation.doctorName} بالرد على استشارة المريض ${consultation.patientName}.`,
+        'CONSULTATION',
+        consultation.id
+      );
+    });
 
     saveDatabase();
 
@@ -1715,12 +1793,12 @@ async function startServer() {
     if (senderRole === 'PATIENT') {
       const doc = doctors.find(d => d.id === consultation.doctorId || d.userId === consultation.doctorId);
       if (doc) {
-        pushNotification(doc.userId, 'رسالة جديدة في الاستشارة', `رسالة متابعة من المريض ${consultation.patientName}`, 'CONSULTATION', consultation.id);
+        pushNotification([doc.userId, doc.id], 'رسالة جديدة في الاستشارة', `رسالة متابعة من المريض ${consultation.patientName}: "${message.slice(0, 80)}"`, 'CONSULTATION', consultation.id);
       }
     } else {
       const pat = patients.find(p => p.id === consultation.patientId || p.userId === consultation.patientId);
       if (pat) {
-        pushNotification(pat.userId, 'رسالة جديدة من الطبيب', `رسالة جديدة من ${consultation.doctorName}`, 'CONSULTATION', consultation.id);
+        pushNotification([pat.userId, pat.id], 'رسالة جديدة من الطبيب المعالج', `رسالة جديدة من ${consultation.doctorName}: "${message.slice(0, 80)}"`, 'CONSULTATION', consultation.id);
       }
     }
 
@@ -2006,7 +2084,32 @@ async function startServer() {
     let list = [...notifications];
 
     if (userId) {
-      list = list.filter(n => n.userId === userId);
+      const rawIds = String(userId).split(',').map(s => s.trim()).filter(Boolean);
+      const associatedIds = new Set<string>(rawIds);
+
+      rawIds.forEach(id => {
+        const pat = patients.find(p => p.id === id || p.userId === id);
+        if (pat) {
+          associatedIds.add(pat.id);
+          if (pat.userId) associatedIds.add(pat.userId);
+        }
+        const doc = doctors.find(d => d.id === id || d.userId === id);
+        if (doc) {
+          associatedIds.add(doc.id);
+          if (doc.userId) associatedIds.add(doc.userId);
+        }
+        const stf = staffList.find(s => s.id === id || s.userId === id);
+        if (stf) {
+          associatedIds.add(stf.id);
+          if (stf.userId) associatedIds.add(stf.userId);
+        }
+        const usr = users.find(u => u.id === id);
+        if (usr) {
+          associatedIds.add(usr.id);
+        }
+      });
+
+      list = list.filter(n => associatedIds.has(n.userId) || n.userId === 'all');
     }
 
     list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -2025,8 +2128,27 @@ async function startServer() {
   app.post('/api/notifications/mark-all-read', (req: Request, res: Response) => {
     const { userId } = req.body;
     if (userId) {
+      const rawIds = String(userId).split(',').map(s => s.trim()).filter(Boolean);
+      const associatedIds = new Set<string>(rawIds);
+      rawIds.forEach(id => {
+        const pat = patients.find(p => p.id === id || p.userId === id);
+        if (pat) {
+          associatedIds.add(pat.id);
+          if (pat.userId) associatedIds.add(pat.userId);
+        }
+        const doc = doctors.find(d => d.id === id || d.userId === id);
+        if (doc) {
+          associatedIds.add(doc.id);
+          if (doc.userId) associatedIds.add(doc.userId);
+        }
+        const stf = staffList.find(s => s.id === id || s.userId === id);
+        if (stf) {
+          associatedIds.add(stf.id);
+          if (stf.userId) associatedIds.add(stf.userId);
+        }
+      });
       notifications.forEach(n => {
-        if (n.userId === userId) n.isRead = true;
+        if (associatedIds.has(n.userId) || n.userId === userId) n.isRead = true;
       });
     } else {
       notifications.forEach(n => n.isRead = true);

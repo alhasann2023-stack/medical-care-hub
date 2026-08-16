@@ -14,10 +14,12 @@ import { DoctorDashboard } from './components/doctor/DoctorDashboard';
 import { CustomerServiceDashboard } from './components/cs/CustomerServiceDashboard';
 import { HospitalAdminDashboard } from './components/admin/HospitalAdminDashboard';
 import { NotificationDrawer } from './components/common/NotificationDrawer';
+import { ToastNotification, ToastItem } from './components/common/ToastNotification';
 import { AuthModal } from './components/common/AuthModal';
 import { AppNotification, UserRole } from './types/medical';
 import { api } from './services/api';
 import { firebaseDb } from './services/firebaseDb';
+import { playNotificationSound, playSuccessSound } from './utils/sound';
 
 const MainAppContent: React.FC = () => {
   const { user, role, switchRole, patientProfile } = useAuth();
@@ -30,6 +32,23 @@ const MainAppContent: React.FC = () => {
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [knownNotifIds, setKnownNotifIds] = useState<Set<string>>(new Set());
+
+  const addToast = (toast: Omit<ToastItem, 'id'>) => {
+    const id = `toast-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const newToast: ToastItem = { ...toast, id };
+    setToasts(prev => [newToast, ...prev.slice(0, 3)]);
+
+    // Auto dismiss after 6 seconds
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 6000);
+  };
+
+  const handleDismissToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   const openAuth = (mode: 'login' | 'register' = 'login') => {
     setAuthMode(mode);
@@ -45,20 +64,50 @@ const MainAppContent: React.FC = () => {
     });
   }, []);
 
-  // Load live notifications
+  // Load live notifications and trigger toast & sound on new incoming items
   useEffect(() => {
+    let isInitialLoad = true;
+
     const fetchNotifs = async () => {
       try {
-        const list = await api.getNotifications(user?.id);
+        const queryId = user?.id || patientProfile?.id || 'pat-1';
+        const list = await api.getNotifications(queryId);
+
         setNotifications(list);
+
+        if (list && list.length > 0) {
+          // Check for new notifications
+          setKnownNotifIds(prevKnown => {
+            const newlyArrived = list.filter(n => !prevKnown.has(n.id) && !n.isRead);
+
+            if (!isInitialLoad && newlyArrived.length > 0) {
+              playNotificationSound();
+              newlyArrived.slice(0, 2).forEach(item => {
+                addToast({
+                  title: item.title,
+                  message: item.message,
+                  type: item.type,
+                  relatedId: item.relatedId
+                });
+              });
+            }
+
+            const updatedSet = new Set(prevKnown);
+            list.forEach(n => updatedSet.add(n.id));
+            return updatedSet;
+          });
+        }
+        isInitialLoad = false;
       } catch (err) {
         console.error('Failed to load notifications:', err);
       }
     };
+
     fetchNotifs();
-    const timer = setInterval(fetchNotifs, 10000);
+    // Fast 4-second polling for responsive real-time notification alerts
+    const timer = setInterval(fetchNotifs, 4000);
     return () => clearInterval(timer);
-  }, [user?.id]);
+  }, [user?.id, patientProfile?.id]);
 
   const handleMarkRead = async (id: string) => {
     try {
@@ -84,6 +133,16 @@ const MainAppContent: React.FC = () => {
     else if (selectedRole === 'DOCTOR') setCurrentView('doctor_dashboard');
     else if (selectedRole === 'CUSTOMER_SERVICE') setCurrentView('cs_dashboard');
     else if (selectedRole === 'HOSPITAL_ADMIN') setCurrentView('admin_dashboard');
+  };
+
+  const handleNavigateFromNotification = (type: string) => {
+    if (type === 'APPOINTMENT' && role === 'PATIENT') setCurrentView('patient_dashboard');
+    else if (type === 'CONSULTATION' && role === 'PATIENT') setCurrentView('patient_dashboard');
+    else if (type === 'REPORT' && role === 'PATIENT') setCurrentView('patient_reports');
+    else if (type === 'TEST_RESULT' && role === 'PATIENT') setCurrentView('patient_tests');
+    else if (role === 'DOCTOR') setCurrentView('doctor_dashboard');
+    else if (role === 'CUSTOMER_SERVICE') setCurrentView('cs_dashboard');
+    else setCurrentView('patient_dashboard');
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -188,12 +247,28 @@ const MainAppContent: React.FC = () => {
         )}
       </main>
 
+      {/* Live Pop-up Toast Notifications */}
+      <ToastNotification
+        toasts={toasts}
+        onDismiss={handleDismissToast}
+        onToastClick={(toast) => {
+          handleNavigateFromNotification(toast.type);
+        }}
+      />
+
       {/* Booking Modal */}
       <AppointmentBookingModal
         isOpen={isBookingOpen}
         onClose={() => setIsBookingOpen(false)}
         onSuccess={() => {
-          api.getNotifications(user?.id).then(setNotifications);
+          playSuccessSound();
+          addToast({
+            title: 'تم تقديم طلب الموعد بنجاح',
+            message: 'تم إرسال طلبك للعيادة الطبية وسيتم التواصل معك لتأكيد الموعد.',
+            type: 'APPOINTMENT'
+          });
+          const queryId = user?.id || patientProfile?.id || 'pat-1';
+          api.getNotifications(queryId).then(setNotifications);
         }}
       />
 
@@ -202,7 +277,14 @@ const MainAppContent: React.FC = () => {
         isOpen={isConsultationOpen}
         onClose={() => setIsConsultationOpen(false)}
         onSuccess={() => {
-          api.getNotifications(user?.id).then(setNotifications);
+          playSuccessSound();
+          addToast({
+            title: 'تم إرسال الاستشارة الطبية بنجاح',
+            message: 'تم تحويل استشارتك إلى الطبيب المختص وسيصلك تنبيه فوري فور الرد.',
+            type: 'CONSULTATION'
+          });
+          const queryId = user?.id || patientProfile?.id || 'pat-1';
+          api.getNotifications(queryId).then(setNotifications);
         }}
       />
 
@@ -214,12 +296,7 @@ const MainAppContent: React.FC = () => {
         onMarkRead={handleMarkRead}
         onMarkAllRead={handleMarkAllRead}
         onSelectNotification={(notif) => {
-          if (notif.type === 'APPOINTMENT' && role === 'PATIENT') setCurrentView('patient_dashboard');
-          else if (notif.type === 'CONSULTATION' && role === 'PATIENT') setCurrentView('patient_dashboard');
-          else if (notif.type === 'REPORT' && role === 'PATIENT') setCurrentView('patient_reports');
-          else if (notif.type === 'TEST_RESULT' && role === 'PATIENT') setCurrentView('patient_tests');
-          else if (role === 'DOCTOR') setCurrentView('doctor_dashboard');
-          else if (role === 'CUSTOMER_SERVICE') setCurrentView('cs_dashboard');
+          handleNavigateFromNotification(notif.type);
           setIsNotificationDrawerOpen(false);
         }}
       />
