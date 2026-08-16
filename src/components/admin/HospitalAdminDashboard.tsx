@@ -203,7 +203,7 @@ export const HospitalAdminDashboard: React.FC = () => {
         qualifications: ['بورد تخصصي معتمد', 'ترخيص الهيئة السعودية للتخصصات الصحية SCFHS']
       });
 
-      showNotification('success', `تم إنشاء حساب الاستشاري ${docFullName} مع بيانات الدخول بنجاح! يستطيع الطبيب  الدخول الآن.`);
+      showNotification('success', `تم إنشاء حساب الاستشاري ${docFullName} مع بيانات الدخول بنجاح! يستطيع الطبيب تسجيل الدخول الآن.`);
       setIsNewDoctorModalOpen(false);
       setDocFullName('');
       setDocEmail('');

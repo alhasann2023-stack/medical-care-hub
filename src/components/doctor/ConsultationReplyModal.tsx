@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Consultation } from '../../types/medical';
 import { api } from '../../services/api';
+import { playSuccessSound } from '../../utils/sound';
 
 interface ConsultationReplyModalProps {
   isOpen: boolean;
@@ -52,6 +53,7 @@ export const ConsultationReplyModal: React.FC<ConsultationReplyModalProps> = ({
         requireInPersonVisit: requireInPerson
       });
 
+      playSuccessSound();
       onSuccess();
       onClose();
     } catch (err: any) {

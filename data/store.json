@@ -22,26 +22,6 @@
       "createdAt": "2026-08-14T00:00:00.000Z"
     },
     {
-      "id": "usr-doc-2",
-      "email": "dr.mona@medicalcarehub.com",
-      "phone": "+966502345678",
-      "fullName": "د. منى الغامدي",
-      "role": "DOCTOR",
-      "avatar": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=200&auto=format&fit=crop&q=80",
-      "isVerified": true,
-      "createdAt": "2026-08-14T00:00:00.000Z"
-    },
-    {
-      "id": "usr-doc-3",
-      "email": "dr.tariq@medicalcarehub.com",
-      "phone": "+966503456789",
-      "fullName": "د. طارق الشهري",
-      "role": "DOCTOR",
-      "avatar": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=200&auto=format&fit=crop&q=80",
-      "isVerified": true,
-      "createdAt": "2026-08-14T00:00:00.000Z"
-    },
-    {
       "id": "usr-doc-4",
       "email": "dr.reem@medicalcarehub.com",
       "phone": "+966504567890",
@@ -100,6 +80,26 @@
         "policyNumber": "BUPA-772910-VIP",
         "class": "VIP الذهبية"
       }
+    },
+    {
+      "id": "usr-patient-1786801019333",
+      "userId": "usr-patient-1786801019333",
+      "mrn": "MRN-2026-3623",
+      "fullName": "خالد سعيد",
+      "phone": "777744441",
+      "email": "patient@medicalcarehub.com",
+      "birthDate": "1992-05-14",
+      "gender": "MALE",
+      "bloodType": "O+",
+      "allergies": [],
+      "chronicDiseases": [],
+      "address": "المملكة العربية السعودية",
+      "emergencyContact": {
+        "name": "جهة اتصال الطوارئ",
+        "phone": "+966509998877",
+        "relation": "قريب"
+      },
+      "createdAt": "2026-08-16T19:45:18.532Z"
     }
   ],
   "doctors": [
@@ -132,66 +132,6 @@
         "الأربعاء"
       ],
       "availableHours": "09:00 ص - 03:30 م",
-      "isActive": true
-    },
-    {
-      "id": "doc-2",
-      "userId": "usr-doc-2",
-      "fullName": "د. منى الغامدي",
-      "email": "dr.mona@medicalcarehub.com",
-      "phone": "+966502345678",
-      "specialtyId": "spec-internal",
-      "specialtyNameAr": "الطب الباطني والغدد الصماء",
-      "specialtyNameEn": "Internal Medicine & Endocrinology",
-      "title": "استشارية الباطنية والسكري والغدد الصماء",
-      "qualifications": [
-        "البورد السعودي في الطب الباطني",
-        "زمالة جامعة تورنتو في الغدد والسكري"
-      ],
-      "experienceYears": 13,
-      "bioAr": "متخصصة في علاج وضبط داء السكري واعتلالات الغدة الدرقية وضغط الدم المزمن.",
-      "bioEn": "Specialist in metabolic health, diabetes management, and chronic endocrine conditions.",
-      "consultationFee": 300,
-      "avatar": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=200&auto=format&fit=crop&q=80",
-      "roomNumber": "عيادة 104 - العيادات الباطنية",
-      "rating": 4.8,
-      "reviewsCount": 98,
-      "availableDays": [
-        "الإثنين",
-        "الثلاثاء",
-        "الخميس"
-      ],
-      "availableHours": "10:00 ص - 04:00 م",
-      "isActive": true
-    },
-    {
-      "id": "doc-3",
-      "userId": "usr-doc-3",
-      "fullName": "د. طارق الشهري",
-      "email": "dr.tariq@medicalcarehub.com",
-      "phone": "+966503456789",
-      "specialtyId": "spec-ortho",
-      "specialtyNameAr": "جراحة العظام والمفاصل والعمود الفقري",
-      "specialtyNameEn": "Orthopedics & Joint Surgery",
-      "title": "استشاري جراحة العظام والمفاصل والطب الرياضي",
-      "qualifications": [
-        "الزمالة البريطانية لجراحة العظام FRCS",
-        "دبلوم الطب الرياضي وإصابات الملاعب"
-      ],
-      "experienceYears": 15,
-      "bioAr": "خبير في جراحات استبدال المفاصل، علاج خشونة الركبة، والإصابات الرياضية الحركية.",
-      "bioEn": "Leading orthopedic surgeon specializing in joint replacement and sports trauma.",
-      "consultationFee": 320,
-      "avatar": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=200&auto=format&fit=crop&q=80",
-      "roomNumber": "عيادة 302 - قسم العظام",
-      "rating": 4.9,
-      "reviewsCount": 167,
-      "availableDays": [
-        "الأحد",
-        "الثلاثاء",
-        "الأربعاء"
-      ],
-      "availableHours": "09:30 ص - 03:00 م",
       "isActive": true
     },
     {
@@ -373,18 +313,303 @@
     }
   ],
   "appointments": [],
-  "consultations": [],
+  "consultations": [
+    {
+      "id": "cns-2026-830",
+      "patientId": "usr-patient-1786801019333",
+      "patientName": "خالد سعيد",
+      "patientPhone": "777744441",
+      "patientMrn": "MRN-2026-3623",
+      "patientAge": 34,
+      "patientGender": "MALE",
+      "doctorId": "doc-1786908680923",
+      "doctorName": "روان المعمري",
+      "doctorSpecialty": "أمراض القلب والأوعية الدموية",
+      "title": "ممكن كم رح يكلف الفحص",
+      "problemDescription": "الفحص1",
+      "symptoms": [
+        "الفحص"
+      ],
+      "duration": "منذ 4 أيام",
+      "status": "ANSWERED",
+      "attachments": [],
+      "messages": [
+        {
+          "id": "msg-1786909761976",
+          "consultationId": "cns-2026-830",
+          "senderId": "usr-patient-1786801019333",
+          "senderName": "خالد سعيد",
+          "senderRole": "PATIENT",
+          "message": "الفحص1",
+          "attachments": [],
+          "createdAt": "2026-08-16T19:49:21.976Z"
+        },
+        {
+          "id": "msg-1786909829206",
+          "consultationId": "cns-2026-830",
+          "senderId": "doc-1786908680923",
+          "senderName": "روان المعمري",
+          "senderRole": "DOCTOR",
+          "message": "2000 ريال",
+          "createdAt": "2026-08-16T19:50:29.206Z"
+        }
+      ],
+      "createdAt": "2026-08-16T19:49:21.976Z",
+      "doctorAdvice": "2000 ريال",
+      "treatmentPlan": "ريال",
+      "requireInPersonVisit": true,
+      "answeredAt": "2026-08-16T19:50:29.206Z"
+    },
+    {
+      "id": "cns-2026-673",
+      "patientId": "usr-patient-1786801019333",
+      "patientName": "خالد سعيد",
+      "patientPhone": "777744441",
+      "patientMrn": "MRN-2026-3623",
+      "patientAge": 34,
+      "patientGender": "MALE",
+      "doctorId": "doc-1786908680923",
+      "doctorName": "روان المعمري",
+      "doctorSpecialty": "أمراض القلب والأوعية الدموية",
+      "title": "الفحص العيون",
+      "problemDescription": "فحص",
+      "symptoms": [
+        "صداع"
+      ],
+      "duration": "منذ 4 أيام",
+      "status": "ANSWERED",
+      "attachments": [],
+      "messages": [
+        {
+          "id": "msg-1786909518532",
+          "consultationId": "cns-2026-673",
+          "senderId": "usr-patient-1786801019333",
+          "senderName": "خالد سعيد",
+          "senderRole": "PATIENT",
+          "message": "فحص",
+          "attachments": [],
+          "createdAt": "2026-08-16T19:45:18.532Z"
+        },
+        {
+          "id": "msg-1786909620180",
+          "consultationId": "cns-2026-673",
+          "senderId": "doc-1786908680923",
+          "senderName": "روان المعمري",
+          "senderRole": "DOCTOR",
+          "message": "يمكنك زيارتنا للعيادة للفحص",
+          "createdAt": "2026-08-16T19:47:00.180Z"
+        }
+      ],
+      "createdAt": "2026-08-16T19:45:18.532Z",
+      "doctorAdvice": "يمكنك زيارتنا للعيادة للفحص",
+      "treatmentPlan": "ممكن",
+      "requireInPersonVisit": true,
+      "answeredAt": "2026-08-16T19:47:00.180Z"
+    }
+  ],
   "examinations": [],
   "tests": [],
   "reports": [],
   "prescriptions": [],
-  "notifications": [],
-  "auditLogs": [],
+  "notifications": [
+    {
+      "id": "notif-1786909829207-702",
+      "userId": "stf-1",
+      "title": "تم الرد على استشارة طبية",
+      "message": "قام روان المعمري بالرد على استشارة المريض خالد سعيد.",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-830",
+      "createdAt": "2026-08-16T19:50:29.207Z"
+    },
+    {
+      "id": "notif-1786909829207-149",
+      "userId": "usr-cs-1",
+      "title": "تم الرد على استشارة طبية",
+      "message": "قام روان المعمري بالرد على استشارة المريض خالد سعيد.",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-830",
+      "createdAt": "2026-08-16T19:50:29.207Z"
+    },
+    {
+      "id": "notif-1786909829207-659",
+      "userId": "usr-patient-1786801019333",
+      "title": "رد الطبيب على استشارتك الطبية",
+      "message": "قام روان المعمري بالرد على استشارتك: \"ممكن كم رح يكلف الفحص\". اضغط لعرض التوجيه الطبي والخطة العلاجية.",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-830",
+      "createdAt": "2026-08-16T19:50:29.207Z"
+    },
+    {
+      "id": "notif-1786909761977-991",
+      "userId": "stf-1",
+      "title": "استشارة طبية جديدة مقدمة",
+      "message": "استشارة جديدة مقدمة من المريض خالد سعيد موجهة إلى روان المعمري بخصوص \"ممكن كم رح يكلف الفحص\".",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-830",
+      "createdAt": "2026-08-16T19:49:21.977Z"
+    },
+    {
+      "id": "notif-1786909761977-629",
+      "userId": "usr-cs-1",
+      "title": "استشارة طبية جديدة مقدمة",
+      "message": "استشارة جديدة مقدمة من المريض خالد سعيد موجهة إلى روان المعمري بخصوص \"ممكن كم رح يكلف الفحص\".",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-830",
+      "createdAt": "2026-08-16T19:49:21.977Z"
+    },
+    {
+      "id": "notif-1786909761977-790",
+      "userId": "usr-patient-1786801019333",
+      "title": "تم إرسال استشارتك الطبية بنجاح",
+      "message": "تم إرسال استشارتك إلى روان المعمري. ستصلك إشعار وتنبيه فوري عند قيام الطبيب بالرد.",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-830",
+      "createdAt": "2026-08-16T19:49:21.977Z"
+    },
+    {
+      "id": "notif-1786909620182-868",
+      "userId": "stf-1",
+      "title": "تم الرد على استشارة طبية",
+      "message": "قام روان المعمري بالرد على استشارة المريض خالد سعيد.",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-673",
+      "createdAt": "2026-08-16T19:47:00.182Z"
+    },
+    {
+      "id": "notif-1786909620182-593",
+      "userId": "usr-cs-1",
+      "title": "تم الرد على استشارة طبية",
+      "message": "قام روان المعمري بالرد على استشارة المريض خالد سعيد.",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-673",
+      "createdAt": "2026-08-16T19:47:00.182Z"
+    },
+    {
+      "id": "notif-1786909620181-492",
+      "userId": "usr-patient-1786801019333",
+      "title": "رد الطبيب على استشارتك الطبية",
+      "message": "قام روان المعمري بالرد على استشارتك: \"الفحص العيون\". اضغط لعرض التوجيه الطبي والخطة العلاجية.",
+      "type": "CONSULTATION",
+      "isRead": true,
+      "relatedId": "cns-2026-673",
+      "createdAt": "2026-08-16T19:47:00.181Z"
+    },
+    {
+      "id": "notif-1786909518535-494",
+      "userId": "stf-1",
+      "title": "استشارة طبية جديدة مقدمة",
+      "message": "استشارة جديدة مقدمة من المريض خالد سعيد موجهة إلى روان المعمري بخصوص \"الفحص العيون\".",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-673",
+      "createdAt": "2026-08-16T19:45:18.535Z"
+    },
+    {
+      "id": "notif-1786909518535-892",
+      "userId": "usr-cs-1",
+      "title": "استشارة طبية جديدة مقدمة",
+      "message": "استشارة جديدة مقدمة من المريض خالد سعيد موجهة إلى روان المعمري بخصوص \"الفحص العيون\".",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-673",
+      "createdAt": "2026-08-16T19:45:18.535Z"
+    },
+    {
+      "id": "notif-1786909518534-861",
+      "userId": "usr-patient-1786801019333",
+      "title": "تم إرسال استشارتك الطبية بنجاح",
+      "message": "تم إرسال استشارتك إلى روان المعمري. ستصلك إشعار وتنبيه فوري عند قيام الطبيب بالرد.",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-673",
+      "createdAt": "2026-08-16T19:45:18.534Z"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "log-1786909929900-906",
+      "userId": "admin",
+      "userName": "مدير المستشفى",
+      "userRole": "HOSPITAL_ADMIN",
+      "action": "DELETE_DOCTOR",
+      "entityType": "DOCTOR",
+      "entityId": "doc-3",
+      "details": "حذف حساب الطبيب د. طارق الشهري وإلغاء صلاحياته كلياً",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-16T19:52:09.900Z"
+    },
+    {
+      "id": "log-1786909909657-310",
+      "userId": "admin",
+      "userName": "مدير المستشفى",
+      "userRole": "HOSPITAL_ADMIN",
+      "action": "DELETE_DOCTOR",
+      "entityType": "DOCTOR",
+      "entityId": "doc-2",
+      "details": "حذف حساب الطبيب د. منى الغامدي وإلغاء صلاحياته كلياً",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-16T19:51:49.657Z"
+    },
+    {
+      "id": "log-1786909829206-322",
+      "userId": "doc-1786908680923",
+      "userName": "روان المعمري",
+      "userRole": "DOCTOR",
+      "action": "REPLY_CONSULTATION",
+      "entityType": "CONSULTATION",
+      "entityId": "cns-2026-830",
+      "details": "الرد على استشارة ممكن كم رح يكلف الفحص للمريض خالد سعيد",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-16T19:50:29.207Z"
+    },
+    {
+      "id": "log-1786909761977-811",
+      "userId": "usr-patient-1786801019333",
+      "userName": "خالد سعيد",
+      "userRole": "PATIENT",
+      "action": "CREATE_CONSULTATION",
+      "entityType": "CONSULTATION",
+      "entityId": "cns-2026-830",
+      "details": "إرسال استشارة طبية إلى روان المعمري: ممكن كم رح يكلف الفحص",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-16T19:49:21.977Z"
+    },
+    {
+      "id": "log-1786909620181-237",
+      "userId": "doc-1786908680923",
+      "userName": "روان المعمري",
+      "userRole": "DOCTOR",
+      "action": "REPLY_CONSULTATION",
+      "entityType": "CONSULTATION",
+      "entityId": "cns-2026-673",
+      "details": "الرد على استشارة الفحص العيون للمريض خالد سعيد",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-16T19:47:00.181Z"
+    },
+    {
+      "id": "log-1786909518533-659",
+      "userId": "usr-patient-1786801019333",
+      "userName": "خالد سعيد",
+      "userRole": "PATIENT",
+      "action": "CREATE_CONSULTATION",
+      "entityType": "CONSULTATION",
+      "entityId": "cns-2026-673",
+      "details": "إرسال استشارة طبية إلى روان المعمري: الفحص العيون",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-16T19:45:18.534Z"
+    }
+  ],
   "userPasswords": {
     "usr-admin-1": "admin#2026!Sec",
     "usr-doc-1": "doc#1234!",
-    "usr-doc-2": "doc#2345!",
-    "usr-doc-3": "doc#3456!",
     "usr-doc-4": "doc#4567!",
     "usr-cs-1": "staff#1234!",
     "usr-pat-1": "patient#1234!"
