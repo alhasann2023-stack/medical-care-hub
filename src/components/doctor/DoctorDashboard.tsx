@@ -37,6 +37,8 @@ export const DoctorDashboard: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [allDoctors, setAllDoctors] = useState<Doctor[]>([]);
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>(doctorProfile?.id || 'doc-1');
   const [activeTab, setActiveTab] = useState<'CONSULTATIONS' | 'APPOINTMENTS' | 'PATIENTS' | 'TIMELINE'>('CONSULTATIONS');
   
   const [selectedPatientForTimeline, setSelectedPatientForTimeline] = useState<string>('pat-1');
@@ -48,36 +50,68 @@ export const DoctorDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const doctorId = doctorProfile?.id || user?.id || 'doc-1';
+  useEffect(() => {
+    api.getDoctors(undefined, true).then(docs => {
+      setAllDoctors(docs);
+      if (doctorProfile?.id) {
+        setSelectedDoctorId(doctorProfile.id);
+      } else if (docs.length > 0 && (!selectedDoctorId || selectedDoctorId === 'doc-1')) {
+        setSelectedDoctorId(docs[0].id);
+      }
+    });
+  }, [doctorProfile?.id]);
+
+  const activeDoctor = allDoctors.find(d => d.id === selectedDoctorId || d.userId === selectedDoctorId) || doctorProfile || allDoctors[0];
+  const currentDoctorId = activeDoctor?.id || selectedDoctorId || 'doc-1';
 
   useEffect(() => {
     loadDoctorData();
 
     // Live subscriptions for doctor's appointments and consultations
-    const unsubApts = api.subscribeAppointments({ doctorId }, (liveApts) => {
-      if (liveApts) setAppointments(liveApts);
+    const unsubApts = api.subscribeAppointments({ doctorId: currentDoctorId }, (liveApts) => {
+      if (liveApts) {
+        setAppointments(liveApts.filter(a => 
+          a.doctorId === currentDoctorId || 
+          (activeDoctor && a.doctorName && a.doctorName.includes(activeDoctor.fullName))
+        ));
+      }
     });
 
-    const unsubCns = api.subscribeConsultations({ doctorId }, (liveCns) => {
-      if (liveCns) setConsultations(liveCns);
+    const unsubCns = api.subscribeConsultations({ doctorId: currentDoctorId }, (liveCns) => {
+      if (liveCns) {
+        setConsultations(liveCns.filter(c => 
+          c.doctorId === currentDoctorId || 
+          (activeDoctor && c.doctorName && c.doctorName.includes(activeDoctor.fullName))
+        ));
+      }
     });
 
     return () => {
       unsubApts();
       unsubCns();
     };
-  }, [doctorId]);
+  }, [currentDoctorId, activeDoctor?.fullName]);
 
   const loadDoctorData = async () => {
     setIsLoading(true);
     try {
       const [aptRes, cnsRes, patRes] = await Promise.all([
-        api.getAppointments({ doctorId }),
-        api.getConsultations({ doctorId }),
+        api.getAppointments({ doctorId: currentDoctorId }),
+        api.getConsultations({ doctorId: currentDoctorId }),
         api.getPatients()
       ]);
-      setAppointments(aptRes);
-      setConsultations(cnsRes);
+      
+      const filteredApts = aptRes.filter(a => 
+        a.doctorId === currentDoctorId || 
+        (activeDoctor && a.doctorName && a.doctorName.includes(activeDoctor.fullName))
+      );
+      const filteredCns = cnsRes.filter(c => 
+        c.doctorId === currentDoctorId || 
+        (activeDoctor && c.doctorName && c.doctorName.includes(activeDoctor.fullName))
+      );
+
+      setAppointments(filteredApts);
+      setConsultations(filteredCns);
       setPatients(patRes);
     } catch (err) {
       console.error('Doctor data load error:', err);
@@ -101,34 +135,53 @@ export const DoctorDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 text-start">
-      {/* Doctor Bio Header */}
+      {/* Doctor Bio Header with Dynamic Doctor Selector */}
       <div className="bg-gradient-to-r from-emerald-800 via-teal-800 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <img
-            src={doctorProfile?.avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80'}
-            alt={doctorProfile?.fullName || 'د. الطبيب'}
+            src={activeDoctor?.avatar || doctorProfile?.avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80'}
+            alt={activeDoctor?.fullName || 'د. الطبيب'}
             className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-300/40 shadow-md"
           />
           <div>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
               <h1 className="text-xl sm:text-2xl font-black tracking-tight">
-                {doctorProfile?.fullName || user?.fullName}
+                {activeDoctor?.fullName || doctorProfile?.fullName || user?.fullName}
               </h1>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-400/20 text-emerald-200 border border-emerald-300/30">
-                {doctorProfile?.title}
+                {activeDoctor?.title || doctorProfile?.title || 'طبيب استشاري'}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-emerald-100 font-medium">
-              التخصص: <strong>{doctorProfile?.specialtyNameAr}</strong> | العيادة: <strong>{doctorProfile?.roomNumber || 'عيادة رقم 104'}</strong>
+              التخصص: <strong>{activeDoctor?.specialtyNameAr || doctorProfile?.specialtyNameAr}</strong> | العيادة: <strong>{activeDoctor?.roomNumber || doctorProfile?.roomNumber || 'عيادة رقم 104'}</strong>
             </p>
             <p className="text-xs text-emerald-200/80 mt-1">
-              أيام الاستقبال: {doctorProfile?.availableDays.join('، ')} ({doctorProfile?.workingHours || '09:00 ص - 05:00 م'})
+              أيام الاستقبال: {activeDoctor?.availableDays ? activeDoctor.availableDays.join('، ') : 'الأحد - الخميس'} ({activeDoctor?.availableHours || '09:00 ص - 05:00 م'})
             </p>
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons & Doctor Switcher */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {allDoctors.length > 1 && (
+            <div className="bg-emerald-950/60 border border-emerald-400/30 rounded-xl px-3 py-1.5 flex items-center gap-2">
+              <Stethoscope className="w-4 h-4 text-emerald-300" />
+              <label htmlFor="doctor-select" className="text-xs text-emerald-200 font-bold whitespace-nowrap">عرض عيادة:</label>
+              <select
+                id="doctor-select"
+                value={selectedDoctorId}
+                onChange={(e) => setSelectedDoctorId(e.target.value)}
+                className="bg-emerald-900/90 text-white text-xs font-bold rounded-lg px-2.5 py-1 border border-emerald-400/40 focus:outline-none focus:ring-1 focus:ring-emerald-300 cursor-pointer"
+              >
+                {allDoctors.map((doc) => (
+                  <option key={doc.id} value={doc.id} className="bg-slate-900 text-white">
+                    {doc.fullName} ({doc.specialtyNameAr})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <button
             onClick={() => {
               setTargetPatientForAction('pat-1');

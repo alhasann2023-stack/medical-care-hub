@@ -96,7 +96,11 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
     try {
       await api.createConsultation({
         patientId: patientProfile?.id || user?.id || 'pat-1',
+        patientName: patientProfile?.fullName || user?.fullName || 'المريض',
+        patientPhone: patientProfile?.phone || user?.phone || '',
         doctorId: selectedDoctorId,
+        doctorName: selectedDoctor?.fullName,
+        doctorSpecialty: selectedDoctor?.specialtyNameAr,
         title,
         problemDescription,
         symptoms: symptomsList,
