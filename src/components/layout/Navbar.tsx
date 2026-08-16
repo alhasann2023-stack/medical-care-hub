@@ -344,7 +344,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
 
             {/* Role Switcher Selector Dropdown */}
-            
+         
 
             {/* Mobile menu toggle */}
             <button
