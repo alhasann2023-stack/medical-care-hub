@@ -50,6 +50,26 @@
       "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
       "isVerified": true,
       "createdAt": "2026-08-14T00:00:00.000Z"
+    },
+    {
+      "id": "usr-staff-1786911730034",
+      "email": "waheeb@gmail.com",
+      "phone": "74589652",
+      "fullName": "محمد وهيب",
+      "role": "CUSTOMER_SERVICE",
+      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
+      "isVerified": true,
+      "createdAt": "2026-08-16T20:22:10.034Z"
+    },
+    {
+      "id": "usr-staff-1786911990366",
+      "email": "abod@gmail.com",
+      "phone": "744444466",
+      "fullName": "عبود",
+      "role": "CUSTOMER_SERVICE",
+      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
+      "isVerified": true,
+      "createdAt": "2026-08-16T20:26:30.366Z"
     }
   ],
   "patients": [
@@ -175,6 +195,30 @@
       "department": "مركز تنسيق المواعيد وخدمة العملاء",
       "shift": "MORNING",
       "isActive": true
+    },
+    {
+      "id": "stf-1786911730034",
+      "userId": "usr-staff-1786911730034",
+      "fullName": "محمد وهيب",
+      "phone": "74589652",
+      "email": "waheeb@gmail.com",
+      "department": "مركز خدمة وتنسيق المواعيد",
+      "roleTitle": "منسق خدمة عملاء وحجوزات طبية",
+      "shift": "الفترة الصباحية (08:00 ص - 04:00 م)",
+      "isActive": true,
+      "createdAt": "2026-08-16T20:22:10.034Z"
+    },
+    {
+      "id": "stf-1786911990366",
+      "userId": "usr-staff-1786911990366",
+      "fullName": "عبود",
+      "phone": "744444466",
+      "email": "abod@gmail.com",
+      "department": "مركز خدمة وتنسيق المواعيد",
+      "roleTitle": "منسق خدمة عملاء وحجوزات طبية",
+      "shift": "الفترة الصباحية (08:00 ص - 04:00 م)",
+      "isActive": true,
+      "createdAt": "2026-08-16T20:26:30.366Z"
     }
   ],
   "specialties": [
@@ -535,6 +579,30 @@
   ],
   "auditLogs": [
     {
+      "id": "log-1786911990366-585",
+      "userId": "admin",
+      "userName": "مدير المستشفى",
+      "userRole": "HOSPITAL_ADMIN",
+      "action": "ADD_STAFF",
+      "entityType": "STAFF",
+      "entityId": "stf-1786911990366",
+      "details": "إضافة موظف خدمة عملاء جديد: عبود",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-16T20:26:30.368Z"
+    },
+    {
+      "id": "log-1786911730035-579",
+      "userId": "admin",
+      "userName": "مدير المستشفى",
+      "userRole": "HOSPITAL_ADMIN",
+      "action": "ADD_STAFF",
+      "entityType": "STAFF",
+      "entityId": "stf-1786911730034",
+      "details": "إضافة موظف خدمة عملاء جديد: محمد وهيب",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-16T20:22:10.036Z"
+    },
+    {
       "id": "log-1786909929900-906",
       "userId": "admin",
       "userName": "مدير المستشفى",
@@ -612,6 +680,8 @@
     "usr-doc-1": "doc#1234!",
     "usr-doc-4": "doc#4567!",
     "usr-cs-1": "staff#1234!",
-    "usr-pat-1": "patient#1234!"
+    "usr-pat-1": "patient#1234!",
+    "usr-doc-2": "doc#2345!",
+    "usr-doc-3": "doc#3456!"
   }
 }
