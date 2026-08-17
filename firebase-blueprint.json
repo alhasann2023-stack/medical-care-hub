@@ -19,22 +19,26 @@
     },
     "Patient": {
       "title": "Patient",
-      "description": "Medical patient electronic health file and history",
+      "description": "Medical patient electronic health record profile and history",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "userId": { "type": "string" },
-        "medicalRecordNumber": { "type": "string" },
+        "mrn": { "type": "string" },
         "fullName": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
         "bloodType": { "type": "string" },
         "birthDate": { "type": "string" },
         "gender": { "type": "string" },
-        "chronicDiseases": { "type": "string" },
-        "allergies": { "type": "string" },
-        "insuranceProvider": { "type": "string" },
+        "chronicDiseases": { "type": "array", "items": { "type": "string" } },
+        "allergies": { "type": "array", "items": { "type": "string" } },
+        "emergencyContact": { "type": "object" },
+        "address": { "type": "string" },
+        "createdAt": { "type": "string" },
         "updatedAt": { "type": "string" }
       },
-      "required": ["id", "userId", "medicalRecordNumber"]
+      "required": ["id", "userId", "mrn", "fullName", "phone"]
     },
     "Doctor": {
       "title": "Doctor",
@@ -47,33 +51,266 @@
         "title": { "type": "string" },
         "specialtyId": { "type": "string" },
         "specialtyNameAr": { "type": "string" },
+        "specialtyNameEn": { "type": "string" },
+        "qualifications": { "type": "array", "items": { "type": "string" } },
+        "experienceYears": { "type": "number" },
         "consultationFee": { "type": "number" },
         "rating": { "type": "number" },
+        "roomNumber": { "type": "string" },
+        "availableDays": { "type": "array", "items": { "type": "string" } },
+        "availableHours": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "avatar": { "type": "string" },
         "updatedAt": { "type": "string" }
       },
       "required": ["id", "fullName", "specialtyId"]
     },
+    "Staff": {
+      "title": "Staff",
+      "description": "Customer service coordinator or hospital administrative staff",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "department": { "type": "string" },
+        "roleTitle": { "type": "string" },
+        "shift": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "avatar": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "fullName"]
+    },
+    "Specialty": {
+      "title": "Specialty",
+      "description": "Medical specialty department",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nameAr": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "descriptionAr": { "type": "string" },
+        "icon": { "type": "string" },
+        "color": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "nameAr"]
+    },
+    "MedicalService": {
+      "title": "MedicalService",
+      "description": "Hospital medical consultation or examination service",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "specialtyId": { "type": "string" },
+        "nameAr": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "price": { "type": "number" },
+        "durationMinutes": { "type": "number" },
+        "category": { "type": "string" },
+        "descriptionAr": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "nameAr", "price"]
+    },
     "Appointment": {
       "title": "Appointment",
-      "description": "Clinic and telemedicine appointments booking record",
+      "description": "Clinic and telemedicine appointment booking record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "patientName": { "type": "string" },
+        "patientPhone": { "type": "string" },
+        "patientMrn": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "doctorName": { "type": "string" },
+        "doctorSpecialty": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "preferredDate": { "type": "string" },
+        "preferredPeriod": { "type": "string" },
+        "confirmedDate": { "type": "string" },
+        "confirmedTime": { "type": "string" },
+        "clinicRoom": { "type": "string" },
+        "reason": { "type": "string" },
+        "status": { "type": "string" },
+        "coordinatorNotes": { "type": "string" },
+        "patientNotes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "patientId", "doctorId", "reason", "status"]
+    },
+    "Consultation": {
+      "title": "Consultation",
+      "description": "Medical online consultation request, doctor clinical response and messages",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "patientName": { "type": "string" },
+        "patientPhone": { "type": "string" },
+        "patientMrn": { "type": "string" },
+        "patientAge": { "type": "number" },
+        "patientGender": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "doctorName": { "type": "string" },
+        "doctorSpecialty": { "type": "string" },
+        "title": { "type": "string" },
+        "problemDescription": { "type": "string" },
+        "symptoms": { "type": "array", "items": { "type": "string" } },
+        "duration": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "ANSWERED", "CLOSED"] },
+        "doctorAdvice": { "type": "string" },
+        "doctorNotes": { "type": "string" },
+        "treatmentPlan": { "type": "string" },
+        "suggestedAction": { "type": "string" },
+        "requireInPersonVisit": { "type": "boolean" },
+        "attachments": { "type": "array", "items": { "type": "object" } },
+        "messages": { "type": "array", "items": { "type": "object" } },
+        "answeredAt": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "patientId", "doctorId", "title", "problemDescription", "status"]
+    },
+    "MedicalExamination": {
+      "title": "MedicalExamination",
+      "description": "Clinical examination notes and medical encounter findings",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "patientId": { "type": "string" },
         "doctorId": { "type": "string" },
-        "date": { "type": "string" },
-        "time": { "type": "string" },
-        "type": { "type": "string" },
-        "status": { "type": "string" },
+        "doctorName": { "type": "string" },
+        "doctorSpecialty": { "type": "string" },
+        "examinationDate": { "type": "string" },
+        "examinationType": { "type": "string" },
+        "vitalSigns": { "type": "object" },
+        "chiefComplaint": { "type": "string" },
+        "clinicalFindings": { "type": "string" },
+        "diagnosis": { "type": "string" },
+        "icd10Code": { "type": "string" },
+        "recommendations": { "type": "string" },
+        "createdAt": { "type": "string" },
         "updatedAt": { "type": "string" }
       },
-      "required": ["id", "patientId", "doctorId", "date", "status"]
+      "required": ["id", "patientId", "doctorId", "diagnosis"]
+    },
+    "MedicalTest": {
+      "title": "MedicalTest",
+      "description": "Diagnostic and laboratory test results",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "doctorName": { "type": "string" },
+        "testName": { "type": "string" },
+        "testCategory": { "type": "string" },
+        "testDate": { "type": "string" },
+        "status": { "type": "string" },
+        "resultsSummary": { "type": "string" },
+        "parameters": { "type": "array", "items": { "type": "object" } },
+        "fileAttachment": { "type": "object" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "patientId", "testName", "status"]
+    },
+    "MedicalReport": {
+      "title": "MedicalReport",
+      "description": "Formal signed medical report and fitness certificates",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "patientName": { "type": "string" },
+        "patientMrn": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "doctorName": { "type": "string" },
+        "doctorTitle": { "type": "string" },
+        "reportType": { "type": "string" },
+        "reportDate": { "type": "string" },
+        "diagnosis": { "type": "string" },
+        "clinicalSummary": { "type": "string" },
+        "recommendations": { "type": "string" },
+        "sickLeaveDays": { "type": "number" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "patientId", "doctorId", "reportType", "diagnosis"]
+    },
+    "Prescription": {
+      "title": "Prescription",
+      "description": "Electronic prescription with pharmaceutical items",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "rxNumber": { "type": "string" },
+        "patientId": { "type": "string" },
+        "patientName": { "type": "string" },
+        "patientMrn": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "doctorName": { "type": "string" },
+        "doctorSpecialty": { "type": "string" },
+        "date": { "type": "string" },
+        "diagnosis": { "type": "string" },
+        "medications": { "type": "array", "items": { "type": "object" } },
+        "doctorInstructions": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "rxNumber", "patientId", "doctorId", "medications"]
+    },
+    "AppNotification": {
+      "title": "AppNotification",
+      "description": "System and medical appointment alerts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string" },
+        "referenceId": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "message"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "System security and administrative action audit trail",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userRole": { "type": "string" },
+        "action": { "type": "string" },
+        "resourceType": { "type": "string" },
+        "resourceId": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "userId", "action", "timestamp"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
-      "description": "User profile collection"
+      "description": "Authenticated user accounts collection"
     },
     "/patients/{patientId}": {
       "schema": "Patient",
@@ -83,9 +320,49 @@
       "schema": "Doctor",
       "description": "Doctors and medical consultants directory"
     },
+    "/staff/{staffId}": {
+      "schema": "Staff",
+      "description": "Customer service coordinators and administrative staff"
+    },
+    "/specialties/{specialtyId}": {
+      "schema": "Specialty",
+      "description": "Medical specialty departments list"
+    },
+    "/services/{serviceId}": {
+      "schema": "MedicalService",
+      "description": "Hospital medical clinic services"
+    },
     "/appointments/{appointmentId}": {
       "schema": "Appointment",
-      "description": "Scheduled in-clinic and virtual consultations"
+      "description": "Scheduled in-clinic and virtual appointments bookings"
+    },
+    "/consultations/{consultationId}": {
+      "schema": "Consultation",
+      "description": "Patient medical consultations and doctor clinical replies"
+    },
+    "/examinations/{examinationId}": {
+      "schema": "MedicalExamination",
+      "description": "Clinical examinations and diagnoses"
+    },
+    "/tests/{testId}": {
+      "schema": "MedicalTest",
+      "description": "Laboratory and diagnostic tests"
+    },
+    "/reports/{reportId}": {
+      "schema": "MedicalReport",
+      "description": "Official medical reports and certificates"
+    },
+    "/prescriptions/{prescriptionId}": {
+      "schema": "Prescription",
+      "description": "Electronic prescriptions"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "AppNotification",
+      "description": "User notifications"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Platform audit trails"
     }
   }
 }

@@ -76,12 +76,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
 
           if (userDoc) {
+            if (fbUser.email?.toLowerCase() === 'alhasann2023@gmail.com' && userDoc.role !== 'HOSPITAL_ADMIN') {
+              userDoc = { ...userDoc, role: 'HOSPITAL_ADMIN' };
+              await firebaseDb.saveUser(userDoc);
+            }
             setUser(userDoc);
             
             // Set up real-time listener for user document
             unsubscribeUserSnapshot?.();
             unsubscribeUserSnapshot = subscribeToUser(userDoc.id, (updatedUser) => {
-              if (updatedUser) setUser(updatedUser);
+              if (updatedUser) {
+                if (fbUser.email?.toLowerCase() === 'alhasann2023@gmail.com') {
+                  setUser({ ...updatedUser, role: 'HOSPITAL_ADMIN' });
+                } else {
+                  setUser(updatedUser);
+                }
+              }
             });
 
             // Load and subscribe to profile
@@ -198,10 +208,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 2. Fetch user data via API and Firestore lookup
       const res = await api.login(emailOrPhone, pwd);
+      if (emailOrPhone.trim().toLowerCase() === 'alhasann2023@gmail.com' && res.user) {
+        res.user.role = 'HOSPITAL_ADMIN';
+      }
       setUser(res.user);
-      setPatientProfile(res.user.role === 'PATIENT' ? res.profile : null);
-      setDoctorProfile(res.user.role === 'DOCTOR' ? res.profile : null);
-      setStaffProfile(res.user.role === 'CUSTOMER_SERVICE' ? res.profile : null);
+      if (res.user.role === 'PATIENT') {
+        setPatientProfile(res.profile || null);
+        setDoctorProfile(null);
+        setStaffProfile(null);
+      } else if (res.user.role === 'DOCTOR') {
+        setDoctorProfile(res.profile || null);
+        setPatientProfile(null);
+        setStaffProfile(null);
+      } else {
+        setStaffProfile(res.profile || null);
+        setPatientProfile(null);
+        setDoctorProfile(null);
+      }
 
       // 3. Persist to Firestore with UID reference
       if (res.user) {
@@ -209,7 +232,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (res.profile) {
           if (res.user.role === 'PATIENT') await firebaseDb.savePatient(res.profile);
           else if (res.user.role === 'DOCTOR') await firebaseDb.saveDoctor(res.profile);
-          else if (res.user.role === 'CUSTOMER_SERVICE') await firebaseDb.saveStaff(res.profile);
+          else await firebaseDb.saveStaff(res.profile);
         }
       }
 
@@ -222,25 +245,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (data: any) => {
     setIsLoading(true);
     const pwd = data.password;
+    const isAdminEmail = data.email?.trim().toLowerCase() === 'alhasann2023@gmail.com';
+    const payload = {
+      ...data,
+      role: isAdminEmail ? 'HOSPITAL_ADMIN' : (data.role || 'PATIENT')
+    };
     try {
       // 1. Register with backend API first to validate unique credentials and unique password
-      const res: any = await api.register(data);
+      const res: any = await api.register(payload);
 
       let fbUid: string | undefined;
 
       // 2. Register/Sync with Firebase Auth
-      if (data.email && pwd) {
+      if (payload.email && pwd) {
         try {
           const userCredential = await createUserWithEmailAndPassword(
             auth, 
-            data.email.trim().toLowerCase(), 
+            payload.email.trim().toLowerCase(), 
             pwd
           );
           if (userCredential.user) {
             fbUid = userCredential.user.uid;
-            if (data.fullName) {
+            if (payload.fullName) {
               await firebaseUpdateProfile(userCredential.user, {
-                displayName: data.fullName
+                displayName: payload.fullName
               });
             }
           }
@@ -248,7 +276,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.warn('Firebase Auth signup message:', fbErr.message);
           if (fbErr.code === 'auth/email-already-in-use') {
             try {
-              const userCred = await signInWithEmailAndPassword(auth, data.email.trim().toLowerCase(), pwd);
+              const userCred = await signInWithEmailAndPassword(auth, payload.email.trim().toLowerCase(), pwd);
               fbUid = userCred.user?.uid;
             } catch (signInErr) {
               console.warn('Firebase Auth sign in fallback notice:', signInErr);
@@ -344,6 +372,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (res.staff) await firebaseDb.saveStaff(res.staff);
         }
       } else {
+        if (fbUser.email?.toLowerCase() === 'alhasann2023@gmail.com' && existingUser.role !== 'HOSPITAL_ADMIN') {
+          existingUser = { ...existingUser, role: 'HOSPITAL_ADMIN' };
+          await firebaseDb.saveUser(existingUser);
+        }
         setUser(existingUser);
         if (existingUser.role === 'PATIENT') {
           const p = await getPatientByUserId(existingUser.id);

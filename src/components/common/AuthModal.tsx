@@ -123,19 +123,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     try {
+      const isAdminEmail = regEmail.trim().toLowerCase() === 'alhasann2023@gmail.com';
       const payload: any = {
-        fullName: regFullName.trim(),
+        fullName: regFullName.trim() || (isAdminEmail ? 'المدير العام والمسؤول' : 'مستخدم'),
         email: regEmail.trim(),
         phone: regPhone.trim() || undefined,
         password: regPassword.trim(),
-        role: 'PATIENT',
+        role: isAdminEmail ? 'HOSPITAL_ADMIN' : 'PATIENT',
         gender: regGender,
         birthDate: regBirthDate,
         bloodType: regBloodType
       };
 
       await register(payload);
-      setSuccessMessage('تم إنشاء ملفك الطبي وحسابك كمريض بنجاح!');
+      setSuccessMessage(
+        isAdminEmail 
+          ? 'تم إنشاء حسابك وتعيينك مديراً عاماً ومسؤولاً للموقع بنجاح!' 
+          : 'تم إنشاء ملفك الطبي وحسابك كمريض بنجاح!'
+      );
       setTimeout(() => {
         onSuccess?.();
         onClose();
@@ -386,7 +391,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     placeholder="مثال: عبد العزيز بن محمد الغامدي"
                     value={regFullName}
                     onChange={(e) => setRegFullName(e.target.value)}
-                    className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-blue-400 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
+                    className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
                   />
                 </div>
               </div>
@@ -407,9 +412,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="patient@domain.com"
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
-                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-blue-400 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
+                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
                     />
                   </div>
+                  {regEmail.trim().toLowerCase() === 'alhasann2023@gmail.com' && (
+                    <div className="mt-1.5 p-2 rounded-lg bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-bold flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                      <span>حساب المشرف العام: سيتم منحه صلاحية إدارة المستشفى الكاملة تلقائياً.</span>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -425,7 +436,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="0501234567"
                       value={regPhone}
                       onChange={(e) => setRegPhone(e.target.value)}
-                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-blue-400 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
+                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
                     />
                   </div>
                 </div>
@@ -447,7 +458,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="••••••••"
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
-                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-blue-400 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
+                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
                     />
                   </div>
                 </div>
@@ -466,7 +477,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="••••••••"
                       value={regConfirmPassword}
                       onChange={(e) => setRegConfirmPassword(e.target.value)}
-                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-blue-400 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
+                      className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"
                     />
                   </div>
                 </div>

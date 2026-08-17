@@ -84,6 +84,17 @@ export const CustomerServiceDashboard: React.FC = () => {
 
   useEffect(() => {
     loadData();
+
+    // Real-time synchronization for Customer Service Dashboard
+    const unsubApts = api.subscribeAppointments({}, (liveApts) => {
+      if (liveApts) {
+        setAppointments(liveApts);
+      }
+    });
+
+    return () => {
+      unsubApts();
+    };
   }, []);
 
   const showNotification = (type: 'success' | 'error', text: string) => {

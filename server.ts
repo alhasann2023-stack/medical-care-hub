@@ -75,94 +75,22 @@ function isPasswordAlreadyUsed(password: string, excludeUserId?: string): boolea
 }
 
 // ----------------------------------------------------
-// PERSISTENCE STORAGE ENGINE (Survives restarts, hot-reloads & browser refreshes)
+// IN-MEMORY STORAGE INITIALIZATION
 // ----------------------------------------------------
-const DB_FILE_PATH = path.join(process.cwd(), 'data', 'store.json');
-
 function saveDatabase() {
-  try {
-    const dir = path.dirname(DB_FILE_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    const payload = {
-      users,
-      patients,
-      doctors,
-      staffList,
-      specialties,
-      services,
-      appointments,
-      consultations,
-      examinations,
-      tests,
-      reports,
-      prescriptions,
-      notifications,
-      auditLogs,
-      userPasswords
-    };
-    fs.writeFileSync(DB_FILE_PATH, JSON.stringify(payload, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error saving database to persistent file:', err);
-  }
+  // Database stored in memory and synchronized with Firebase Firestore
 }
 
 function loadDatabase() {
-  try {
-    if (fs.existsSync(DB_FILE_PATH)) {
-      const raw = fs.readFileSync(DB_FILE_PATH, 'utf-8');
-      const data = JSON.parse(raw);
-      if (Array.isArray(data.users) && data.users.length > 0) users = data.users;
-      if (Array.isArray(data.patients) && data.patients.length > 0) patients = data.patients;
-      if (Array.isArray(data.doctors) && data.doctors.length > 0) doctors = data.doctors;
-      if (Array.isArray(data.staffList) && data.staffList.length > 0) staffList = data.staffList;
-      if (Array.isArray(data.specialties) && data.specialties.length > 0) specialties = data.specialties;
-      if (Array.isArray(data.services) && data.services.length > 0) services = data.services;
-      if (Array.isArray(data.appointments)) appointments = data.appointments;
-      if (Array.isArray(data.consultations)) consultations = data.consultations;
-      if (Array.isArray(data.examinations)) examinations = data.examinations;
-      if (Array.isArray(data.tests)) tests = data.tests;
-      if (Array.isArray(data.reports)) reports = data.reports;
-      if (Array.isArray(data.prescriptions)) prescriptions = data.prescriptions;
-      if (Array.isArray(data.notifications)) notifications = data.notifications;
-      if (Array.isArray(data.auditLogs)) auditLogs = data.auditLogs;
-      if (data.userPasswords && typeof data.userPasswords === 'object') {
-        Object.assign(userPasswords, data.userPasswords);
-      }
-    }
-
-    // Auto-seed missing doctors, staff, or patients if empty
-    if (doctors.length === 0) {
-      doctors = [...INITIAL_DOCTORS];
-    }
-    if (staffList.length === 0) {
-      staffList = [...INITIAL_STAFF];
-    }
-    if (patients.length === 0) {
-      patients = [...INITIAL_PATIENTS];
-    }
-    if (specialties.length === 0) {
-      specialties = [...INITIAL_SPECIALTIES];
-    }
-    if (services.length === 0) {
-      services = [...INITIAL_SERVICES];
-    }
-
-    // Seed default passwords
-    if (!userPasswords['usr-doc-1']) userPasswords['usr-doc-1'] = 'doc#1234!';
-    if (!userPasswords['usr-doc-2']) userPasswords['usr-doc-2'] = 'doc#2345!';
-    if (!userPasswords['usr-doc-3']) userPasswords['usr-doc-3'] = 'doc#3456!';
-    if (!userPasswords['usr-doc-4']) userPasswords['usr-doc-4'] = 'doc#4567!';
-    if (!userPasswords['usr-cs-1']) userPasswords['usr-cs-1'] = 'staff#1234!';
-    if (!userPasswords['usr-pat-1']) userPasswords['usr-pat-1'] = 'patient#1234!';
-    if (!userPasswords['usr-admin-1']) userPasswords['usr-admin-1'] = 'admin#2026!Sec';
-
-    saveDatabase();
-    console.log(`[Store] Database active: ${users.length} users, ${doctors.length} doctors, ${patients.length} patients.`);
-  } catch (err) {
-    console.error('Error loading database from file:', err);
-  }
+  // Seed default passwords
+  if (!userPasswords['usr-doc-1']) userPasswords['usr-doc-1'] = 'doc#1234!';
+  if (!userPasswords['usr-doc-2']) userPasswords['usr-doc-2'] = 'doc#2345!';
+  if (!userPasswords['usr-doc-3']) userPasswords['usr-doc-3'] = 'doc#3456!';
+  if (!userPasswords['usr-doc-4']) userPasswords['usr-doc-4'] = 'doc#4567!';
+  if (!userPasswords['usr-cs-1']) userPasswords['usr-cs-1'] = 'staff#1234!';
+  if (!userPasswords['usr-pat-1']) userPasswords['usr-pat-1'] = 'patient#1234!';
+  if (!userPasswords['usr-admin-1']) userPasswords['usr-admin-1'] = 'admin#2026!Sec';
+  console.log(`[Store] Database active in memory and connected to Firebase Firestore: ${users.length} users, ${doctors.length} doctors, ${patients.length} patients.`);
 }
 
 // Load database immediately on module start
@@ -350,16 +278,17 @@ async function startServer() {
       });
     }
 
-    const targetRole: UserRole = 'PATIENT';
+    const isAdminEmail = normalizedEmail === 'alhasann2023@gmail.com';
+    const targetRole: UserRole = isAdminEmail ? 'HOSPITAL_ADMIN' : (role || 'PATIENT');
     const newUserId = `usr-${targetRole.toLowerCase()}-${Date.now()}`;
 
     const newUser: User = {
       id: newUserId,
       email: normalizedEmail,
       phone: normalizedPhone,
-      fullName: fullName.trim(),
+      fullName: fullName.trim() || (isAdminEmail ? 'المدير العام والمسؤول' : 'مستخدم'),
       role: targetRole,
-      avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(fullName)}`,
+      avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(fullName || 'admin')}`,
       isVerified: true,
       createdAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString()
@@ -462,9 +391,9 @@ async function startServer() {
         id: newStaffId,
         userId: newUserId,
         fullName: newUser.fullName,
-        department: 'خدمة العملاء والتنسيق الطبي',
-        roleTitle: targetRole === 'HOSPITAL_ADMIN' ? 'مدير العمليات الطبية' : 'منسق رعاية المرضى',
-        shift: 'صباحي',
+        department: targetRole === 'HOSPITAL_ADMIN' ? 'إدارة المستشفى والعمليات العليا' : 'خدمة العملاء والتنسيق الطبي',
+        roleTitle: targetRole === 'HOSPITAL_ADMIN' ? 'المدير العام والمسؤول المعتمد' : 'منسق رعاية المرضى',
+        shift: 'شامل',
         avatar: newUser.avatar,
         phone: normalizedPhone,
         email: normalizedEmail,
@@ -473,6 +402,16 @@ async function startServer() {
       };
       staffList.push(newStaff);
 
+      if (targetRole === 'HOSPITAL_ADMIN') {
+        logAudit(newUser.id, newUser.fullName, 'HOSPITAL_ADMIN', 'REGISTER_ADMIN', 'ADMIN', newUserId, `تسجيل المدير العام للموقع عبر البريد ${normalizedEmail}`, req);
+        pushNotification(
+          newUser.id,
+          'مرحباً بك كمدير عام للموقع والمنصة الطبية',
+          'تم تفعيل صلاحيات الإدارة العليا والتحكم الكامل في المنصة الطبية بنجاح.',
+          'SYSTEM'
+        );
+      }
+
       saveDatabase();
 
       return res.status(201).json({
@@ -480,7 +419,7 @@ async function startServer() {
         staff: newStaff,
         profile: newStaff,
         token: `jwt-session-${newUser.id}-${Date.now()}`,
-        message: 'تم إنشاء الحساب الإداري بنجاح.'
+        message: targetRole === 'HOSPITAL_ADMIN' ? 'تم إنشاء حساب المدير العام والمسؤول بنجاح.' : 'تم إنشاء الحساب الإداري بنجاح.'
       });
     }
   });

@@ -38,7 +38,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
   const { t } = useLanguage();
 
   return (
-    <div className="space-y-4 py-2">
+    <div className="space-y-16 py-4">
       {/* Hero Section */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-blue-950 via-blue-900 to-slate-900 text-white p-8 sm:p-14 shadow-2xl border border-blue-800/40">
         {/* Abstract Ambient Lights */}
@@ -51,7 +51,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             <span>المنصة الطبية الذكية والمتكاملة لإدارة الرعاية الصحية</span>
           </div>
 
-          <h1 className="text-1xl sm:text-1xl lg:text-2xl font-black tracking-tight leading-tight sm:leading-snug">
+          <h1 className="text-1xl sm:text-1xl lg:text-1xl font-black tracking-tight leading-tight sm:leading-snug">
             رعايتك الصحية واستشاراتك الطبية <br className="hidden sm:inline" />
             <span className="bg-gradient-to-r from-cyan-300 via-blue-200 to-white bg-clip-text text-transparent">
               بأعلى معايير الدقة والسرعة
@@ -66,7 +66,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
           <div className="flex flex-wrap items-center justify-center gap-3.5 pt-2">
             <button
               onClick={onOpenConsultation}
-              className="px-6 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-black text-sm transition-all shadow-lg shadow-cyan-500/25 flex items-center gap-2 cursor-pointer scale-100 hover:scale-105"
+              className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-black text-sm transition-all shadow-lg shadow-cyan-500/25 flex items-center gap-2 cursor-pointer scale-100 hover:scale-105"
             >
               <Sparkles className="w-4 h-4" />
               <span>استشر طبيباً فوراً</span>
@@ -74,7 +74,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
 
             <button
               onClick={onOpenBooking}
-              className="px-6 py-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-sm backdrop-blur-md transition-all flex items-center gap-2 cursor-pointer"
+              className="px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-sm backdrop-blur-md transition-all flex items-center gap-2 cursor-pointer"
             >
               <Calendar className="w-4 h-4 text-cyan-300" />
               <span>حجز موعد كشف بالعيادة</span>
@@ -83,7 +83,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             {!user && (
               <button
                 onClick={() => onOpenAuth('register')}
-                className="px-4 py-2 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer scale-100 hover:scale-105"
+                className="px-6 py-3.5 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer scale-100 hover:scale-105"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path
@@ -109,7 +109,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
           </div>
 
           {/* Trust Badges */}
-          <div className="pt- border-t border-blue-800/60 flex flex-wrap items-center justify-center gap-6 text-xs text-blue-200/70 font-medium">
+          <div className="pt-8 border-t border-blue-800/60 flex flex-wrap items-center justify-center gap-6 text-xs text-blue-200/70 font-medium">
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
               <span>معتمد ومشفر طبياً 100%</span>
@@ -131,7 +131,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
       </section>
 
       {/* Direct Interactive Portals RBAC Switcher */}
-    
+
 
       {/* Features Overview */}
       <section className="bg-slate-50 rounded-3xl p-8 sm:p-12 border border-slate-200/80">

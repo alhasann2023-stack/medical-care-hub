@@ -265,11 +265,19 @@ export async function getDoctorsWithFilter(options?: { specialtyId?: string; act
  */
 export async function getAppointmentsWithFilter(filter?: { patientId?: string; doctorId?: string; status?: string }): Promise<Appointment[]> {
   try {
-    const constraints: QueryConstraint[] = [];
-    if (filter?.patientId) constraints.push(where('patientId', '==', filter.patientId));
-    if (filter?.doctorId) constraints.push(where('doctorId', '==', filter.doctorId));
-    if (filter?.status) constraints.push(where('status', '==', filter.status));
-    return await fetchDocsWithFilter<Appointment>(FIRESTORE_COLLECTIONS.APPOINTMENTS, constraints);
+    const all = await fetchDocsWithFilter<Appointment>(FIRESTORE_COLLECTIONS.APPOINTMENTS);
+    let list = all;
+    if (filter?.patientId) {
+      list = list.filter(a => a.patientId === filter.patientId || (a as any).patientUserId === filter.patientId || a.patientPhone === filter.patientId);
+    }
+    if (filter?.doctorId) {
+      list = list.filter(a => a.doctorId === filter.doctorId || (a as any).doctorUserId === filter.doctorId);
+    }
+    if (filter?.status) {
+      list = list.filter(a => a.status === filter.status);
+    }
+    list.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+    return list;
   } catch (err) {
     console.warn('[Firestore] getAppointmentsWithFilter error:', err);
     return [];
@@ -281,11 +289,19 @@ export async function getAppointmentsWithFilter(filter?: { patientId?: string; d
  */
 export async function getConsultationsWithFilter(filter?: { patientId?: string; doctorId?: string; status?: string }): Promise<Consultation[]> {
   try {
-    const constraints: QueryConstraint[] = [];
-    if (filter?.patientId) constraints.push(where('patientId', '==', filter.patientId));
-    if (filter?.doctorId) constraints.push(where('doctorId', '==', filter.doctorId));
-    if (filter?.status) constraints.push(where('status', '==', filter.status));
-    return await fetchDocsWithFilter<Consultation>(FIRESTORE_COLLECTIONS.CONSULTATIONS, constraints);
+    const all = await fetchDocsWithFilter<Consultation>(FIRESTORE_COLLECTIONS.CONSULTATIONS);
+    let list = all;
+    if (filter?.patientId) {
+      list = list.filter(c => c.patientId === filter.patientId || (c as any).patientUserId === filter.patientId || c.patientPhone === filter.patientId);
+    }
+    if (filter?.doctorId) {
+      list = list.filter(c => c.doctorId === filter.doctorId || (c as any).doctorUserId === filter.doctorId);
+    }
+    if (filter?.status) {
+      list = list.filter(c => c.status === filter.status);
+    }
+    list.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+    return list;
   } catch (err) {
     console.warn('[Firestore] getConsultationsWithFilter error:', err);
     return [];
@@ -380,11 +396,23 @@ export function subscribeToAppointments(
   filter: { patientId?: string; doctorId?: string; status?: string },
   callback: (apts: Appointment[]) => void
 ): Unsubscribe {
-  const constraints: QueryConstraint[] = [];
-  if (filter.patientId) constraints.push(where('patientId', '==', filter.patientId));
-  if (filter.doctorId) constraints.push(where('doctorId', '==', filter.doctorId));
-  if (filter.status) constraints.push(where('status', '==', filter.status));
-  return subscribeToCollection<Appointment>(FIRESTORE_COLLECTIONS.APPOINTMENTS, callback, constraints);
+  return subscribeToCollection<Appointment>(
+    FIRESTORE_COLLECTIONS.APPOINTMENTS,
+    (allItems) => {
+      let list = allItems;
+      if (filter.patientId) {
+        list = list.filter(a => a.patientId === filter.patientId || (a as any).patientUserId === filter.patientId || a.patientPhone === filter.patientId);
+      }
+      if (filter.doctorId) {
+        list = list.filter(a => a.doctorId === filter.doctorId || (a as any).doctorUserId === filter.doctorId);
+      }
+      if (filter.status) {
+        list = list.filter(a => a.status === filter.status);
+      }
+      list.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+      callback(list);
+    }
+  );
 }
 
 /**
@@ -394,11 +422,23 @@ export function subscribeToConsultations(
   filter: { patientId?: string; doctorId?: string; status?: string },
   callback: (cns: Consultation[]) => void
 ): Unsubscribe {
-  const constraints: QueryConstraint[] = [];
-  if (filter.patientId) constraints.push(where('patientId', '==', filter.patientId));
-  if (filter.doctorId) constraints.push(where('doctorId', '==', filter.doctorId));
-  if (filter.status) constraints.push(where('status', '==', filter.status));
-  return subscribeToCollection<Consultation>(FIRESTORE_COLLECTIONS.CONSULTATIONS, callback, constraints);
+  return subscribeToCollection<Consultation>(
+    FIRESTORE_COLLECTIONS.CONSULTATIONS,
+    (allItems) => {
+      let list = allItems;
+      if (filter.patientId) {
+        list = list.filter(c => c.patientId === filter.patientId || (c as any).patientUserId === filter.patientId || c.patientPhone === filter.patientId);
+      }
+      if (filter.doctorId) {
+        list = list.filter(c => c.doctorId === filter.doctorId || (c as any).doctorUserId === filter.doctorId);
+      }
+      if (filter.status) {
+        list = list.filter(c => c.status === filter.status);
+      }
+      list.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+      callback(list);
+    }
+  );
 }
 
 /**
