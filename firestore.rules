@@ -1,9 +1,58 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Medical Platform collections
+    // Medical Platform Core Collections
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+    match /patients/{patientId} {
+      allow read, write: if true;
+    }
+    match /doctors/{doctorId} {
+      allow read, write: if true;
+    }
+    match /staff/{staffId} {
+      allow read, write: if true;
+    }
+    match /specialties/{specialtyId} {
+      allow read, write: if true;
+    }
+    match /services/{serviceId} {
+      allow read, write: if true;
+    }
+    match /appointments/{appointmentId} {
+      allow read, write: if true;
+    }
+    match /consultations/{consultationId} {
+      allow read, write: if true;
+      match /messages/{messageId} {
+        allow read, write: if true;
+      }
+    }
+    match /examinations/{examinationId} {
+      allow read, write: if true;
+    }
+    match /tests/{testId} {
+      allow read, write: if true;
+    }
+    match /reports/{reportId} {
+      allow read, write: if true;
+    }
+    match /prescriptions/{prescriptionId} {
+      allow read, write: if true;
+    }
+    match /notifications/{notificationId} {
+      allow read, write: if true;
+    }
+    match /auditLogs/{logId} {
+      allow read, write: if true;
+    }
+    match /test/{docId} {
+      allow read, write: if true;
+    }
     match /{document=**} {
       allow read, write: if true;
     }
   }
 }
+

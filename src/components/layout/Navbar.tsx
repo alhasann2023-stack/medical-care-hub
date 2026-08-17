@@ -40,9 +40,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAuth,
   unreadNotificationsCount
 }) => {
-  const { user, role, patientProfile, doctorProfile, switchRole, logout } = useAuth();
+  const { user, role, logout } = useAuth();
   const { language, toggleLanguage, t } = useLanguage();
-  const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -71,16 +70,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       color: 'text-amber-700',
       bg: 'bg-amber-50 border-amber-200'
     }
-  };
-
-  const handleRoleSelect = (targetRole: UserRole) => {
-    switchRole(targetRole);
-    setIsRoleMenuOpen(false);
-    setIsUserMenuOpen(false);
-    if (targetRole === 'PATIENT') setCurrentView('patient_dashboard');
-    else if (targetRole === 'DOCTOR') setCurrentView('doctor_dashboard');
-    else if (targetRole === 'CUSTOMER_SERVICE') setCurrentView('cs_dashboard');
-    else if (targetRole === 'HOSPITAL_ADMIN') setCurrentView('admin_dashboard');
   };
 
   const handleLogout = () => {
@@ -112,7 +101,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>قاعدة بيانات فايربيس السحابية (Firestore)</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
             </div>
-            <span className="hidden md:inline">الرقم الموحد: 920008899</span>
+          
             <button
               onClick={toggleLanguage}
               className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer"
@@ -263,7 +252,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {user ? (
               <div className="relative">
                 <button
-                  onClick={() => { setIsUserMenuOpen(!isUserMenuOpen); setIsRoleMenuOpen(false); }}
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer"
                   title="ملف المستخدم والحساب"
                 >
@@ -342,9 +331,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               </div>
             )}
-
-            {/* Role Switcher Selector Dropdown */}
-         
 
             {/* Mobile menu toggle */}
             <button

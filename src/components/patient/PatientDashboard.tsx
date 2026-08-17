@@ -72,6 +72,8 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   // Modals
   const [selectedReport, setSelectedReport] = useState<MedicalReport | null>(null);
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
+  const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
+  const [showAllConsultationsModal, setShowAllConsultationsModal] = useState<boolean>(false);
 
   const patientId = patientProfile?.id || user?.id || 'pat-1';
 
@@ -489,52 +491,76 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                 <div className="p-2 rounded-xl bg-cyan-50 text-cyan-700">
                   <MessageSquare className="w-5 h-5" />
                 </div>
-                <h2 className="font-extrabold text-base text-slate-900">استشاراتي الطبية</h2>
+                <div>
+                  <h2 className="font-extrabold text-base text-slate-900">استشاراتي الطبية</h2>
+                  <span className="text-[11px] text-slate-400 font-medium">مزامنة فورية مع قاعدة البيانات</span>
+                </div>
               </div>
-              <button
-                onClick={onOpenConsultation}
-                className="text-xs font-bold text-cyan-700 hover:underline cursor-pointer"
-              >
-                + جديدة
-              </button>
+              <div className="flex items-center gap-2">
+                {consultations.length > 1 && (
+                  <button
+                    onClick={() => setShowAllConsultationsModal(true)}
+                    className="text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
+                  >
+                    عرض الكل ({consultations.length})
+                  </button>
+                )}
+                <button
+                  onClick={onOpenConsultation}
+                  className="px-2.5 py-1 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-800 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  + استشارة جديدة
+                </button>
+              </div>
             </div>
 
-            {recentConsultation ? (
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                    recentConsultation.status === 'ANSWERED'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-amber-100 text-amber-800'
-                  }`}>
-                    {recentConsultation.status === 'ANSWERED' ? 'تم الرد' : 'قيد الانتظار'}
-                  </span>
-                  <span className="text-slate-400 font-mono text-[10px]">
-                    {recentConsultation.createdAt.split('T')[0]}
-                  </span>
-                </div>
+            {consultations.length > 0 ? (
+              <div className="space-y-3">
+                {consultations.slice(0, 2).map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => setSelectedConsultation(c)}
+                    className="p-4 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 text-xs space-y-2.5 transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        c.status === 'ANSWERED'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : 'bg-amber-100 text-amber-800 border border-amber-200'
+                      }`}>
+                        {c.status === 'ANSWERED' ? 'تم الرد من الطبيب ✓' : 'قيد المراجعة الطبية'}
+                      </span>
+                      <span className="text-slate-400 font-mono text-[10px]">
+                        {c.createdAt ? new Date(c.createdAt).toLocaleDateString('ar-SA') : ''}
+                      </span>
+                    </div>
 
-                <div>
-                  <strong className="block text-slate-900 text-xs sm:text-sm mb-0.5">
-                    {recentConsultation.title}
-                  </strong>
-                  <p className="text-slate-500 text-xs">مع {recentConsultation.doctorName}</p>
-                </div>
+                    <div>
+                      <strong className="block text-slate-900 text-xs sm:text-sm font-bold group-hover:text-cyan-800 transition-colors">
+                        {c.title}
+                      </strong>
+                      <p className="text-slate-500 text-xs">مع {c.doctorName || 'طبيب العيادة'}</p>
+                    </div>
 
-                {recentConsultation.doctorAdvice ? (
-                  <div className="p-3 rounded-lg bg-emerald-50/80 border border-emerald-200 text-emerald-950 text-xs leading-relaxed">
-                    <strong className="block text-emerald-900 mb-0.5">توجيه الطبيب:</strong>
-                    {recentConsultation.doctorAdvice}
+                    {c.doctorAdvice ? (
+                      <div className="p-3 rounded-lg bg-emerald-50/90 border border-emerald-200 text-emerald-950 text-xs leading-relaxed">
+                        <div className="flex items-center justify-between mb-1">
+                          <strong className="text-emerald-900 font-bold">توجيه الطبيب:</strong>
+                          <span className="text-[10px] text-emerald-700 font-medium">انقر لعرض التفاصيل الكاملة</span>
+                        </div>
+                        <p className="line-clamp-2 text-[11px] text-emerald-900">{c.doctorAdvice}</p>
+                      </div>
+                    ) : (
+                      <div className="p-2.5 rounded-lg bg-amber-50 text-amber-800 text-[11px]">
+                        استشارتك قيد المراجعة لدى الطبيب المختص وسيصلك إشعار بالرد فور اعتماده.
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="p-3 rounded-lg bg-amber-50 text-amber-800 text-xs">
-                    استشارتك قيد المراجعة لدى الطبيب المختص وسيصلك إشعار بالرد.
-                  </div>
-                )}
+                ))}
               </div>
             ) : (
               <div className="text-center py-6 text-slate-400 text-xs">
-                لا توجد استشارات سابقة.
+                لا توجد استشارات سابقة. اضغط على "+ استشارة جديدة" للبدء.
               </div>
             )}
           </div>
@@ -570,6 +596,206 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
         onClose={() => setSelectedPrescription(null)}
         prescription={selectedPrescription}
       />
+
+      {/* Consultation Details Modal */}
+      {selectedConsultation && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200 text-start">
+            <div className="p-5 bg-gradient-to-r from-cyan-800 to-blue-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                  <MessageSquare className="w-5 h-5 text-cyan-200" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base">{selectedConsultation.title}</h3>
+                  <p className="text-xs text-cyan-100">
+                    مع {selectedConsultation.doctorName} • {selectedConsultation.doctorSpecialty || 'العيادة التخصصية'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedConsultation(null)}
+                className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto text-xs sm:text-sm">
+              {/* Status Header */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500 text-xs">حالة الاستشارة:</span>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                    selectedConsultation.status === 'ANSWERED'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      : 'bg-amber-100 text-amber-800 border border-amber-200'
+                  }`}>
+                    {selectedConsultation.status === 'ANSWERED' ? 'تم الرد من الطبيب المعالج ✓' : 'قيد المراجعة السريرية'}
+                  </span>
+                </div>
+                <span className="text-slate-400 font-mono text-xs">
+                  {selectedConsultation.createdAt ? new Date(selectedConsultation.createdAt).toLocaleDateString('ar-SA') : ''}
+                </span>
+              </div>
+
+              {/* Patient Query & Symptoms */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <strong className="block text-slate-900 font-bold text-xs">وصف المشكلة والأعراض المقدمة من طرفك:</strong>
+                <p className="text-xs text-slate-700 leading-relaxed bg-white p-3 rounded-xl border border-slate-200">
+                  {selectedConsultation.problemDescription}
+                </p>
+                {selectedConsultation.symptoms && selectedConsultation.symptoms.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {selectedConsultation.symptoms.map((s, idx) => (
+                      <span key={idx} className="px-2 py-0.5 rounded-md bg-cyan-50 text-cyan-800 text-[11px] font-medium border border-cyan-100">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Doctor Clinical Response */}
+              {selectedConsultation.doctorAdvice ? (
+                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-emerald-950 font-bold text-xs sm:text-sm">
+                      <Sparkles className="w-4 h-4 text-emerald-600" />
+                      <span>توجيه الطبيب والاستشارة السريرية:</span>
+                    </div>
+                    {selectedConsultation.answeredAt && (
+                      <span className="text-[11px] text-emerald-700 font-mono">
+                        {new Date(selectedConsultation.answeredAt).toLocaleDateString('ar-SA')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-white text-emerald-950 text-xs sm:text-sm leading-relaxed border border-emerald-200 shadow-xs">
+                    {selectedConsultation.doctorAdvice}
+                  </div>
+
+                  {selectedConsultation.treatmentPlan && (
+                    <div className="pt-2 border-t border-emerald-200/60">
+                      <strong className="block text-emerald-900 font-bold text-xs mb-1">الخطة العلاجية والتوصيات:</strong>
+                      <p className="text-xs text-emerald-900 leading-relaxed bg-emerald-100/60 p-2.5 rounded-lg">
+                        {selectedConsultation.treatmentPlan}
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedConsultation.requireInPersonVisit && (
+                    <div className="p-3 rounded-xl bg-amber-100/80 border border-amber-300 text-amber-950 flex items-center gap-2 text-xs font-bold">
+                      <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                      <span>يوصي الطبيب بحجز موعد حضوري في العيادة لإجراء فحص سريري مباشر.</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs text-center space-y-1">
+                  <p className="font-bold">استشارتك قيد المعاينة والمراجعة الطبية</p>
+                  <p className="text-amber-700 text-[11px]">سيتم تحديث هذه الصفحة فور قيام الطبيب بإدخال التوجيه الطبي والعلاجي.</p>
+                </div>
+              )}
+
+              <div className="pt-3 border-t border-slate-200 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setSelectedConsultation(null)}
+                  className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm"
+                >
+                  إغلاق
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* All Consultations Modal */}
+      {showAllConsultationsModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200 text-start">
+            <div className="p-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                  <MessageSquare className="w-5 h-5 text-cyan-300" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base">سجل الاستشارات الطبية</h3>
+                  <p className="text-xs text-slate-300">كافة استشاراتك المسجلة والردود السريرية المعتمدة</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAllConsultationsModal(false)}
+                className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
+              {consultations.length > 0 ? (
+                consultations.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => {
+                      setShowAllConsultationsModal(false);
+                      setSelectedConsultation(c);
+                    }}
+                    className="p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs space-y-2 cursor-pointer transition-all"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        c.status === 'ANSWERED'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : 'bg-amber-100 text-amber-800 border border-amber-200'
+                      }`}>
+                        {c.status === 'ANSWERED' ? 'تم الرد من الطبيب ✓' : 'قيد الانتظار'}
+                      </span>
+                      <span className="text-slate-400 font-mono text-[11px]">
+                        {c.createdAt ? new Date(c.createdAt).toLocaleDateString('ar-SA') : ''}
+                      </span>
+                    </div>
+
+                    <strong className="block text-slate-900 text-sm font-bold">{c.title}</strong>
+                    <p className="text-slate-500 text-xs">مع الطبيب: {c.doctorName || 'طبيب العيادة'}</p>
+
+                    {c.doctorAdvice && (
+                      <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-950 text-xs line-clamp-2 border border-emerald-100">
+                        <strong className="text-emerald-900">الرد: </strong>{c.doctorAdvice}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-slate-400 text-xs">
+                  لا توجد استشارات سابقة.
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAllConsultationsModal(false);
+                  onOpenConsultation();
+                }}
+                className="px-4 py-2 rounded-xl bg-cyan-700 hover:bg-cyan-800 text-white font-bold text-xs cursor-pointer shadow-sm"
+              >
+                + استشارة جديدة
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAllConsultationsModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs cursor-pointer hover:bg-slate-100"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reminder Settings Modal */}
       {isReminderSettingsOpen && (
