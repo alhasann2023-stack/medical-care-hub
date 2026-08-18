@@ -17,13 +17,17 @@ interface CreatePrescriptionModalProps {
   onClose: () => void;
   onSuccess: () => void;
   targetPatientId?: string;
+  targetPatientName?: string;
+  targetPatientMrn?: string;
 }
 
 export const CreatePrescriptionModal: React.FC<CreatePrescriptionModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  targetPatientId
+  targetPatientId,
+  targetPatientName,
+  targetPatientMrn
 }) => {
   const { doctorProfile, user } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -49,14 +53,38 @@ export const CreatePrescriptionModal: React.FC<CreatePrescriptionModalProps> = (
   useEffect(() => {
     if (isOpen) {
       setError(null);
+      if (targetPatientId) {
+        setSelectedPatientId(targetPatientId);
+      }
       api.getPatients().then(pts => {
-        setPatients(pts);
-        if (!selectedPatientId && pts.length > 0) {
-          setSelectedPatientId(targetPatientId || pts[0].id);
+        let list = [...pts];
+        if (targetPatientId && !list.some(p => p.id === targetPatientId)) {
+          list.unshift({
+            id: targetPatientId,
+            userId: targetPatientId,
+            fullName: targetPatientName || 'المريض المحدد',
+            mrn: targetPatientMrn || 'MRN-2026',
+            phone: '+966501112233',
+            email: 'patient@medicalcarehub.com',
+            birthDate: '1992-05-14',
+            gender: 'MALE',
+            bloodType: 'O+',
+            allergies: [],
+            chronicDiseases: [],
+            address: 'المملكة العربية السعودية',
+            emergencyContact: { name: 'جهة الاتصال', phone: '+966509998877', relation: 'قريب' },
+            createdAt: new Date().toISOString()
+          });
+        }
+        setPatients(list);
+        if (targetPatientId) {
+          setSelectedPatientId(targetPatientId);
+        } else if (!selectedPatientId && list.length > 0) {
+          setSelectedPatientId(list[0].id);
         }
       });
     }
-  }, [isOpen, targetPatientId]);
+  }, [isOpen, targetPatientId, targetPatientName, targetPatientMrn]);
 
   if (!isOpen) return null;
 
@@ -99,9 +127,14 @@ export const CreatePrescriptionModal: React.FC<CreatePrescriptionModalProps> = (
     setError(null);
 
     try {
+      const selectedPatient = patients.find(p => p.id === selectedPatientId);
       await api.createPrescription({
         patientId: selectedPatientId,
+        patientName: selectedPatient?.fullName || targetPatientName || 'المريض',
+        patientMrn: selectedPatient?.mrn || targetPatientMrn,
         doctorId: doctorProfile?.id || user?.id || 'doc-1',
+        doctorName: doctorProfile?.fullName || user?.fullName || 'الطبيب الاستشاري',
+        doctorSpecialty: doctorProfile?.specialtyNameAr,
         diagnosis,
         instructions,
         medications

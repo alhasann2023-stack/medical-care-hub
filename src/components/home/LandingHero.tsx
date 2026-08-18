@@ -51,7 +51,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             <span>المنصة الطبية الذكية والمتكاملة لإدارة الرعاية الصحية</span>
           </div>
 
-          <h1 className="text-1xl sm:text-1xl lg:text-1xl font-black tracking-tight leading-tight sm:leading-snug">
+          <h1 className="text-1xl sm:text-1xl lg:text-xl font-black tracking-tight leading-tight sm:leading-snug">
             رعايتك الصحية واستشاراتك الطبية <br className="hidden sm:inline" />
             <span className="bg-gradient-to-r from-cyan-300 via-blue-200 to-white bg-clip-text text-transparent">
               بأعلى معايير الدقة والسرعة

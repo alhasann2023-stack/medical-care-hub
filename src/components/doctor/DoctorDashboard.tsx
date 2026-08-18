@@ -45,7 +45,7 @@ export const DoctorDashboard: React.FC = () => {
   const [selectedConsultationForReply, setSelectedConsultationForReply] = useState<Consultation | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
   const [isPrescriptionModalOpen, setIsPrescriptionModalOpen] = useState<boolean>(false);
-  const [targetPatientForAction, setTargetPatientForAction] = useState<string>('pat-1');
+  const [targetPatientInfo, setTargetPatientInfo] = useState<{ id: string; name?: string; mrn?: string }>({ id: 'pat-1' });
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -184,7 +184,7 @@ export const DoctorDashboard: React.FC = () => {
 
           <button
             onClick={() => {
-              setTargetPatientForAction('pat-1');
+              setTargetPatientInfo({ id: 'pat-1', name: 'سارة خالد المنصور', mrn: 'MRN-2026-8801' });
               setIsPrescriptionModalOpen(true);
             }}
             className="px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs sm:text-sm transition-all shadow-md shadow-teal-500/20 flex items-center gap-2 cursor-pointer"
@@ -194,7 +194,7 @@ export const DoctorDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => {
-              setTargetPatientForAction('pat-1');
+              setTargetPatientInfo({ id: 'pat-1', name: 'سارة خالد المنصور', mrn: 'MRN-2026-8801' });
               setIsReportModalOpen(true);
             }}
             className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-emerald-900 font-bold text-xs sm:text-sm transition-all shadow-md shadow-black/10 flex items-center gap-2 cursor-pointer"
@@ -439,7 +439,11 @@ export const DoctorDashboard: React.FC = () => {
                       </button>
                       <button
                         onClick={() => {
-                          setTargetPatientForAction(apt.patientId);
+                          setTargetPatientInfo({
+                            id: apt.patientId,
+                            name: apt.patientName,
+                            mrn: apt.patientMrn
+                          });
                           setIsPrescriptionModalOpen(true);
                         }}
                         className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 cursor-pointer"
@@ -449,7 +453,11 @@ export const DoctorDashboard: React.FC = () => {
                       </button>
                       <button
                         onClick={() => {
-                          setTargetPatientForAction(apt.patientId);
+                          setTargetPatientInfo({
+                            id: apt.patientId,
+                            name: apt.patientName,
+                            mrn: apt.patientMrn
+                          });
                           setIsReportModalOpen(true);
                         }}
                         className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold hover:bg-purple-100 cursor-pointer"
@@ -516,7 +524,11 @@ export const DoctorDashboard: React.FC = () => {
                   </button>
                   <button
                     onClick={() => {
-                      setTargetPatientForAction(p.id);
+                      setTargetPatientInfo({
+                        id: p.id,
+                        name: p.fullName,
+                        mrn: p.mrn
+                      });
                       setIsPrescriptionModalOpen(true);
                     }}
                     className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
@@ -526,7 +538,11 @@ export const DoctorDashboard: React.FC = () => {
                   </button>
                   <button
                     onClick={() => {
-                      setTargetPatientForAction(p.id);
+                      setTargetPatientInfo({
+                        id: p.id,
+                        name: p.fullName,
+                        mrn: p.mrn
+                      });
                       setIsReportModalOpen(true);
                     }}
                     className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
@@ -581,14 +597,18 @@ export const DoctorDashboard: React.FC = () => {
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         onSuccess={loadDoctorData}
-        targetPatientId={targetPatientForAction}
+        targetPatientId={targetPatientInfo.id}
+        targetPatientName={targetPatientInfo.name}
+        targetPatientMrn={targetPatientInfo.mrn}
       />
 
       <CreatePrescriptionModal
         isOpen={isPrescriptionModalOpen}
         onClose={() => setIsPrescriptionModalOpen(false)}
         onSuccess={loadDoctorData}
-        targetPatientId={targetPatientForAction}
+        targetPatientId={targetPatientInfo.id}
+        targetPatientName={targetPatientInfo.name}
+        targetPatientMrn={targetPatientInfo.mrn}
       />
     </div>
   );
