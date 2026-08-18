@@ -235,9 +235,18 @@ const MainAppContent: React.FC = () => {
           </div>
         )}
 
-        {/* Doctor Portal View */}
+        {/* Doctor Portal Views */}
         {currentView === 'doctor_dashboard' && (
-          <DoctorDashboard />
+          <DoctorDashboard initialTab="CONSULTATIONS" />
+        )}
+        {currentView === 'doctor_patients' && (
+          <DoctorDashboard initialTab="PATIENTS" />
+        )}
+        {currentView === 'doctor_appointments' && (
+          <DoctorDashboard initialTab="APPOINTMENTS" />
+        )}
+        {currentView === 'doctor_timeline' && (
+          <DoctorDashboard initialTab="TIMELINE" />
         )}
 
         {/* Customer Service View */}

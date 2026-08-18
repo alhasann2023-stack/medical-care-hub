@@ -877,7 +877,13 @@ export const api = {
   },
 
   // Consultations
-  getConsultations: async (filter?: { patientId?: string; doctorId?: string; status?: string }) => {
+  getConsultations: async (filter?: { 
+    patientId?: string; 
+    patientUserId?: string;
+    patientPhone?: string;
+    doctorId?: string; 
+    status?: string 
+  }) => {
     try {
       const params = new URLSearchParams();
       if (filter?.patientId) params.append('patientId', filter.patientId);
@@ -969,13 +975,14 @@ export const api = {
     treatmentPlan?: string;
     requireInPersonVisit?: boolean;
   }) => {
+    let savedConsultation: Consultation | null = null;
     try {
       const res = await fetchJson<Consultation>(`/api/consultations/${id}/reply`, {
         method: 'POST',
         body: JSON.stringify(data)
       });
       await firebaseDb.saveConsultation(res);
-      return res;
+      savedConsultation = res;
     } catch (err) {
       console.warn('API replyConsultation fallback to Firestore direct save:', err);
       const existing = await firebaseDb.getDocument<Consultation>(FIRESTORE_COLLECTIONS.CONSULTATIONS, id);
@@ -1024,8 +1031,29 @@ export const api = {
       ];
 
       await firebaseDb.saveConsultation(updated);
-      return updated;
+      savedConsultation = updated;
     }
+
+    // Push real-time notification for patient
+    if (savedConsultation) {
+      try {
+        await firebaseDb.saveNotification({
+          id: `notif-${Date.now()}`,
+          userId: savedConsultation.patientId,
+          title: 'رد الطبيب الاستشاري على استشارتك الطبية',
+          message: `قام ${savedConsultation.doctorName} بالرد على استشارتك: "${savedConsultation.title}". يمكنك الاطلاع على التوجيه الطبي والخطة العلاجية الآن في حسابك.`,
+          type: 'CONSULTATION',
+          isRead: false,
+          referenceId: savedConsultation.id,
+          relatedId: savedConsultation.id,
+          createdAt: new Date().toISOString()
+        });
+      } catch (e) {
+        console.warn('Could not save notification to Firestore:', e);
+      }
+    }
+
+    return savedConsultation!;
   },
 
   addConsultationMessage: async (id: string, data: {
@@ -1621,7 +1649,7 @@ export const api = {
   subscribeUser: (uid: string, callback: (u: User | null) => void) => subscribeToUser(uid, callback),
   subscribeDoctors: (callback: (docs: Doctor[]) => void, options?: { specialtyId?: string; activeOnly?: boolean }) => subscribeToDoctors(callback, options),
   subscribeAppointments: (filter: { patientId?: string; doctorId?: string; status?: string }, callback: (apts: Appointment[]) => void) => subscribeToAppointments(filter, callback),
-  subscribeConsultations: (filter: { patientId?: string; doctorId?: string; status?: string }, callback: (cns: Consultation[]) => void) => subscribeToConsultations(filter, callback),
+  subscribeConsultations: (filter: { patientId?: string; patientUserId?: string; patientPhone?: string; doctorId?: string; status?: string }, callback: (cns: Consultation[]) => void) => subscribeToConsultations(filter, callback),
   subscribeNotifications: (userId: string, callback: (n: AppNotification[]) => void) => subscribeToNotifications(userId, callback)
 };
 

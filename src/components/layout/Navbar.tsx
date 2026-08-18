@@ -185,12 +185,40 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
 
             {role === 'DOCTOR' && (
-              <button
-                onClick={() => setCurrentView('doctor_dashboard')}
-                className="px-3 py-2 rounded-lg text-emerald-700 bg-emerald-50/80 font-bold"
-              >
-                عيادة الطبيب واستشاراته
-              </button>
+              <>
+                <button
+                  onClick={() => setCurrentView('doctor_dashboard')}
+                  className={`px-3 py-2 rounded-lg transition-colors cursor-pointer ${
+                    currentView === 'doctor_dashboard' ? 'text-emerald-700 bg-emerald-50/90 font-bold' : 'hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  العيادة والاستشارات
+                </button>
+                <button
+                  onClick={() => setCurrentView('doctor_patients')}
+                  className={`px-3 py-2 rounded-lg transition-colors cursor-pointer ${
+                    currentView === 'doctor_patients' ? 'text-emerald-700 bg-emerald-50/90 font-bold' : 'hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  ملفات وسجلات المرضى
+                </button>
+                <button
+                  onClick={() => setCurrentView('doctor_appointments')}
+                  className={`px-3 py-2 rounded-lg transition-colors cursor-pointer ${
+                    currentView === 'doctor_appointments' ? 'text-emerald-700 bg-emerald-50/90 font-bold' : 'hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  جدول المواعيد
+                </button>
+                <button
+                  onClick={() => setCurrentView('doctor_timeline')}
+                  className={`px-3 py-2 rounded-lg transition-colors cursor-pointer ${
+                    currentView === 'doctor_timeline' ? 'text-emerald-700 bg-emerald-50/90 font-bold' : 'hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  السجل الطبي الزمني
+                </button>
+              </>
             )}
 
             {role === 'CUSTOMER_SERVICE' && (
@@ -397,12 +425,40 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {role === 'DOCTOR' && (
-            <button
-              onClick={() => { setCurrentView('doctor_dashboard'); setIsMobileMenuOpen(false); }}
-              className="w-full text-start px-3 py-2 rounded-md text-sm font-medium text-emerald-700 bg-emerald-50 font-bold"
-            >
-              لوحة الطبيب والاستشارات
-            </button>
+            <div className="space-y-1">
+              <button
+                onClick={() => { setCurrentView('doctor_dashboard'); setIsMobileMenuOpen(false); }}
+                className={`w-full text-start px-3 py-2 rounded-lg text-sm font-bold ${
+                  currentView === 'doctor_dashboard' ? 'text-emerald-800 bg-emerald-100' : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                العيادة والاستشارات
+              </button>
+              <button
+                onClick={() => { setCurrentView('doctor_patients'); setIsMobileMenuOpen(false); }}
+                className={`w-full text-start px-3 py-2 rounded-lg text-sm font-bold ${
+                  currentView === 'doctor_patients' ? 'text-emerald-800 bg-emerald-100' : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                ملفات وسجلات المرضى
+              </button>
+              <button
+                onClick={() => { setCurrentView('doctor_appointments'); setIsMobileMenuOpen(false); }}
+                className={`w-full text-start px-3 py-2 rounded-lg text-sm font-bold ${
+                  currentView === 'doctor_appointments' ? 'text-emerald-800 bg-emerald-100' : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                جدول المواعيد
+              </button>
+              <button
+                onClick={() => { setCurrentView('doctor_timeline'); setIsMobileMenuOpen(false); }}
+                className={`w-full text-start px-3 py-2 rounded-lg text-sm font-bold ${
+                  currentView === 'doctor_timeline' ? 'text-emerald-800 bg-emerald-100' : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                السجل الطبي الزمني
+              </button>
+            </div>
           )}
 
           {role === 'CUSTOMER_SERVICE' && (

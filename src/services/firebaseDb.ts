@@ -89,19 +89,29 @@ export const firebaseDb = {
   },
 
   // Document Operations
-  saveDocument: async (collectionName: string, docId: string, data: any) => {
-    try {
-      const docRef = doc(db, collectionName, docId);
-      await setDoc(docRef, {
-        ...data,
+saveDocument: async (collectionName: string, docId: string, data: any) => {
+  try {
+    const docRef = doc(db, collectionName, docId);
+
+    const cleanData = Object.fromEntries(
+      Object.entries(data).filter(([_, value]) => value !== undefined)
+    );
+
+    await setDoc(
+      docRef,
+      {
+        ...cleanData,
         updatedAt: new Date().toISOString()
-      }, { merge: true });
-      return true;
-    } catch (error) {
-      console.warn(`Firestore save error in ${collectionName}:`, error);
-      return false;
-    }
-  },
+      },
+      { merge: true }
+    );
+
+    return true;
+  } catch (error) {
+    console.error(`Firestore save error in ${collectionName}:`, error);
+    return false;
+  }
+},
 
   deleteDocument: async (collectionName: string, docId: string) => {
     try {
