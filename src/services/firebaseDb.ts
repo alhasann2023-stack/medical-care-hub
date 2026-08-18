@@ -66,6 +66,7 @@ import {
   INITIAL_USERS,
   INITIAL_PATIENTS,
   INITIAL_DOCTORS,
+  INITIAL_STAFF,
   INITIAL_SPECIALTIES,
   INITIAL_SERVICES
 } from '../data/seedData';
@@ -258,6 +259,14 @@ export const firebaseDb = {
       if (existingPatients.length === 0) {
         for (const pat of INITIAL_PATIENTS) {
           await firebaseDb.savePatient(pat);
+        }
+      }
+
+      // 6. Check & Seed Default Staff
+      const existingStaff = await fetchDocsWithFilter<Staff>(COLLECTIONS.STAFF);
+      if (existingStaff.length === 0) {
+        for (const stf of INITIAL_STAFF) {
+          await firebaseDb.saveStaff(stf);
         }
       }
 

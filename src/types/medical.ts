@@ -94,6 +94,7 @@ export interface Staff {
   avatar?: string;
   isActive: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Specialty {
@@ -334,6 +335,7 @@ export interface AppNotification {
   type: 'APPOINTMENT' | 'CONSULTATION' | 'TEST_RESULT' | 'REPORT' | 'SYSTEM';
   isRead: boolean;
   relatedId?: string;
+  referenceId?: string;
   actionUrl?: string;
   createdAt: string;
 }
@@ -344,11 +346,14 @@ export interface AuditLog {
   userName: string;
   userRole: UserRole;
   action: string;
-  entityType: string;
-  entityId: string;
+  entityType?: string;
+  entityId?: string;
+  targetEntity?: string;
+  targetId?: string;
   details: string;
   ipAddress: string;
-  timestamp: string;
+  timestamp?: string;
+  createdAt?: string;
 }
 
 export interface DashboardStats {

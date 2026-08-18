@@ -347,7 +347,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </button>
 
               {/* Admin quick login info */}
-
+              <div className="pt-4 border-t border-slate-100">
+                <div
+                  onClick={() => handleQuickFill('alhasann2023@gmail.com')}
+                  className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100/70 text-start text-xs transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-amber-900 block">alhasann2023@gmail.com</span>
+                    <span className="px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 font-bold text-[10px]">المدير العام والمسؤول</span>
+                  </div>
+                  <span className="text-amber-800 text-[11px] mt-0.5 block">حساب المشرف العام لإدارة المستشفى والصلاحيات</span>
+                </div>
+              </div>
             </form>
           )}
 
@@ -372,7 +383,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2">
                 <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <span>
-                  <strong>تنويه للأطباء والاستشاريين:</strong> حسابات الأطباء والاستشاريين وموظفي خدمة العملاء يتم إنشاؤها ومنح صلاحياتها حصراً عبر لوحة الإدارة من قبل المشرف العام للموقع (<span className="font-mono font-bold"></span>).
+                  <strong>تنويه للأطباء والاستشاريين:</strong> حسابات الأطباء والاستشاريين وموظفي خدمة العملاء يتم إنشاؤها ومنح صلاحياتها حصراً عبر لوحة الإدارة من قبل المشرف العام للموقع (<span className="font-mono font-bold">alhasann2023@gmail.com</span>).
                 </span>
               </div>
 
