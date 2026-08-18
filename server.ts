@@ -182,7 +182,7 @@ function getGeminiAI(): GoogleGenAI | null {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = 3024;
 
   // Enable CORS for Android WebViews, hybrid apps, and cross-origin requests
   app.use((req: Request, res: Response, next) => {

@@ -67,46 +67,50 @@ const MainAppContent: React.FC = () => {
   // Load live notifications and trigger toast & sound on new incoming items
   useEffect(() => {
     let isInitialLoad = true;
+    const queryId = user?.id || patientProfile?.id || 'pat-1';
 
-    const fetchNotifs = async () => {
-      try {
-        const queryId = user?.id || patientProfile?.id || 'pat-1';
-        const list = await api.getNotifications(queryId);
+    const handleNotificationsUpdate = (list: AppNotification[]) => {
+      setNotifications(list || []);
 
-        setNotifications(list);
+      if (list && list.length > 0) {
+        setKnownNotifIds(prevKnown => {
+          const newlyArrived = list.filter(n => !prevKnown.has(n.id) && !n.isRead);
 
-        if (list && list.length > 0) {
-          // Check for new notifications
-          setKnownNotifIds(prevKnown => {
-            const newlyArrived = list.filter(n => !prevKnown.has(n.id) && !n.isRead);
-
-            if (!isInitialLoad && newlyArrived.length > 0) {
-              playNotificationSound();
-              newlyArrived.slice(0, 2).forEach(item => {
-                addToast({
-                  title: item.title,
-                  message: item.message,
-                  type: item.type,
-                  relatedId: item.relatedId
-                });
+          if (!isInitialLoad && newlyArrived.length > 0) {
+            playNotificationSound();
+            newlyArrived.slice(0, 2).forEach(item => {
+              addToast({
+                title: item.title,
+                message: item.message,
+                type: item.type,
+                relatedId: item.relatedId
               });
-            }
+            });
+          }
 
-            const updatedSet = new Set(prevKnown);
-            list.forEach(n => updatedSet.add(n.id));
-            return updatedSet;
-          });
-        }
-        isInitialLoad = false;
-      } catch (err) {
-        console.error('Failed to load notifications:', err);
+          const updatedSet = new Set(prevKnown);
+          list.forEach(n => updatedSet.add(n.id));
+          return updatedSet;
+        });
       }
+      isInitialLoad = false;
     };
 
-    fetchNotifs();
-    // Fast 4-second polling for responsive real-time notification alerts
-    const timer = setInterval(fetchNotifs, 4000);
-    return () => clearInterval(timer);
+    // Initial fetch
+    api.getNotifications(queryId).then(handleNotificationsUpdate).catch(err => {
+      console.warn('Initial notifications load warning:', err);
+    });
+
+    // Real-time Firestore subscription
+    const unsubscribe = api.subscribeNotifications(queryId, (liveList) => {
+      if (liveList && liveList.length >= 0) {
+        handleNotificationsUpdate(liveList);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, [user?.id, patientProfile?.id]);
 
   const handleMarkRead = async (id: string) => {
