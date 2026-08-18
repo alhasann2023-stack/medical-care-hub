@@ -287,12 +287,33 @@ export async function getAppointmentsWithFilter(filter?: { patientId?: string; d
 /**
  * Retrieve consultations with filter constraints
  */
-export async function getConsultationsWithFilter(filter?: { patientId?: string; doctorId?: string; status?: string }): Promise<Consultation[]> {
+export async function getConsultationsWithFilter(filter?: { 
+  patientId?: string; 
+  patientUserId?: string;
+  patientPhone?: string;
+  doctorId?: string; 
+  status?: string 
+}): Promise<Consultation[]> {
   try {
     const all = await fetchDocsWithFilter<Consultation>(FIRESTORE_COLLECTIONS.CONSULTATIONS);
     let list = all;
-    if (filter?.patientId) {
-      list = list.filter(c => c.patientId === filter.patientId || (c as any).patientUserId === filter.patientId || c.patientPhone === filter.patientId);
+    if (filter?.patientId || filter?.patientUserId || filter?.patientPhone) {
+      const pId = (filter.patientId || '').toLowerCase().trim();
+      const pUserId = (filter.patientUserId || '').toLowerCase().trim();
+      const pPhone = (filter.patientPhone || '').replace(/\D/g, '');
+
+      list = list.filter(c => {
+        const cPatId = (c.patientId || '').toLowerCase().trim();
+        const cPatUserId = ((c as any).patientUserId || '').toLowerCase().trim();
+        const cPhone = (c.patientPhone || '').replace(/\D/g, '');
+
+        if (pId && (cPatId === pId || cPatUserId === pId)) return true;
+        if (pUserId && (cPatId === pUserId || cPatUserId === pUserId)) return true;
+        if (pPhone && cPhone && (cPhone.includes(pPhone) || pPhone.includes(cPhone))) return true;
+        // Demo patient fallback matching
+        if ((pId === 'pat-1' || pUserId === 'usr-pat-1') && (cPatId === 'pat-1' || cPatId === 'usr-pat-1')) return true;
+        return false;
+      });
     }
     if (filter?.doctorId) {
       list = list.filter(c => c.doctorId === filter.doctorId || (c as any).doctorUserId === filter.doctorId);
@@ -419,15 +440,36 @@ export function subscribeToAppointments(
  * Realtime subscription to consultations
  */
 export function subscribeToConsultations(
-  filter: { patientId?: string; doctorId?: string; status?: string },
+  filter: { 
+    patientId?: string; 
+    patientUserId?: string;
+    patientPhone?: string;
+    doctorId?: string; 
+    status?: string 
+  },
   callback: (cns: Consultation[]) => void
 ): Unsubscribe {
   return subscribeToCollection<Consultation>(
     FIRESTORE_COLLECTIONS.CONSULTATIONS,
     (allItems) => {
       let list = allItems;
-      if (filter.patientId) {
-        list = list.filter(c => c.patientId === filter.patientId || (c as any).patientUserId === filter.patientId || c.patientPhone === filter.patientId);
+      if (filter.patientId || filter.patientUserId || filter.patientPhone) {
+        const pId = (filter.patientId || '').toLowerCase().trim();
+        const pUserId = (filter.patientUserId || '').toLowerCase().trim();
+        const pPhone = (filter.patientPhone || '').replace(/\D/g, '');
+
+        list = list.filter(c => {
+          const cPatId = (c.patientId || '').toLowerCase().trim();
+          const cPatUserId = ((c as any).patientUserId || '').toLowerCase().trim();
+          const cPhone = (c.patientPhone || '').replace(/\D/g, '');
+
+          if (pId && (cPatId === pId || cPatUserId === pId)) return true;
+          if (pUserId && (cPatId === pUserId || cPatUserId === pUserId)) return true;
+          if (pPhone && cPhone && (cPhone.includes(pPhone) || pPhone.includes(cPhone))) return true;
+          // Demo patient fallback matching
+          if ((pId === 'pat-1' || pUserId === 'usr-pat-1') && (cPatId === 'pat-1' || cPatId === 'usr-pat-1')) return true;
+          return false;
+        });
       }
       if (filter.doctorId) {
         list = list.filter(c => c.doctorId === filter.doctorId || (c as any).doctorUserId === filter.doctorId);

@@ -20,7 +20,9 @@ import {
   Bell,
   Volume2,
   Settings,
-  Trash2
+  Trash2,
+  Stethoscope,
+  CheckCheck
 } from 'lucide-react';
 import { 
   Patient, 
@@ -88,7 +90,11 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
       }
     });
 
-    const unsubCns = api.subscribeConsultations({ patientId }, (liveCns) => {
+    const unsubCns = api.subscribeConsultations({ 
+      patientId,
+      patientUserId: user?.id,
+      patientPhone: patientProfile?.phone || user?.phone
+    }, (liveCns) => {
       if (liveCns) {
         setConsultations(liveCns);
         checkForReminders(appointments, liveCns, doctorsList);
@@ -105,7 +111,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
       unsubCns();
       clearInterval(interval);
     };
-  }, [patientId]);
+  }, [patientId, user?.id, patientProfile?.phone, user?.phone]);
 
   const checkForReminders = (apts: Appointment[], cns: Consultation[], docs: Doctor[] = doctorsList) => {
     const found = localReminderService.findUpcomingReminders(
@@ -189,7 +195,11 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
     try {
       const [aptRes, cnsRes, tstRes, repRes, rxRes, docsRes] = await Promise.all([
         api.getAppointments({ patientId }),
-        api.getConsultations({ patientId }),
+        api.getConsultations({ 
+          patientId,
+          patientUserId: user?.id,
+          patientPhone: patientProfile?.phone || user?.phone
+        }),
         api.getTests(patientId),
         api.getReports(patientId),
         api.getPrescriptions(patientId),
@@ -214,7 +224,15 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
     a => a.status === 'CONFIRMED' || a.status === 'NEW' || a.status === 'PENDING' || a.status === 'CONTACTED'
   );
 
-  const recentConsultation = consultations[0];
+  const answeredConsultations = consultations.filter(
+    c => c.status === 'ANSWERED' || Boolean(c.doctorAdvice)
+  );
+  const latestAnsweredConsultation = answeredConsultations[0];
+  const sortedConsultations = [
+    ...consultations.filter(c => c.status === 'ANSWERED' || Boolean(c.doctorAdvice)),
+    ...consultations.filter(c => c.status !== 'ANSWERED' && !c.doctorAdvice)
+  ];
+  const recentConsultation = sortedConsultations[0] || consultations[0];
   const activePrescription = prescriptions.find(p => p.status === 'ACTIVE') || prescriptions[0];
 
   const handleOpenReminderTarget = (reminder: ReminderItem) => {
@@ -368,8 +386,114 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
       {/* Main Grid: Upcoming Appointment & Recent Consultation */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Upcoming Appointment & Prescriptions */}
+        {/* Left 2 Cols: Answered Consultant Response, Upcoming Appointment & Prescriptions */}
         <div className="lg:col-span-2 space-y-6">
+
+          {/* Prominent Answered Consultant Response Showcase Card */}
+          {latestAnsweredConsultation && (
+            <div className="bg-gradient-to-br from-emerald-950 via-teal-900 to-slate-900 text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-emerald-500/30 relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
+              <div className="absolute -left-10 -bottom-10 w-48 h-48 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+              <div className="absolute right-1/4 -top-10 w-40 h-40 bg-teal-400/10 rounded-full blur-xl pointer-events-none"></div>
+
+              <div className="relative z-10 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-500/20 pb-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shadow-inner">
+                      <Sparkles className="w-5 h-5 text-emerald-300 animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm sm:text-base font-extrabold text-white">رد الطبيب الاستشاري المعتمد</span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-400 text-slate-950 flex items-center gap-1 shadow-sm">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-slate-950" />
+                          <span>تم اعتماد الرد ✓</span>
+                        </span>
+                      </div>
+                      <p className="text-xs text-emerald-200/80 font-medium mt-0.5">
+                        موضوع الاستشارة: <strong className="text-white">{latestAnsweredConsultation.title}</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {latestAnsweredConsultation.answeredAt && (
+                      <span className="text-[11px] text-emerald-200/70 font-mono">
+                        تاريخ الاعتماد: {new Date(latestAnsweredConsultation.answeredAt).toLocaleDateString('ar-SA')}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => setSelectedConsultation(latestAnsweredConsultation)}
+                      className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all border border-white/15 flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>عرض الاستشارة كاملة</span>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-emerald-300" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Doctor Info & Patient Query preview */}
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-3.5 rounded-2xl bg-white/5 border border-white/10 text-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-black">
+                      <Stethoscope className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-emerald-300 text-[11px] block font-semibold">الطبيب الاستشاري المجيب:</span>
+                      <strong className="text-white text-sm">{latestAnsweredConsultation.doctorName}</strong>
+                      <span className="text-emerald-200/70 text-xs block">{latestAnsweredConsultation.doctorSpecialty || 'العيادات التخصصية'}</span>
+                    </div>
+                  </div>
+
+                  {latestAnsweredConsultation.problemDescription && (
+                    <div className="bg-slate-900/60 p-2.5 rounded-xl border border-white/5 text-[11px] text-slate-300 max-w-md w-full md:w-auto">
+                      <span className="text-slate-400 block font-medium">سؤال واستفسار المريض:</span>
+                      <p className="line-clamp-2 text-slate-200 font-medium mt-0.5">{latestAnsweredConsultation.problemDescription}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Primary Clinical Advice from Consultant */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/15 border border-emerald-400/30 text-start space-y-2">
+                  <div className="flex items-center justify-between">
+                    <strong className="text-emerald-300 text-xs sm:text-sm font-black flex items-center gap-1.5">
+                      <MessageSquare className="w-4 h-4 text-emerald-400" />
+                      <span>توجيه ورأي الطبيب الاستشاري:</span>
+                    </strong>
+                  </div>
+                  <div className="text-white text-xs sm:text-sm leading-relaxed font-medium bg-slate-950/50 p-4 rounded-xl border border-emerald-400/25 shadow-inner">
+                    {latestAnsweredConsultation.doctorAdvice}
+                  </div>
+                </div>
+
+                {/* Treatment Plan if available */}
+                {latestAnsweredConsultation.treatmentPlan && (
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-xs space-y-1.5">
+                    <strong className="text-emerald-300 font-bold block">الخطة العلاجية والتوصيات:</strong>
+                    <p className="text-slate-200 leading-relaxed text-xs">
+                      {latestAnsweredConsultation.treatmentPlan}
+                    </p>
+                  </div>
+                )}
+
+                {/* In-Person Visit Recommendation */}
+                {latestAnsweredConsultation.requireInPersonVisit && (
+                  <div className="p-3.5 rounded-2xl bg-amber-500/20 border border-amber-400/30 text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+                      <span>يوصي الطبيب بحجز موعد حضوري في العيادة لمتابعة الفحص السريري المباشر.</span>
+                    </div>
+                    <button
+                      onClick={onOpenBooking}
+                      className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs transition-colors shrink-0 cursor-pointer shadow-sm"
+                    >
+                      احجز موعد عيادة الآن
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Upcoming Appointment Card */}
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between mb-4">
@@ -514,9 +638,9 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
               </div>
             </div>
 
-            {consultations.length > 0 ? (
+            {sortedConsultations.length > 0 ? (
               <div className="space-y-3">
-                {consultations.slice(0, 2).map((c) => (
+                {sortedConsultations.slice(0, 3).map((c) => (
                   <div
                     key={c.id}
                     onClick={() => setSelectedConsultation(c)}

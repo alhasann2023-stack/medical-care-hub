@@ -30,18 +30,25 @@ import { useAuth } from '../../context/AuthContext';
 import { ConsultationReplyModal } from './ConsultationReplyModal';
 import { CreateMedicalReportModal } from './CreateMedicalReportModal';
 import { CreatePrescriptionModal } from './CreatePrescriptionModal';
+import { PatientFileModal } from './PatientFileModal';
 import { MedicalTimeline } from '../patient/MedicalTimeline';
 
-export const DoctorDashboard: React.FC = () => {
+interface DoctorDashboardProps {
+  initialTab?: 'CONSULTATIONS' | 'APPOINTMENTS' | 'PATIENTS' | 'TIMELINE';
+}
+
+export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ initialTab = 'CONSULTATIONS' }) => {
   const { doctorProfile, user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [allDoctors, setAllDoctors] = useState<Doctor[]>([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>(doctorProfile?.id || 'doc-1');
-  const [activeTab, setActiveTab] = useState<'CONSULTATIONS' | 'APPOINTMENTS' | 'PATIENTS' | 'TIMELINE'>('CONSULTATIONS');
+  const [activeTab, setActiveTab] = useState<'CONSULTATIONS' | 'APPOINTMENTS' | 'PATIENTS' | 'TIMELINE'>(initialTab);
   
   const [selectedPatientForTimeline, setSelectedPatientForTimeline] = useState<string>('pat-1');
+  const [selectedPatientForFileModal, setSelectedPatientForFileModal] = useState<string | null>(null);
+  const [selectedPatientFileTab, setSelectedPatientFileTab] = useState<'OVERVIEW' | 'REPORTS' | 'TESTS' | 'PRESCRIPTIONS' | 'EXAMINATIONS' | 'CONSULTATIONS' | 'TIMELINE'>('OVERVIEW');
   const [selectedConsultationForReply, setSelectedConsultationForReply] = useState<Consultation | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
   const [isPrescriptionModalOpen, setIsPrescriptionModalOpen] = useState<boolean>(false);
@@ -49,6 +56,12 @@ export const DoctorDashboard: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   useEffect(() => {
     api.getDoctors(undefined, true).then(docs => {
@@ -361,12 +374,13 @@ export const DoctorDashboard: React.FC = () => {
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                   <button
                     onClick={() => {
-                      setSelectedPatientForTimeline(cns.patientId);
-                      setActiveTab('TIMELINE');
+                      setSelectedPatientForFileModal(cns.patientId);
+                      setSelectedPatientFileTab('OVERVIEW');
                     }}
-                    className="text-xs font-bold text-slate-600 hover:text-blue-600 cursor-pointer"
+                    className="text-xs font-bold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer"
                   >
-                    السجل الطبي للمريض
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>ملف المريض الشامل</span>
                   </button>
 
                   <button
@@ -402,7 +416,7 @@ export const DoctorDashboard: React.FC = () => {
                   <th className="p-3">التاريخ والوقت</th>
                   <th className="p-3">سبب الزيارة</th>
                   <th className="p-3">الحالة</th>
-                  <th className="p-3 text-center">الإجراءات</th>
+                  <th className="p-3 text-center">الإجراءات والملفات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -429,13 +443,13 @@ export const DoctorDashboard: React.FC = () => {
                     <td className="p-3 text-center space-x-1 space-x-reverse">
                       <button
                         onClick={() => {
-                          setSelectedPatientForTimeline(apt.patientId);
-                          setActiveTab('TIMELINE');
+                          setSelectedPatientForFileModal(apt.patientId);
+                          setSelectedPatientFileTab('OVERVIEW');
                         }}
                         className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 cursor-pointer"
-                        title="فتح السجل الطبي"
+                        title="فتح ملف المريض الشامل"
                       >
-                        السجل
+                        ملف المريض
                       </button>
                       <button
                         onClick={() => {
@@ -478,7 +492,7 @@ export const DoctorDashboard: React.FC = () => {
       {activeTab === 'PATIENTS' && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200">
-            <h3 className="font-extrabold text-slate-900 text-sm">دليل المرضى المسجلين بالمستشفى</h3>
+            <h3 className="font-extrabold text-slate-900 text-sm">دليل وملفات المرضى المسجلين بالمستشفى</h3>
             <div className="relative w-full sm:w-72">
               <Search className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
               <input
@@ -493,63 +507,86 @@ export const DoctorDashboard: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredPatients.map((p) => (
-              <div key={p.id} className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={p.avatar}
-                    alt={p.fullName}
-                    className="w-12 h-12 rounded-xl object-cover border border-slate-200"
-                  />
-                  <div>
-                    <h4 className="font-extrabold text-sm text-slate-900">{p.fullName}</h4>
-                    <span className="font-mono text-[11px] text-blue-700 font-bold">{p.mrn}</span>
-                    <p className="text-slate-500 text-[11px] font-mono">{p.phone}</p>
+              <div key={p.id} className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3.5 hover:border-emerald-400 transition-all flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={p.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(p.fullName)}`}
+                      alt={p.fullName}
+                      className="w-13 h-13 rounded-2xl object-cover border border-slate-200"
+                    />
+                    <div>
+                      <h4 className="font-extrabold text-sm text-slate-900">{p.fullName}</h4>
+                      <span className="font-mono text-[11px] text-blue-700 font-bold">{p.mrn}</span>
+                      <p className="text-slate-500 text-[11px] font-mono">{p.phone}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 mt-3 rounded-xl bg-slate-50 border border-slate-100 text-[11px] space-y-1.5 text-slate-700">
+                    <p><strong>فصيلة الدم:</strong> <span className="text-rose-700 font-bold">{p.bloodType}</span></p>
+<p className="truncate">
+  <strong>الأمراض المزمنة:</strong>{' '}
+  {(p.chronicDiseases ?? []).join('، ') || 'لا يوجد'}
+</p>
+
+<p className="truncate">
+  <strong>الحساسية:</strong>{' '}
+  {(p.allergies ?? []).join('، ') || 'لا يوجد'}
+</p>
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-[11px] space-y-1 text-slate-600">
-                  <p><strong>فصيلة الدم:</strong> <span className="text-rose-700 font-bold">{p.bloodType}</span></p>
-                  <p className="truncate"><strong>الأمراض المزمنة:</strong> {p.chronicDiseases.join('، ') || 'لا يوجد'}</p>
-                </div>
+                <div className="pt-2 border-t border-slate-100 space-y-2">
+                  <button
+                    onClick={() => {
+                      setSelectedPatientForFileModal(p.id);
+                      setSelectedPatientFileTab('OVERVIEW');
+                    }}
+                    className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>عرض وتصفح ملف المريض الشامل</span>
+                  </button>
 
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1">
-                  <button
-                    onClick={() => {
-                      setSelectedPatientForTimeline(p.id);
-                      setActiveTab('TIMELINE');
-                    }}
-                    className="flex-1 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs cursor-pointer"
-                  >
-                    السجل الزمني
-                  </button>
-                  <button
-                    onClick={() => {
-                      setTargetPatientInfo({
-                        id: p.id,
-                        name: p.fullName,
-                        mrn: p.mrn
-                      });
-                      setIsPrescriptionModalOpen(true);
-                    }}
-                    className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
-                    title="كتابة وصفة"
-                  >
-                    <Pill className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setTargetPatientInfo({
-                        id: p.id,
-                        name: p.fullName,
-                        mrn: p.mrn
-                      });
-                      setIsReportModalOpen(true);
-                    }}
-                    className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
-                    title="كتابة تقرير"
-                  >
-                    <FileText className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center justify-between gap-1.5">
+                    <button
+                      onClick={() => {
+                        setSelectedPatientForTimeline(p.id);
+                        setActiveTab('TIMELINE');
+                      }}
+                      className="flex-1 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
+                    >
+                      السجل الزمني
+                    </button>
+                    <button
+                      onClick={() => {
+                        setTargetPatientInfo({
+                          id: p.id,
+                          name: p.fullName,
+                          mrn: p.mrn
+                        });
+                        setIsPrescriptionModalOpen(true);
+                      }}
+                      className="p-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 cursor-pointer"
+                      title="كتابة وصفة طبية"
+                    >
+                      <Pill className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setTargetPatientInfo({
+                          id: p.id,
+                          name: p.fullName,
+                          mrn: p.mrn
+                        });
+                        setIsReportModalOpen(true);
+                      }}
+                      className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 cursor-pointer"
+                      title="كتابة تقرير معتمد"
+                    >
+                      <FileText className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -560,22 +597,36 @@ export const DoctorDashboard: React.FC = () => {
       {/* Tab 4: Patient Timeline Explorer */}
       {activeTab === 'TIMELINE' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200">
             <div className="flex items-center gap-3">
               <Activity className="w-5 h-5 text-emerald-600" />
               <h3 className="font-bold text-slate-900 text-sm">استعراض السجل الزمني للمريض</h3>
             </div>
-            <select
-              value={selectedPatientForTimeline}
-              onChange={(e) => setSelectedPatientForTimeline(e.target.value)}
-              className="px-3 py-1.5 rounded-xl border border-slate-300 bg-slate-50 text-xs font-bold text-slate-800"
-            >
-              {patients.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.fullName} ({p.mrn})
-                </option>
-              ))}
-            </select>
+            
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedPatientForTimeline}
+                onChange={(e) => setSelectedPatientForTimeline(e.target.value)}
+                className="px-3 py-1.5 rounded-xl border border-slate-300 bg-slate-50 text-xs font-bold text-slate-800"
+              >
+                {patients.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.fullName} ({p.mrn})
+                  </option>
+                ))}
+              </select>
+
+              <button
+                onClick={() => {
+                  setSelectedPatientForFileModal(selectedPatientForTimeline);
+                  setSelectedPatientFileTab('OVERVIEW');
+                }}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>فتح الملف الشامل</span>
+              </button>
+            </div>
           </div>
 
           <MedicalTimeline
@@ -586,6 +637,21 @@ export const DoctorDashboard: React.FC = () => {
       )}
 
       {/* Modals */}
+      <PatientFileModal
+        isOpen={!!selectedPatientForFileModal}
+        onClose={() => setSelectedPatientForFileModal(null)}
+        patientId={selectedPatientForFileModal || 'pat-1'}
+        initialTab={selectedPatientFileTab}
+        onOpenNewPrescription={(pat) => {
+          setTargetPatientInfo({ id: pat.id, name: pat.fullName, mrn: pat.mrn });
+          setIsPrescriptionModalOpen(true);
+        }}
+        onOpenNewReport={(pat) => {
+          setTargetPatientInfo({ id: pat.id, name: pat.fullName, mrn: pat.mrn });
+          setIsReportModalOpen(true);
+        }}
+      />
+
       <ConsultationReplyModal
         isOpen={!!selectedConsultationForReply}
         onClose={() => setSelectedConsultationForReply(null)}
