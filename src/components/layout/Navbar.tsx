@@ -96,11 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           <div className="flex items-center gap-4 text-xs text-slate-300">
-            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px]">
-              <Database className="w-3 h-3 text-emerald-400" />
-              <span>قاعدة بيانات فايربيس السحابية (Firestore)</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            </div>
+
             <span className="hidden md:inline">الرقم الموحد: 920008899</span>
             <button
               onClick={toggleLanguage}
