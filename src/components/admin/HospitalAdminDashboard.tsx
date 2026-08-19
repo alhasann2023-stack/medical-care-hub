@@ -31,7 +31,8 @@ import {
   Pencil,
   X,
   AlertCircle,
-  UserX
+  UserX,
+  Copy
 } from 'lucide-react';
 import { Doctor, MedicalService, AuditLog, Staff } from '../../types/medical';
 import { api } from '../../services/api';
@@ -93,6 +94,16 @@ export const HospitalAdminDashboard: React.FC = () => {
   const [staffRoleTitle, setStaffRoleTitle] = useState<string>('منسق خدمة عملاء وحجوزات طبية');
   const [staffDepartment, setStaffDepartment] = useState<string>('مركز خدمة وتنسيق المواعيد');
   const [staffShift, setStaffShift] = useState<string>('الفترة الصباحية (08:00 ص - 04:00 م)');
+  const [staffPassword, setStaffPassword] = useState<string>('');
+  const [showStaffPassword, setShowStaffPassword] = useState<boolean>(false);
+  const [createdStaffCredentials, setCreatedStaffCredentials] = useState<{
+    fullName: string;
+    email: string;
+    password: string;
+    roleTitle: string;
+    shift: string;
+  } | null>(null);
+  const [copiedStaffCreds, setCopiedStaffCreds] = useState<boolean>(false);
 
   // Edit Staff Modal State
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
@@ -103,6 +114,7 @@ export const HospitalAdminDashboard: React.FC = () => {
   const [editStaffDepartment, setEditStaffDepartment] = useState<string>('مركز خدمة وتنسيق المواعيد');
   const [editStaffShift, setEditStaffShift] = useState<string>('الفترة الصباحية (08:00 ص - 04:00 م)');
   const [editStaffPassword, setEditStaffPassword] = useState<string>('');
+  const [showEditStaffPassword, setShowEditStaffPassword] = useState<boolean>(false);
   const [editStaffIsActive, setEditStaffIsActive] = useState<boolean>(true);
 
   // Delete Staff Confirmation State
@@ -280,10 +292,22 @@ export const HospitalAdminDashboard: React.FC = () => {
     }
   };
 
+  const generateStaffPassword = () => {
+    const generated = `Staff@${Math.floor(1000 + Math.random() * 9000)}`;
+    setStaffPassword(generated);
+    setShowStaffPassword(true);
+  };
+
   const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!staffFullName.trim() || !staffEmail.trim()) {
-      showNotification('error', 'يرجى إدخال اسم الموظف والبريد الإلكتروني.');
+      showNotification('error', 'يرجى إدخال اسم الموظف والبريد الإلكتروني المهني.');
+      return;
+    }
+
+    const assignedPassword = staffPassword.trim() || `Staff@${Math.floor(1000 + Math.random() * 9000)}`;
+    if (assignedPassword.length < 6) {
+      showNotification('error', 'يجب ألا تقل كلمة المرور عن 6 خانات.');
       return;
     }
 
@@ -294,14 +318,26 @@ export const HospitalAdminDashboard: React.FC = () => {
         phone: staffPhone.trim() || '+966560000000',
         roleTitle: staffRoleTitle,
         department: staffDepartment,
-        shift: staffShift
+        shift: staffShift,
+        password: assignedPassword
       });
 
-      showNotification('success', `تم إنشاء حساب موظف خدمة العملاء ${staffFullName} ومنحه الصلاحيات بنجاح!`);
+      setCreatedStaffCredentials({
+        fullName: staffFullName.trim(),
+        email: staffEmail.trim(),
+        password: assignedPassword,
+        roleTitle: staffRoleTitle,
+        shift: staffShift
+      });
+      setCopiedStaffCreds(false);
+
+      showNotification('success', `تم إنشاء حساب موظف خدمة العملاء ${staffFullName} وكلمة المرور بنجاح!`);
       setIsNewStaffModalOpen(false);
       setStaffFullName('');
       setStaffEmail('');
       setStaffPhone('');
+      setStaffPassword('');
+      setShowStaffPassword(false);
       await loadAdminData();
     } catch (err: any) {
       console.error(err);
@@ -1558,7 +1594,7 @@ export const HospitalAdminDashboard: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-sm">إضافة موظف خدمة عملاء وحجوزات</h3>
-                  <p className="text-[11px] text-purple-200">منح صلاحيات تنسيق المواعيد وإدارة اتصالات المرضى</p>
+                  <p className="text-[11px] text-purple-200">منح صلاحيات تسجيل الدخول وتنسيق المواعيد والرد على المرضى</p>
                 </div>
               </div>
               <button
@@ -1582,21 +1618,66 @@ export const HospitalAdminDashboard: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">البريد الإلكتروني المهني *</label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="staff@hospital.com"
-                    value={staffEmail}
-                    onChange={(e) => setStaffEmail(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-purple-600 outline-none"
-                  />
+              {/* Login Credentials Box */}
+              <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-purple-950 font-bold text-xs">
+                    <KeyRound className="w-4 h-4 text-purple-700" />
+                    <span>بيانات اعتماد تسجيل دخول الموظف (Credentials)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={generateStaffPassword}
+                    className="px-2 py-1 rounded-lg bg-purple-100 text-purple-800 hover:bg-purple-200 font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Sparkles className="w-3 h-3 text-purple-600" />
+                    <span>توليد كلمة سر</span>
+                  </button>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">البريد الإلكتروني المهني *</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="staff@medicalcarehub.com"
+                      value={staffEmail}
+                      onChange={(e) => setStaffEmail(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white focus:border-purple-600 outline-none font-mono text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">كلمة المرور للحساب *</label>
+                    <div className="relative">
+                      <input
+                        type={showStaffPassword ? 'text' : 'password'}
+                        required
+                        placeholder="أدخل كلمة المرور (6+ خانات)"
+                        value={staffPassword}
+                        onChange={(e) => setStaffPassword(e.target.value)}
+                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-300 bg-white focus:border-purple-600 outline-none font-mono text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowStaffPassword(!showStaffPassword)}
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        title={showStaffPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                      >
+                        {showStaffPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[10px] text-purple-800 leading-relaxed">
+                  * سيتمكن موظف خدمة العملاء من استخدام هذا البريد وكلمة المرور لتسجيل الدخول إلى واجهة خدمة العملاء وتنسيق المواعيد والرد على استفسارات المرضى.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">رقم الجوال</label>
+                  <label className="block font-bold text-slate-700 mb-1">رقم الجوال المهني</label>
                   <input
                     type="tel"
                     placeholder="0561234567"
@@ -1605,9 +1686,7 @@ export const HospitalAdminDashboard: React.FC = () => {
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-purple-600 outline-none"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">المسمى الوظيفي</label>
                   <input
@@ -1617,26 +1696,26 @@ export const HospitalAdminDashboard: React.FC = () => {
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">فترة المناوبة (Shift)</label>
-                  <select
-                    value={staffShift}
-                    onChange={(e) => setStaffShift(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
-                  >
-                    <option value="الفترة الصباحية (08:00 ص - 04:00 م)">الفترة الصباحية (08:00 ص - 04:00 م)</option>
-                    <option value="الفترة المسائية (04:00 م - 12:00 ص)">الفترة المسائية (04:00 م - 12:00 ص)</option>
-                    <option value="فترة الطوارئ الليلية">فترة الطوارئ الليلية</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">فترة المناوبة (Shift)</label>
+                <select
+                  value={staffShift}
+                  onChange={(e) => setStaffShift(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
+                >
+                  <option value="الفترة الصباحية (08:00 ص - 04:00 م)">الفترة الصباحية (08:00 ص - 04:00 م)</option>
+                  <option value="الفترة المسائية (04:00 م - 12:00 ص)">الفترة المسائية (04:00 م - 12:00 ص)</option>
+                  <option value="فترة الطوارئ الليلية">فترة الطوارئ الليلية</option>
+                </select>
               </div>
 
               <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsNewStaffModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold"
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold hover:bg-slate-50 cursor-pointer"
                 >
                   إلغاء
                 </button>
@@ -1645,10 +1724,102 @@ export const HospitalAdminDashboard: React.FC = () => {
                   className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
                 >
                   <Check className="w-4 h-4" />
-                  <span>اعتماد الموظف ومنح الصلاحية</span>
+                  <span>اعتماد الموظف وتفعيل الحساب</span>
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* CREATED STAFF CREDENTIALS MODAL */}
+      {createdStaffCredentials && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-purple-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 bg-gradient-to-r from-purple-800 to-indigo-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">تم إنشاء حساب موظف خدمة العملاء بنجاح</h3>
+                  <p className="text-[11px] text-purple-200">بيانات تسجيل الدخول للوحة المواعيد</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCreatedStaffCredentials(null)}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-start">
+              <div className="p-4 rounded-2xl bg-purple-50 border border-purple-200/80 space-y-2.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-bold">اسم الموظف:</span>
+                  <span className="font-extrabold text-slate-900">{createdStaffCredentials.fullName}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-bold">المسمى الوظيفي:</span>
+                  <span className="font-bold text-purple-800">{createdStaffCredentials.roleTitle}</span>
+                </div>
+                <div className="pt-2 border-t border-purple-200/60 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500 font-bold">البريد الإلكتروني:</span>
+                    <span className="font-mono font-bold text-slate-900 bg-white px-2 py-1 rounded-lg border border-purple-100">
+                      {createdStaffCredentials.email}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500 font-bold">كلمة المرور:</span>
+                    <span className="font-mono font-black text-purple-700 bg-white px-2 py-1 rounded-lg border border-purple-100">
+                      {createdStaffCredentials.password}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-500 leading-relaxed">
+                يمكن للموظف الآن التوجه إلى شاشة تسجيل الدخول وكتابة هذا البريد وكلمة المرور للدخول المباشر إلى واجهة خدمة العملاء وتنسيق المواعيد.
+              </p>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = `بيانات الدخول إلى منصة خدمة العملاء:\nالاسم: ${createdStaffCredentials.fullName}\nالبريد الإلكتروني: ${createdStaffCredentials.email}\nكلمة المرور: ${createdStaffCredentials.password}`;
+                    navigator.clipboard.writeText(text);
+                    setCopiedStaffCreds(true);
+                    setTimeout(() => setCopiedStaffCreds(false), 2500);
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs ${
+                    copiedStaffCreds
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-purple-600 hover:bg-purple-700 text-white'
+                  }`}
+                >
+                  {copiedStaffCreds ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>تم نسخ البيانات!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>نسخ بيانات الدخول</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCreatedStaffCredentials(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs cursor-pointer"
+                >
+                  إغلاق
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1687,18 +1858,49 @@ export const HospitalAdminDashboard: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">البريد الإلكتروني المهني *</label>
-                  <input
-                    type="email"
-                    required
-                    value={editStaffEmail}
-                    onChange={(e) => setEditStaffEmail(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-indigo-600 outline-none"
-                  />
+              {/* Edit Login Credentials */}
+              <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200/80 space-y-3">
+                <div className="flex items-center gap-1.5 text-indigo-950 font-bold text-xs">
+                  <KeyRound className="w-4 h-4 text-indigo-700" />
+                  <span>تعديل بيانات الدخول (البريد وكلمة المرور)</span>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">البريد الإلكتروني المهني *</label>
+                    <input
+                      type="email"
+                      required
+                      value={editStaffEmail}
+                      onChange={(e) => setEditStaffEmail(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-600 outline-none font-mono text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">كلمة المرور الجديدة</label>
+                    <div className="relative">
+                      <input
+                        type={showEditStaffPassword ? 'text' : 'password'}
+                        placeholder="اتركها فارغة للإبقاء على الحالية"
+                        value={editStaffPassword}
+                        onChange={(e) => setEditStaffPassword(e.target.value)}
+                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-600 outline-none font-mono text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowEditStaffPassword(!showEditStaffPassword)}
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        title={showEditStaffPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                      >
+                        {showEditStaffPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">رقم الجوال</label>
                   <input
@@ -1708,9 +1910,7 @@ export const HospitalAdminDashboard: React.FC = () => {
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-indigo-600 outline-none"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">المسمى الوظيفي</label>
                   <input
@@ -1720,7 +1920,9 @@ export const HospitalAdminDashboard: React.FC = () => {
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
                   />
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">فترة المناوبة (Shift)</label>
                   <select
@@ -1732,19 +1934,6 @@ export const HospitalAdminDashboard: React.FC = () => {
                     <option value="الفترة المسائية (04:00 م - 12:00 ص)">الفترة المسائية (04:00 م - 12:00 ص)</option>
                     <option value="فترة الطوارئ الليلية">فترة الطوارئ الليلية</option>
                   </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">تغيير كلمة المرور (اختياري)</label>
-                  <input
-                    type="text"
-                    placeholder="اتركه فارغاً للإبقاء على الحالية"
-                    value={editStaffPassword}
-                    onChange={(e) => setEditStaffPassword(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
-                  />
                 </div>
 
                 <div>
@@ -1764,7 +1953,7 @@ export const HospitalAdminDashboard: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setEditingStaff(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold"
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold hover:bg-slate-50 cursor-pointer"
                 >
                   إلغاء
                 </button>

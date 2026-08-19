@@ -182,7 +182,7 @@ function getGeminiAI(): GoogleGenAI | null {
 
 async function startServer() {
   const app = express();
-  const PORT = 3024;
+  const PORT = 3000;
 
   // Enable CORS for Android WebViews, hybrid apps, and cross-origin requests
   app.use((req: Request, res: Response, next) => {
@@ -2273,39 +2273,67 @@ async function startServer() {
   });
 
   app.post('/api/admin/staff', (req: Request, res: Response) => {
-    const { fullName, email, phone, department, roleTitle, shift } = req.body;
+    const { fullName, email, phone, department, roleTitle, shift, password } = req.body;
+
+    if (!fullName || !fullName.trim()) {
+      return res.status(400).json({ error: 'اسم الموظف مطلوب.' });
+    }
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({ error: 'البريد الإلكتروني المهني مطلوب.' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingUser = users.find(u => u.email.toLowerCase() === normalizedEmail);
+    if (existingUser) {
+      return res.status(409).json({ error: 'البريد الإلكتروني مسجل مسبقاً لدى مستخدم آخر.' });
+    }
 
     const userId = `usr-staff-${Date.now()}`;
     const staffId = `stf-${Date.now()}`;
+    const cleanPassword = password && password.trim() ? password.trim() : `cs#${Math.floor(1000 + Math.random() * 9000)}!`;
+
+    if (cleanPassword.length < 6) {
+      return res.status(400).json({ error: 'يجب ألا تقل كلمة المرور عن 6 خانات.' });
+    }
+
+    if (isPasswordAlreadyUsed(cleanPassword)) {
+      return res.status(400).json({ error: 'كلمة المرور هذه مستخدمة بالفعل لحساب آخر. يجب تعيين كلمة مرور فريدة لكل حساب.' });
+    }
+
+    const normalizedPhone = phone && phone.trim() ? phone.trim() : '+966560000000';
 
     const newUser: User = {
       id: userId,
-      email: email || `staff.${staffId}@medicalcarehub.com`,
-      phone: phone || '+966560000000',
-      fullName,
+      email: normalizedEmail,
+      phone: normalizedPhone,
+      fullName: fullName.trim(),
       role: 'CUSTOMER_SERVICE',
       avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
       isVerified: true,
       createdAt: new Date().toISOString()
     };
 
+    userPasswords[userId] = cleanPassword;
+
     const newStaff: Staff = {
       id: staffId,
       userId,
-      fullName,
-      phone: phone || '+966560000000',
-      email: email || `staff.${staffId}@medicalcarehub.com`,
+      fullName: fullName.trim(),
+      phone: normalizedPhone,
+      email: normalizedEmail,
       department: department || 'مركز خدمة وتنسيق المواعيد',
       roleTitle: roleTitle || 'منسق خدمة عملاء ورعاية المرضى',
-      shift: shift || 'الفترة الصباحية',
+      shift: shift || 'الفترة الصباحية (08:00 ص - 04:00 م)',
       isActive: true,
+      avatar: newUser.avatar,
       createdAt: new Date().toISOString()
     };
 
     users.push(newUser);
     staffList.push(newStaff);
 
-    logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'ADD_STAFF', 'STAFF', staffId, `إضافة موظف خدمة عملاء جديد: ${fullName}`, req);
+    logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'ADD_STAFF', 'STAFF', staffId, `إضافة موظف خدمة عملاء جديد: ${newStaff.fullName} (${newStaff.email})`, req);
 
     saveDatabase();
 
