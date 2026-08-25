@@ -183,11 +183,15 @@ function getGeminiAI(): GoogleGenAI | null {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  // Render/production provides PORT through environment variables.
+  // Keep 3000 as the local development fallback.
+  const PORT = Number(process.env.PORT) || 3000;
 
-  // Enable CORS for Android WebViews, hybrid apps, and cross-origin requests
+  // Enable CORS for the Netlify frontend, Android WebViews, hybrid apps, and local development.
+  // In production, set ALLOWED_ORIGIN in the backend environment if you want to restrict access.
   app.use((req: Request, res: Response, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    const allowedOrigin = process.env.ALLOWED_ORIGIN || '*';
+    res.header('Access-Control-Allow-Origin', allowedOrigin);
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
     if (req.method === 'OPTIONS') {
