@@ -82,19 +82,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setErrorMessage(null);
 
     if (!loginEmail.trim()) {
-      setErrorMessage('يرجى كتابة البريد الإلكتروني.');
+      setErrorMessage('يرجى كتابة البريد الإلكتروني أو رقم الهاتف.');
+      return;
+    }
+
+    if (!loginPassword || !loginPassword.trim()) {
+      setErrorMessage('يرجى إدخال كلمة المرور. كلمة المرور إلزامية لتسجيل الدخول.');
       return;
     }
 
     try {
-      await login(loginEmail.trim(), loginPassword || undefined);
+      await login(loginEmail.trim(), loginPassword.trim());
       setSuccessMessage('تم تسجيل الدخول بنجاح!');
       setTimeout(() => {
         onSuccess?.();
         onClose();
       }, 500);
     } catch (err: any) {
-      setErrorMessage(err.message || 'حدث خطأ أثناء تسجيل الدخول. يرجى التأكد من البيانات.');
+      setErrorMessage(err.message || 'حدث خطأ أثناء تسجيل الدخول. يرجى التأكد من تطابق البريد الإلكتروني وكلمة المرور.');
     }
   };
 
@@ -153,7 +158,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   // Quick One-Click Fill for Preset Accounts
   const handleQuickFill = (email: string) => {
     setLoginEmail(email);
-    setLoginPassword('demo123');
+    if (email === 'alhasann2023@gmail.com') {
+      setLoginPassword('admin#2026!Sec');
+    } else if (email === 'dr.faisal@medicalcarehub.com') {
+      setLoginPassword('doc#1234!');
+    } else if (email === 'staff@medicalcarehub.com') {
+      setLoginPassword('staff#1234!');
+    } else if (email === 'sarah.mansoor@example.com') {
+      setLoginPassword('patient#1234!');
+    }
     setErrorMessage(null);
   };
 
@@ -211,7 +224,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-3 max-h-[75vh] overflow-y-auto">
+        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
           {/* Alerts */}
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2 animate-in fade-in">
@@ -304,6 +317,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    required
                     placeholder="••••••••"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
@@ -347,7 +361,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </button>
 
               {/* Admin quick login info */}
-
+              <div className="pt-4 border-t border-slate-100">
+                <div
+                  onClick={() => handleQuickFill('alhasann2023@gmail.com')}
+                  className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100/70 text-start text-xs transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-amber-900 block">alhasann2023@gmail.com</span>
+                    <span className="px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 font-bold text-[10px]">المدير العام والمسؤول</span>
+                  </div>
+                  <span className="text-amber-800 text-[11px] mt-0.5 block">حساب المشرف العام لإدارة المستشفى والصلاحيات</span>
+                </div>
+              </div>
             </form>
           )}
 
@@ -369,7 +394,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
 
               {/* Notice About Doctor Accounts */}
-
+              <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2">
+                <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>تنويه للأطباء والاستشاريين:</strong> حسابات الأطباء والاستشاريين وموظفي خدمة العملاء يتم إنشاؤها ومنح صلاحياتها حصراً عبر لوحة الإدارة من قبل المشرف العام للموقع (<span className="font-mono font-bold">alhasann2023@gmail.com</span>).
+                </span>
+              </div>
 
               {/* Full Name */}
               <div>
@@ -383,7 +413,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <input
                     type="text"
                     required
-                    placeholder="مثال: نشوان وهيب الشيباني  "
+                    placeholder="مثال: عبد العزيز بن محمد الغامدي"
                     value={regFullName}
                     onChange={(e) => setRegFullName(e.target.value)}
                     className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-medium text-slate-900 transition-all outline-none"

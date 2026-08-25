@@ -17,7 +17,8 @@ import {
   INITIAL_REPORTS,
   INITIAL_PRESCRIPTIONS,
   INITIAL_NOTIFICATIONS,
-  INITIAL_AUDIT_LOGS
+  INITIAL_AUDIT_LOGS,
+  INITIAL_USER_PASSWORDS
 } from './src/data/seedData';
 import {
   User,
@@ -56,7 +57,7 @@ let auditLogs: AuditLog[] = [...INITIAL_AUDIT_LOGS];
 
 // In-Memory Passwords Store
 const userPasswords: Record<string, string> = {
-  'usr-admin-1': 'admin#2026!Sec'
+  ...INITIAL_USER_PASSWORDS
 };
 
 // Password Uniqueness Validator
@@ -182,7 +183,7 @@ function getGeminiAI(): GoogleGenAI | null {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = 3024;
 
   // Enable CORS for Android WebViews, hybrid apps, and cross-origin requests
   app.use((req: Request, res: Response, next) => {
@@ -424,15 +425,24 @@ async function startServer() {
     }
   });
 
-  // Login via Email or Phone
+  // Login via Email or Phone with Mandatory Password & Database Verification
   app.post('/api/auth/login', (req: Request, res: Response) => {
     const { identifier, password } = req.body; // Email or phone
 
-    if (!identifier) {
-      return res.status(400).json({ error: 'يرجى إدخال البريد الإلكتروني أو رقم الهاتف.' });
+    // 1. Mandatory Identifier validation
+    if (!identifier || typeof identifier !== 'string' || !identifier.trim()) {
+      return res.status(400).json({ error: 'البريد الإلكتروني أو رقم الهاتف مطلوب لتسجيل الدخول.' });
+    }
+
+    // 2. Mandatory Password validation
+    if (!password || typeof password !== 'string' || !password.trim()) {
+      return res.status(400).json({ error: 'كلمة المرور إلزامية لتسجيل الدخول ولا يمكن تركها فارغة.' });
     }
 
     const cleanIdentifier = identifier.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    // 3. Match User in Database by Email or Phone
     const user = users.find(u => 
       u.email.toLowerCase() === cleanIdentifier || 
       u.phone === identifier.trim() ||
@@ -440,18 +450,24 @@ async function startServer() {
     );
 
     if (!user) {
-      return res.status(404).json({ error: 'البريد الإلكتروني أو رقم الهاتف غير مسجل. يرجى إنشاء حساب جديد.' });
+      return res.status(404).json({ 
+        error: 'البريد الإلكتروني أو رقم الهاتف المدخل غير مسجل في قاعدة البيانات. يرجى التحقق من البيانات أو إنشاء حساب جديد.' 
+      });
     }
 
-    // Check password if provided and configured
-    const expectedPassword = userPasswords[user.id];
-    if (password && expectedPassword && password !== expectedPassword && password !== 'demo123') {
-      return res.status(401).json({ error: 'كلمة المرور غير صحيحة. يرجى المحاولة مجدداً.' });
+    // 4. Mandatory Match of Password against Database
+    const expectedPassword = userPasswords[user.id] || INITIAL_USER_PASSWORDS[user.id];
+
+    if (!expectedPassword || cleanPassword !== expectedPassword) {
+      return res.status(401).json({ 
+        error: 'كلمة المرور غير صحيحة ولا تتطابق مع كلمة المرور المخزونة في قاعدة البيانات لهذا الحساب. يرجى التأكد من كتابة كلمة المرور بشكل صحيح.' 
+      });
     }
 
+    // Update last login timestamp
     user.lastLoginAt = new Date().toISOString();
     saveDatabase();
-    logAudit(user.id, user.fullName, user.role, 'USER_LOGIN', 'USER', user.id, `تسجيل دخول ناجح عبر البريد الإلكتروني ${user.email}`, req);
+    logAudit(user.id, user.fullName, user.role, 'USER_LOGIN', 'USER', user.id, `تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (${user.email})`, req);
 
     let profileData: any = null;
     if (user.role === 'PATIENT') {

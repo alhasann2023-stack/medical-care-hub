@@ -15,6 +15,16 @@ import {
   AuditLog
 } from '../types/medical';
 
+export const INITIAL_USER_PASSWORDS: Record<string, string> = {
+  'usr-admin-1': 'admin#2026!Sec',
+  'usr-doc-1': 'doc#1234!',
+  'usr-doc-2': 'doc#2345!',
+  'usr-doc-3': 'doc#3456!',
+  'usr-doc-4': 'doc#4567!',
+  'usr-cs-1': 'staff#1234!',
+  'usr-pat-1': 'patient#1234!'
+};
+
 export const INITIAL_USERS: User[] = [
   {
     id: 'usr-admin-1',

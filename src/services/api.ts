@@ -57,10 +57,6 @@ let isBackendAvailable: boolean = typeof window !== 'undefined'
   : true;
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
-  if (!isBackendAvailable) {
-    throw new Error('BACKEND_UNAVAILABLE');
-  }
-
   try {
     const res = await fetch(url, {
       headers: {
@@ -70,22 +66,21 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
       ...options
     });
 
-    if (res.status === 404) {
-      // Netlify or static host returned 404 for /api route
-      isBackendAvailable = false;
-      throw new Error('BACKEND_UNAVAILABLE');
-    }
-
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ error: 'فشل تنفيذ الطلب' }));
-      throw new Error(errorData.error || `Error ${res.status}: ${res.statusText}`);
+      let errorMessage = 'فشل تنفيذ الطلب';
+      try {
+        const errorData = await res.json();
+        if (errorData && errorData.error) {
+          errorMessage = errorData.error;
+        }
+      } catch {
+        errorMessage = `Error ${res.status}: ${res.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
     return await res.json();
   } catch (err: any) {
-    if (err.name === 'TypeError' || err.message === 'BACKEND_UNAVAILABLE' || err.message?.includes('Failed to fetch')) {
-      isBackendAvailable = false;
-    }
     throw err;
   }
 }
@@ -156,33 +151,18 @@ export const api = {
   },
 
   login: async (identifier: string, password?: string) => {
-    try {
-      const res = await fetchJson<{ user: User; profile: any; token: string }>('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ identifier, password })
-      });
-      return res;
-    } catch (err: any) {
-      console.warn('API login failed, checking Firestore directly for user:', identifier);
-      // Query Firestore directly by UID or Email/Phone to fix 'not registered' error
-      const firestoreUser = (await getUserByUid(identifier)) || (await getUserByEmailOrPhone(identifier));
-      if (firestoreUser) {
-        let profile: any = null;
-        if (firestoreUser.role === 'PATIENT') {
-          profile = await getPatientByUserId(firestoreUser.id);
-        } else if (firestoreUser.role === 'DOCTOR') {
-          profile = await getDoctorByUserId(firestoreUser.id);
-        } else if (firestoreUser.role === 'CUSTOMER_SERVICE') {
-          profile = await fetchDocById<Staff>(FIRESTORE_COLLECTIONS.STAFF, firestoreUser.id);
-        }
-        return {
-          user: firestoreUser,
-          profile: profile || null,
-          token: `mch_token_fs_${firestoreUser.id}`
-        };
-      }
-      throw err;
+    if (!identifier || !identifier.trim()) {
+      throw new Error('البريد الإلكتروني أو رقم الهاتف مطلوب لتسجيل الدخول.');
     }
+    if (!password || !password.trim()) {
+      throw new Error('كلمة المرور إلزامية لتسجيل الدخول ولا يمكن تركها فارغة.');
+    }
+
+    const res = await fetchJson<{ user: User; profile: any; token: string }>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ identifier: identifier.trim(), password: password.trim() })
+    });
+    return res;
   },
 
   switchDemoUser: (role?: UserRole, userId?: string) => fetchJson<{ user: User; profile: any; token: string }>('/api/auth/switch-demo', {

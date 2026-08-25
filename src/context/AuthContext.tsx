@@ -144,13 +144,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsLoading(false);
         }
       } else {
-        // If not logged in via Firebase Auth, check local storage or demo session
+        // If not logged in via Firebase Auth, check local storage session
         const stored = localStorage.getItem(AUTH_STORAGE_KEY);
         if (stored) {
           try {
             const parsed = JSON.parse(stored);
-            if (parsed?.email) {
-              const res = await api.login(parsed.email, parsed.password || 'demo123').catch(() => null);
+            if (parsed?.email && parsed?.password) {
+              const res = await api.login(parsed.email, parsed.password).catch(() => null);
               if (res && res.user) {
                 setUser(res.user);
                 setPatientProfile(res.user.role === 'PATIENT' ? res.profile : null);
@@ -186,31 +186,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (emailOrPhone: string, password?: string) => {
     setIsLoading(true);
-    const pwd = password || 'demo123';
+    if (!password || !password.trim()) {
+      setIsLoading(false);
+      throw new Error('كلمة المرور إلزامية لتسجيل الدخول ولا يمكن تركها فارغة.');
+    }
+
+    const cleanPassword = password.trim();
     try {
-      // 1. Try Firebase Auth Login if it looks like an email
+      // 1. Mandatory verification with Backend Database & API first
+      const res = await api.login(emailOrPhone.trim(), cleanPassword);
+      if (emailOrPhone.trim().toLowerCase() === 'alhasann2023@gmail.com' && res.user) {
+        res.user.role = 'HOSPITAL_ADMIN';
+      }
+
+      // 2. Sync / Authenticate with Firebase Auth if it's an email
       if (emailOrPhone.includes('@')) {
         try {
-          await signInWithEmailAndPassword(auth, emailOrPhone.trim().toLowerCase(), pwd);
+          await signInWithEmailAndPassword(auth, emailOrPhone.trim().toLowerCase(), cleanPassword);
         } catch (fbAuthErr: any) {
-          // If user doesn't exist in Firebase Auth yet, auto-create to keep in sync
           if (fbAuthErr.code === 'auth/user-not-found' || fbAuthErr.code === 'auth/invalid-credential') {
             try {
-              await createUserWithEmailAndPassword(auth, emailOrPhone.trim().toLowerCase(), pwd);
+              await createUserWithEmailAndPassword(auth, emailOrPhone.trim().toLowerCase(), cleanPassword);
             } catch (createErr) {
-              console.warn('Firebase Auth auto-register notice:', createErr);
+              console.warn('Firebase Auth sync notice:', createErr);
             }
           } else {
-            console.warn('Firebase Auth login notice:', fbAuthErr);
+            console.warn('Firebase Auth sign in notice:', fbAuthErr);
           }
         }
       }
 
-      // 2. Fetch user data via API and Firestore lookup
-      const res = await api.login(emailOrPhone, pwd);
-      if (emailOrPhone.trim().toLowerCase() === 'alhasann2023@gmail.com' && res.user) {
-        res.user.role = 'HOSPITAL_ADMIN';
-      }
       setUser(res.user);
       if (res.user.role === 'PATIENT') {
         setPatientProfile(res.profile || null);
@@ -236,7 +241,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ email: res.user.email, password: pwd }));
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ email: res.user.email, password: cleanPassword }));
     } finally {
       setIsLoading(false);
     }
