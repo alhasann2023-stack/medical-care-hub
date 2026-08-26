@@ -1957,225 +1957,82 @@ export const api = {
     },
 
 
-  createDoctor:
-    async (
-      data: any
-    ) => {
-
-      try {
-
-        const res =
-          await fetchJson<Doctor>(
-            '/api/doctors',
-            {
-              method:
-                'POST',
-
-              body:
-                JSON.stringify(data)
-            }
-          );
-
-
-        await firebaseDb.saveDoctor(
-          res
-        );
-
-
-        return res;
-
-      } catch (
-        apiErr
-      ) {
-
-        console.warn(
-          'API createDoctor fallback, saving directly to Firestore:',
-          apiErr
-        );
-
-
-        const doctorId =
-          'doc-' +
-          Date.now();
-
-
-        const userId =
-          'usr-' +
-          doctorId;
-
-
-        const newDoctor:
-          Doctor = {
-
-          id:
-            doctorId,
-
-          userId:
-            userId,
-
-          fullName:
-            data.fullName,
-
-          email:
-            data.email,
-
-          phone:
-            data.phone ||
-            '',
-
-          specialtyId:
-            data.specialtyId ||
-            'spec-cardio',
-
-          specialtyNameAr:
-            data.specialtyNameAr ||
-            'العيادات التخصصية',
-
-          specialtyNameEn:
-            data.specialtyNameEn ||
-            'Specialized Clinic',
-
-          title:
-            data.title ||
-            'استشاري أول',
-
-          qualifications:
-            data.qualifications ||
-            [
-              'البورد الطبي المعتمد'
-            ],
-
-          experienceYears:
-            data.experienceYears ||
-            10,
-
-          bioAr:
-            data.bioAr ||
-            'استشاري معتمد ذو خبرة إكلينيكية واسعة.',
-
-          bioEn:
-            data.bioEn ||
-            'Certified consultant with extensive clinical expertise.',
-
-          consultationFee:
-            data.consultationFee ||
-            300,
-
-          avatar:
-            data.avatar ||
-            '',
-
-          roomNumber:
-            data.roomNumber ||
-            'عيادة 105',
-
-          rating:
-            5,
-
-          reviewsCount:
-            1,
-
-          availableDays:
-            data.availableDays ||
-            [
-              'الأحد',
-              'الإثنين',
-              'الثلاثاء',
-              'الأربعاء',
-              'الخميس'
-            ],
-
-          availableHours:
-            data.availableHours ||
-            '09:00 ص - 04:00 م',
-
-          isActive:
-            true
-        };
-
-
-        const newUser:
-          User = {
-
-          id:
-            userId,
-
-          fullName:
-            data.fullName,
-
-          email:
-            data.email,
-
-          phone:
-            data.phone ||
-            '',
-
-          role:
-            'DOCTOR',
-
-          avatar:
-            newDoctor.avatar,
-
-          isVerified:
-            true,
-
-          createdAt:
-            new Date().toISOString()
-        };
-
-
-        await firebaseDb.saveDoctor(
-          newDoctor
-        );
-
-        await firebaseDb.saveUser(
-          newUser
-        );
-
-
-        await firebaseDb.saveAuditLog({
-
-          id:
-            'aud-' +
-            Date.now(),
-
-          userId:
-            'usr-admin-1',
-
-          userName:
-            'المدير العام',
-
-          userRole:
-            'HOSPITAL_ADMIN',
-
-          action:
-            'CREATE_DOCTOR',
-
-          targetEntity:
-            'DOCTOR',
-
-          targetId:
-            doctorId,
-
-          details:
-            'تم إضافة طبيب جديد: ' +
-            newDoctor.fullName +
-            ' (' +
-            newDoctor.specialtyNameAr +
-            ')',
-
-          ipAddress:
-            '127.0.0.1',
-
-          createdAt:
-            new Date().toISOString()
-
-        });
-
-
-        return newDoctor;
+  // ==========================================================
+// DOCTORS
+// ==========================================================
+
+createDoctor: async (
+  data: any
+) => {
+  const email = String(data.email || '')
+    .trim()
+    .toLowerCase();
+
+  const password = String(data.password || '');
+
+  if (!data.fullName?.trim()) {
+    throw new Error('اسم الطبيب مطلوب.');
+  }
+
+  if (!email) {
+    throw new Error('البريد الإلكتروني للطبيب مطلوب.');
+  }
+
+  if (password.length < 6) {
+    throw new Error(
+      'كلمة مرور الطبيب يجب أن تتكون من 6 أحرف أو أرقام على الأقل.'
+    );
+  }
+
+  try {
+    const res = await fetchJson<{
+      user: User;
+      doctor: Doctor;
+      profile?: Doctor;
+      firebaseUid?: string;
+      message?: string;
+    }>(
+      '/api/doctors',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ...data,
+          email,
+          password,
+          role: 'DOCTOR'
+        })
       }
-    },
+    );
+
+    if (!res.user) {
+      throw new Error(
+        'لم يتم إنشاء حساب المستخدم للطبيب.'
+      );
+    }
+
+    if (!res.doctor) {
+      throw new Error(
+        'تم إنشاء الحساب ولكن لم يتم إنشاء ملف الطبيب.'
+      );
+    }
+
+    await firebaseDb.saveUser(res.user);
+    await firebaseDb.saveDoctor(res.doctor);
+
+    return res.doctor;
+
+  } catch (error: any) {
+    console.error(
+      'Create doctor error:',
+      error
+    );
+
+    throw new Error(
+      error?.message ||
+      'فشل إنشاء حساب الطبيب. تأكد من إعداد Firebase Authentication في الخادم.'
+    );
+  }
+},
 
 
   updateDoctor:
@@ -5021,182 +4878,86 @@ export const api = {
       }
     },
 
+// ==========================================================
+// STAFF / CUSTOMER SERVICE
+// ==========================================================
 
-  createStaff:
-    async (
-      data: any
-    ) => {
+createStaff: async (
+  data: any
+) => {
+  const email = String(data.email || '')
+    .trim()
+    .toLowerCase();
 
-      try {
+  const password = String(data.password || '');
 
-        const res =
-          await fetchJson<Staff>(
-            '/api/admin/staff',
-            {
-              method:
-                'POST',
+  if (!data.fullName?.trim()) {
+    throw new Error(
+      'اسم موظف خدمة العملاء مطلوب.'
+    );
+  }
 
-              body:
-                JSON.stringify(data)
-            }
-          );
+  if (!email) {
+    throw new Error(
+      'البريد الإلكتروني لموظف خدمة العملاء مطلوب.'
+    );
+  }
 
+  if (password.length < 6) {
+    throw new Error(
+      'كلمة مرور موظف خدمة العملاء يجب أن تتكون من 6 أحرف أو أرقام على الأقل.'
+    );
+  }
 
-        await firebaseDb.saveStaff(
-          res
-        );
-
-
-        return res;
-
-      } catch (
-        apiErr
-      ) {
-
-        console.warn(
-          'API createStaff fallback:',
-          apiErr
-        );
-
-
-        const staffId =
-          'stf-' +
-          Date.now();
-
-
-        const userId =
-          'usr-' +
-          staffId;
-
-
-        const newStaff:
-          Staff = {
-
-          id:
-            staffId,
-
-          userId:
-            userId,
-
-          fullName:
-            data.fullName,
-
-          phone:
-            data.phone ||
-            '',
-
-          email:
-            data.email,
-
-          department:
-            data.department ||
-            'مركز تنسيق المواعيد وخدمة العملاء',
-
-          roleTitle:
-            data.roleTitle ||
-            'منسق خدمة عملاء وحجوزات',
-
-          shift:
-            data.shift ||
-            'الفترة الصباحية (08:00 ص - 04:00 م)',
-
-          avatar:
-            data.avatar ||
-            '',
-
-          isActive:
-            true,
-
-          createdAt:
-            new Date().toISOString()
-
-        };
-
-
-        const newUser:
-          User = {
-
-          id:
-            userId,
-
-          fullName:
-            data.fullName,
-
-          email:
-            data.email,
-
-          phone:
-            data.phone ||
-            '',
-
-          role:
-            'CUSTOMER_SERVICE',
-
-          avatar:
-            newStaff.avatar,
-
-          isVerified:
-            true,
-
-          createdAt:
-            new Date().toISOString()
-
-        };
-
-
-        await firebaseDb.saveStaff(
-          newStaff
-        );
-
-
-        await firebaseDb.saveUser(
-          newUser
-        );
-
-
-        await firebaseDb.saveAuditLog({
-
-          id:
-            'aud-' +
-            Date.now(),
-
-          userId:
-            'usr-admin-1',
-
-          userName:
-            'المدير العام',
-
-          userRole:
-            'HOSPITAL_ADMIN',
-
-          action:
-            'CREATE_STAFF',
-
-          targetEntity:
-            'STAFF',
-
-          targetId:
-            staffId,
-
-          details:
-            'تم إضافة موظف خدمة عملاء جديد: ' +
-            newStaff.fullName +
-            ' (' +
-            newStaff.roleTitle +
-            ')',
-
-          ipAddress:
-            '127.0.0.1',
-
-          createdAt:
-            new Date().toISOString()
-
-        });
-
-
-        return newStaff;
+  try {
+    const res = await fetchJson<{
+      user: User;
+      staff: Staff;
+      profile?: Staff;
+      firebaseUid?: string;
+      message?: string;
+    }>(
+      '/api/admin/staff',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ...data,
+          email,
+          password,
+          role: 'CUSTOMER_SERVICE'
+        })
       }
-    },
+    );
+
+    if (!res.user) {
+      throw new Error(
+        'لم يتم إنشاء حساب المستخدم لموظف خدمة العملاء.'
+      );
+    }
+
+    if (!res.staff) {
+      throw new Error(
+        'تم إنشاء الحساب ولكن لم يتم إنشاء ملف موظف خدمة العملاء.'
+      );
+    }
+
+    await firebaseDb.saveUser(res.user);
+    await firebaseDb.saveStaff(res.staff);
+
+    return res.staff;
+
+  } catch (error: any) {
+    console.error(
+      'Create customer service account error:',
+      error
+    );
+
+    throw new Error(
+      error?.message ||
+      'فشل إنشاء حساب موظف خدمة العملاء. تأكد من إعداد Firebase Authentication في الخادم.'
+    );
+  }
+},
 
 
   updateStaff:

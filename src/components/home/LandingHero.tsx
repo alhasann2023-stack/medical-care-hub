@@ -64,21 +64,9 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
 
           {/* Call to Actions */}
           <div className="flex flex-wrap items-center justify-center gap-3.5 pt-2">
-            <button
-              onClick={onOpenConsultation}
-              className="px-6 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-black text-sm transition-all shadow-lg shadow-cyan-500/25 flex items-center gap-2 cursor-pointer scale-100 hover:scale-105"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>استشر طبيباً فوراً</span>
-            </button>
 
-            <button
-              onClick={onOpenBooking}
-              className="px-6 py-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-sm backdrop-blur-md transition-all flex items-center gap-2 cursor-pointer"
-            >
-              <Calendar className="w-4 h-4 text-cyan-300" />
-              <span>حجز موعد كشف بالعيادة</span>
-            </button>
+
+
 
             {!user && (
               <button

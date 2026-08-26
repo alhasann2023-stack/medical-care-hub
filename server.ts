@@ -4,6 +4,13 @@ import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import {
+  initializeApp as initializeFirebaseAdminApp,
+  cert,
+  getApps as getFirebaseAdminApps
+} from 'firebase-admin/app';
+import { getAuth as getFirebaseAdminAuth } from 'firebase-admin/auth';
+import type { UserRecord } from 'firebase-admin/auth';
+import {
   INITIAL_USERS,
   INITIAL_PATIENTS,
   INITIAL_DOCTORS,
@@ -37,6 +44,111 @@ import {
   TimelineItem,
   UserRole
 } from './src/types/medical';
+
+// ============================================================
+// FIREBASE ADMIN AUTHENTICATION
+// ============================================================
+// Admin SDK is used ONLY on the server to create/update/delete
+// Firebase Authentication accounts for doctors and staff.
+// Credentials can be supplied through FIREBASE_SERVICE_ACCOUNT_JSON
+// or GOOGLE_APPLICATION_CREDENTIALS.
+let firebaseAdminAuth: ReturnType<typeof getFirebaseAdminAuth> | null = null;
+
+function initializeFirebaseAdmin() {
+  try {
+    if (getFirebaseAdminApps().length > 0) {
+      firebaseAdminAuth = getFirebaseAdminAuth();
+      return firebaseAdminAuth;
+    }
+
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+
+    if (serviceAccountJson) {
+      const serviceAccount = JSON.parse(serviceAccountJson);
+      initializeFirebaseAdminApp({
+        credential: cert(serviceAccount)
+      });
+    } else {
+      // Uses GOOGLE_APPLICATION_CREDENTIALS when configured.
+      initializeFirebaseAdminApp();
+    }
+
+    firebaseAdminAuth = getFirebaseAdminAuth();
+    console.log('[Firebase Admin] Authentication initialized successfully.');
+    return firebaseAdminAuth;
+  } catch (error) {
+    firebaseAdminAuth = null;
+    console.error('[Firebase Admin] Initialization failed:', error);
+    return null;
+  }
+}
+
+initializeFirebaseAdmin();
+
+async function createFirebaseAuthUser(params: {
+  email: string;
+  password: string;
+  displayName: string;
+  phoneNumber?: string;
+  photoURL?: string;
+}): Promise<UserRecord> {
+  if (!firebaseAdminAuth) {
+    throw new Error(
+      'Firebase Admin Authentication غير مهيأ. تحقق من FIREBASE_SERVICE_ACCOUNT_JSON أو GOOGLE_APPLICATION_CREDENTIALS.'
+    );
+  }
+
+  const { email, password, displayName, phoneNumber, photoURL } = params;
+
+  try {
+    return await firebaseAdminAuth.createUser({
+      email,
+      password,
+      displayName,
+      phoneNumber: phoneNumber?.startsWith('+') ? phoneNumber : undefined,
+      photoURL,
+      emailVerified: false,
+      disabled: false
+    });
+  } catch (error: any) {
+    console.error('[Firebase Admin] createUser failed:', error);
+    throw error;
+  }
+}
+
+async function updateFirebaseAuthUser(uid: string, data: {
+  email?: string;
+  password?: string;
+  displayName?: string;
+  phoneNumber?: string;
+  photoURL?: string;
+  disabled?: boolean;
+}) {
+  if (!firebaseAdminAuth) {
+    throw new Error(
+      'Firebase Admin Authentication غير مهيأ. تحقق من إعدادات Firebase Admin.'
+    );
+  }
+
+  return firebaseAdminAuth.updateUser(uid, {
+    ...data,
+    phoneNumber: data.phoneNumber
+      ? (data.phoneNumber.startsWith('+') ? data.phoneNumber : undefined)
+      : undefined
+  });
+}
+
+async function deleteFirebaseAuthUser(uid?: string) {
+  if (!uid || !firebaseAdminAuth) return;
+
+  try {
+    await firebaseAdminAuth.deleteUser(uid);
+  } catch (error: any) {
+    if (error?.code !== 'auth/user-not-found') {
+      console.warn('[Firebase Admin] deleteUser failed:', error);
+    }
+  }
+}
 
 // In-Memory Database Store initialized from Seed Data
 let users: User[] = [...INITIAL_USERS];
@@ -182,11 +294,19 @@ function getGeminiAI(): GoogleGenAI | null {
 
 async function startServer() {
   const app = express();
-  const PORT = 3024;
+  // Render/production provides PORT through environment variables.
+  // Keep 3000 as the local development fallback.
+  const PORT = Number(process.env.PORT) || 3024;
 
-  // Enable CORS for Android WebViews, hybrid apps, and cross-origin requests
+  if (!firebaseAdminAuth) {
+    console.warn('[Firebase Admin] Not configured. Doctor/staff creation and Firebase Auth synchronization will be unavailable until credentials are configured.');
+  }
+
+  // Enable CORS for the Netlify frontend, Android WebViews, hybrid apps, and local development.
+  // In production, set ALLOWED_ORIGIN in the backend environment if you want to restrict access.
   app.use((req: Request, res: Response, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    const allowedOrigin = process.env.ALLOWED_ORIGIN || '*';
+    res.header('Access-Control-Allow-Origin', allowedOrigin);
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
     if (req.method === 'OPTIONS') {
@@ -424,15 +544,24 @@ async function startServer() {
     }
   });
 
-  // Login via Email or Phone
+  // Login via Email or Phone with Mandatory Password & Database Verification
   app.post('/api/auth/login', (req: Request, res: Response) => {
     const { identifier, password } = req.body; // Email or phone
 
-    if (!identifier) {
-      return res.status(400).json({ error: 'يرجى إدخال البريد الإلكتروني أو رقم الهاتف.' });
+    // 1. Mandatory Identifier validation
+    if (!identifier || typeof identifier !== 'string' || !identifier.trim()) {
+      return res.status(400).json({ error: 'البريد الإلكتروني أو رقم الهاتف مطلوب لتسجيل الدخول.' });
+    }
+
+    // 2. Mandatory Password validation
+    if (!password || typeof password !== 'string' || !password.trim()) {
+      return res.status(400).json({ error: 'كلمة المرور إلزامية لتسجيل الدخول ولا يمكن تركها فارغة.' });
     }
 
     const cleanIdentifier = identifier.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    // 3. Match User in Database by Email or Phone
     const user = users.find(u => 
       u.email.toLowerCase() === cleanIdentifier || 
       u.phone === identifier.trim() ||
@@ -440,18 +569,24 @@ async function startServer() {
     );
 
     if (!user) {
-      return res.status(404).json({ error: 'البريد الإلكتروني أو رقم الهاتف غير مسجل. يرجى إنشاء حساب جديد.' });
+      return res.status(404).json({ 
+        error: 'البريد الإلكتروني أو رقم الهاتف المدخل غير مسجل في قاعدة البيانات. يرجى التحقق من البيانات أو إنشاء حساب جديد.' 
+      });
     }
 
-    // Check password if provided and configured
+    // 4. Mandatory Match of Password against Database
     const expectedPassword = userPasswords[user.id];
-    if (password && expectedPassword && password !== expectedPassword && password !== 'demo123') {
-      return res.status(401).json({ error: 'كلمة المرور غير صحيحة. يرجى المحاولة مجدداً.' });
+
+    if (!expectedPassword || cleanPassword !== expectedPassword) {
+      return res.status(401).json({ 
+        error: 'كلمة المرور غير صحيحة ولا تتطابق مع كلمة المرور المخزونة في قاعدة البيانات لهذا الحساب. يرجى التأكد من كتابة كلمة المرور بشكل صحيح.' 
+      });
     }
 
+    // Update last login timestamp
     user.lastLoginAt = new Date().toISOString();
     saveDatabase();
-    logAudit(user.id, user.fullName, user.role, 'USER_LOGIN', 'USER', user.id, `تسجيل دخول ناجح عبر البريد الإلكتروني ${user.email}`, req);
+    logAudit(user.id, user.fullName, user.role, 'USER_LOGIN', 'USER', user.id, `تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (${user.email})`, req);
 
     let profileData: any = null;
     if (user.role === 'PATIENT') {
@@ -969,23 +1104,23 @@ async function startServer() {
   });
 
   // Admin add doctor with email, password & credentials
-  app.post('/api/doctors', (req: Request, res: Response) => {
-    const { 
-      fullName, 
-      email, 
-      password, 
-      phone, 
-      specialtyId, 
-      title, 
-      qualifications, 
-      experienceYears, 
-      bioAr, 
-      bioEn, 
-      consultationFee, 
-      roomNumber, 
-      availableDays, 
+  app.post('/api/doctors', async (req: Request, res: Response) => {
+    const {
+      fullName,
+      email,
+      password,
+      phone,
+      specialtyId,
+      title,
+      qualifications,
+      experienceYears,
+      bioAr,
+      bioEn,
+      consultationFee,
+      roomNumber,
+      availableDays,
       availableHours,
-      avatar 
+      avatar
     } = req.body;
 
     if (!fullName || !fullName.trim()) {
@@ -996,27 +1131,49 @@ async function startServer() {
       return res.status(400).json({ error: 'البريد الإلكتروني للطبيب مطلوب.' });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-    const existingUser = users.find(u => u.email.toLowerCase() === normalizedEmail);
-    if (existingUser) {
-      return res.status(409).json({ error: 'البريد الإلكتروني مسجل مسبقاً لدى مستخدم آخر.' });
+    if (!password || typeof password !== 'string' || password.trim().length < 6) {
+      return res.status(400).json({ error: 'يجب ألا تقل كلمة المرور عن 6 خانات.' });
     }
 
-    const spec = specialties.find(s => s.id === specialtyId) || specialties[0];
-    const userId = `usr-doc-${Date.now()}`;
-    const doctorId = `doc-${Date.now()}`;
-    const cleanPassword = password && password.trim() ? password.trim() : `doc#${Math.floor(1000 + Math.random() * 9000)}!`;
+    const normalizedEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+    const existingUser = users.find(u => u.email.toLowerCase() === normalizedEmail);
 
-    if (cleanPassword.length < 6) {
-      return res.status(400).json({ error: 'يجب ألا تقل كلمة المرور عن 6 خانات.' });
+    if (existingUser) {
+      return res.status(409).json({ error: 'البريد الإلكتروني مسجل مسبقاً لدى مستخدم آخر.' });
     }
 
     if (isPasswordAlreadyUsed(cleanPassword)) {
       return res.status(400).json({ error: 'كلمة المرور هذه مستخدمة بالفعل لحساب آخر. يجب تعيين كلمة مرور فريدة لكل طبيب/مستخدم.' });
     }
 
+    const spec = specialties.find(s => s.id === specialtyId) || specialties[0];
+    const doctorId = `doc-${Date.now()}`;
     const normalizedPhone = phone && phone.trim() ? phone.trim() : '+966500000000';
     const docAvatar = avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80';
+
+    // Create the real Firebase Authentication account first.
+    let firebaseUser: UserRecord;
+    try {
+      firebaseUser = await createFirebaseAuthUser({
+        email: normalizedEmail,
+        password: cleanPassword,
+        displayName: fullName.trim(),
+        phoneNumber: normalizedPhone,
+        photoURL: docAvatar
+      });
+    } catch (error: any) {
+      if (error?.code === 'auth/email-already-exists') {
+        return res.status(409).json({ error: 'البريد الإلكتروني موجود بالفعل في Firebase Authentication.' });
+      }
+      return res.status(500).json({
+        error: 'تعذر إنشاء حساب الطبيب في Firebase Authentication.',
+        details: error?.message || 'Firebase Admin error'
+      });
+    }
+
+    // Firebase UID is now the canonical application user ID.
+    const userId = firebaseUser.uid;
 
     const newUser: User = {
       id: userId,
@@ -1041,8 +1198,8 @@ async function startServer() {
       specialtyNameAr: spec?.nameAr || 'تخصص عام',
       specialtyNameEn: spec?.nameEn || 'General Specialty',
       title: title || 'استشاري أول',
-      qualifications: Array.isArray(qualifications) && qualifications.length > 0 
-        ? qualifications 
+      qualifications: Array.isArray(qualifications) && qualifications.length > 0
+        ? qualifications
         : ['بورد تخصصي معتمد', 'ترخيص الهيئة السعودية للتخصصات الصحية'],
       experienceYears: Number(experienceYears) || 5,
       bioAr: bioAr || 'طبيب استشاري متخصص ذو خبرة إكلينيكية واسعة.',
@@ -1064,15 +1221,18 @@ async function startServer() {
 
     saveDatabase();
 
-    res.status(201).json({
-      ...newDoctor,
-      email: normalizedEmail,
-      phone: normalizedPhone
+    return res.status(201).json({
+      user: newUser,
+      doctor: newDoctor,
+      profile: newDoctor,
+      firebaseUid: firebaseUser.uid,
+      token: `jwt-session-${userId}-${Date.now()}`,
+      message: 'تم إنشاء حساب الطبيب في Firebase Authentication وملف الطبيب بنجاح.'
     });
   });
 
   // Admin update doctor
-  app.put('/api/doctors/:id', (req: Request, res: Response) => {
+  app.put('/api/doctors/:id', async (req: Request, res: Response) => {
     const doctorIndex = doctors.findIndex(d => d.id === req.params.id || d.userId === req.params.id);
     if (doctorIndex === -1) {
       return res.status(404).json({ error: 'الطبيب غير موجود.' });
@@ -1106,6 +1266,14 @@ async function startServer() {
       if (duplicateUser) {
         return res.status(409).json({ error: 'البريد الإلكتروني مسجل مسبقاً لدى مستخدم آخر.' });
       }
+      try {
+        await updateFirebaseAuthUser(doc.userId, { email: normalizedEmail });
+      } catch (error: any) {
+        return res.status(500).json({
+          error: 'تعذر تحديث بريد الطبيب في Firebase Authentication.',
+          details: error?.message || 'Firebase Admin error'
+        });
+      }
       if (user) {
         user.email = normalizedEmail;
       }
@@ -1119,6 +1287,14 @@ async function startServer() {
       }
       if (isPasswordAlreadyUsed(cleanPassword, doc.userId)) {
         return res.status(400).json({ error: 'كلمة المرور هذه مستخدمة بالفعل لحساب آخر. يرجى اختيار كلمة مرور فريدة.' });
+      }
+      try {
+        await updateFirebaseAuthUser(doc.userId, { password: cleanPassword });
+      } catch (error: any) {
+        return res.status(500).json({
+          error: 'تعذر تحديث كلمة مرور الطبيب في Firebase Authentication.',
+          details: error?.message || 'Firebase Admin error'
+        });
       }
       if (user) {
         userPasswords[user.id] = cleanPassword;
@@ -1172,7 +1348,7 @@ async function startServer() {
   });
 
   // Admin delete doctor
-  app.delete('/api/doctors/:id', (req: Request, res: Response) => {
+  app.delete('/api/doctors/:id', async (req: Request, res: Response) => {
     const doc = doctors.find(d => d.id === req.params.id || d.userId === req.params.id);
     if (!doc) {
       return res.status(404).json({ error: 'الطبيب غير موجود.' });
@@ -1183,6 +1359,7 @@ async function startServer() {
     doctors = doctors.filter(d => d.id !== doc.id && d.userId !== doc.userId);
 
     if (deletedDocUserId) {
+      await deleteFirebaseAuthUser(deletedDocUserId);
       users = users.filter(u => u.id !== deletedDocUserId);
       delete userPasswords[deletedDocUserId];
     }
@@ -2272,7 +2449,7 @@ async function startServer() {
     res.json(staffList);
   });
 
-  app.post('/api/admin/staff', (req: Request, res: Response) => {
+  app.post('/api/admin/staff', async (req: Request, res: Response) => {
     const { fullName, email, phone, department, roleTitle, shift, password } = req.body;
 
     if (!fullName || !fullName.trim()) {
@@ -2283,18 +2460,16 @@ async function startServer() {
       return res.status(400).json({ error: 'البريد الإلكتروني المهني مطلوب.' });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-    const existingUser = users.find(u => u.email.toLowerCase() === normalizedEmail);
-    if (existingUser) {
-      return res.status(409).json({ error: 'البريد الإلكتروني مسجل مسبقاً لدى مستخدم آخر.' });
+    if (!password || typeof password !== 'string' || password.trim().length < 6) {
+      return res.status(400).json({ error: 'يجب ألا تقل كلمة المرور عن 6 خانات.' });
     }
 
-    const userId = `usr-staff-${Date.now()}`;
-    const staffId = `stf-${Date.now()}`;
-    const cleanPassword = password && password.trim() ? password.trim() : `cs#${Math.floor(1000 + Math.random() * 9000)}!`;
+    const normalizedEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+    const existingUser = users.find(u => u.email.toLowerCase() === normalizedEmail);
 
-    if (cleanPassword.length < 6) {
-      return res.status(400).json({ error: 'يجب ألا تقل كلمة المرور عن 6 خانات.' });
+    if (existingUser) {
+      return res.status(409).json({ error: 'البريد الإلكتروني مسجل مسبقاً لدى مستخدم آخر.' });
     }
 
     if (isPasswordAlreadyUsed(cleanPassword)) {
@@ -2302,6 +2477,29 @@ async function startServer() {
     }
 
     const normalizedPhone = phone && phone.trim() ? phone.trim() : '+966560000000';
+    const avatar = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80';
+    const staffId = `stf-${Date.now()}`;
+
+    let firebaseUser: UserRecord;
+    try {
+      firebaseUser = await createFirebaseAuthUser({
+        email: normalizedEmail,
+        password: cleanPassword,
+        displayName: fullName.trim(),
+        phoneNumber: normalizedPhone,
+        photoURL: avatar
+      });
+    } catch (error: any) {
+      if (error?.code === 'auth/email-already-exists') {
+        return res.status(409).json({ error: 'البريد الإلكتروني موجود بالفعل في Firebase Authentication.' });
+      }
+      return res.status(500).json({
+        error: 'تعذر إنشاء حساب موظف خدمة العملاء في Firebase Authentication.',
+        details: error?.message || 'Firebase Admin error'
+      });
+    }
+
+    const userId = firebaseUser.uid;
 
     const newUser: User = {
       id: userId,
@@ -2309,7 +2507,7 @@ async function startServer() {
       phone: normalizedPhone,
       fullName: fullName.trim(),
       role: 'CUSTOMER_SERVICE',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+      avatar,
       isVerified: true,
       createdAt: new Date().toISOString()
     };
@@ -2326,7 +2524,7 @@ async function startServer() {
       roleTitle: roleTitle || 'منسق خدمة عملاء ورعاية المرضى',
       shift: shift || 'الفترة الصباحية (08:00 ص - 04:00 م)',
       isActive: true,
-      avatar: newUser.avatar,
+      avatar,
       createdAt: new Date().toISOString()
     };
 
@@ -2337,11 +2535,18 @@ async function startServer() {
 
     saveDatabase();
 
-    res.status(201).json(newStaff);
+    return res.status(201).json({
+      user: newUser,
+      staff: newStaff,
+      profile: newStaff,
+      firebaseUid: firebaseUser.uid,
+      token: `jwt-session-${userId}-${Date.now()}`,
+      message: 'تم إنشاء حساب موظف خدمة العملاء في Firebase Authentication وملف الموظف بنجاح.'
+    });
   });
 
   // Admin update staff
-  app.put('/api/admin/staff/:id', (req: Request, res: Response) => {
+  app.put('/api/admin/staff/:id', async (req: Request, res: Response) => {
     const stf = staffList.find(s => s.id === req.params.id || s.userId === req.params.id);
     if (!stf) return res.status(404).json({ error: 'الموظف غير موجود.' });
 
@@ -2353,6 +2558,14 @@ async function startServer() {
       const duplicateUser = users.find(u => u.email.toLowerCase() === normalizedEmail && u.id !== stf.userId);
       if (duplicateUser) {
         return res.status(409).json({ error: 'البريد الإلكتروني مسجل مسبقاً لدى مستخدم آخر.' });
+      }
+      try {
+        await updateFirebaseAuthUser(stf.userId, { email: normalizedEmail });
+      } catch (error: any) {
+        return res.status(500).json({
+          error: 'تعذر تحديث بريد موظف خدمة العملاء في Firebase Authentication.',
+          details: error?.message || 'Firebase Admin error'
+        });
       }
       if (user) user.email = normalizedEmail;
       stf.email = normalizedEmail;
@@ -2366,6 +2579,14 @@ async function startServer() {
       if (isPasswordAlreadyUsed(cleanPassword, stf.userId)) {
         return res.status(400).json({ 
           error: 'كلمة المرور هذه مستخدمة بالفعل لحساب آخر. يرجى اختيار كلمة مرور فريدة لحماية خصوصية الحساب.' 
+        });
+      }
+      try {
+        await updateFirebaseAuthUser(stf.userId, { password: cleanPassword });
+      } catch (error: any) {
+        return res.status(500).json({
+          error: 'تعذر تحديث كلمة مرور موظف خدمة العملاء في Firebase Authentication.',
+          details: error?.message || 'Firebase Admin error'
         });
       }
       userPasswords[stf.userId] = cleanPassword;
@@ -2390,7 +2611,7 @@ async function startServer() {
     res.json(stf);
   });
 
-  app.patch('/api/admin/staff/:id', (req: Request, res: Response) => {
+  app.patch('/api/admin/staff/:id', async (req: Request, res: Response) => {
     const stf = staffList.find(s => s.id === req.params.id || s.userId === req.params.id);
     if (!stf) return res.status(404).json({ error: 'الموظف غير موجود.' });
 
@@ -2402,6 +2623,14 @@ async function startServer() {
       const duplicateUser = users.find(u => u.email.toLowerCase() === normalizedEmail && u.id !== stf.userId);
       if (duplicateUser) {
         return res.status(409).json({ error: 'البريد الإلكتروني مسجل مسبقاً لدى مستخدم آخر.' });
+      }
+      try {
+        await updateFirebaseAuthUser(stf.userId, { email: normalizedEmail });
+      } catch (error: any) {
+        return res.status(500).json({
+          error: 'تعذر تحديث بريد موظف خدمة العملاء في Firebase Authentication.',
+          details: error?.message || 'Firebase Admin error'
+        });
       }
       if (user) user.email = normalizedEmail;
       stf.email = normalizedEmail;
@@ -2415,6 +2644,14 @@ async function startServer() {
       if (isPasswordAlreadyUsed(cleanPassword, stf.userId)) {
         return res.status(400).json({ 
           error: 'كلمة المرور هذه مستخدمة بالفعل لحساب آخر. يرجى اختيار كلمة مرور فريدة لحماية خصوصية الحساب.' 
+        });
+      }
+      try {
+        await updateFirebaseAuthUser(stf.userId, { password: cleanPassword });
+      } catch (error: any) {
+        return res.status(500).json({
+          error: 'تعذر تحديث كلمة مرور موظف خدمة العملاء في Firebase Authentication.',
+          details: error?.message || 'Firebase Admin error'
         });
       }
       userPasswords[stf.userId] = cleanPassword;
@@ -2440,7 +2677,7 @@ async function startServer() {
   });
 
   // Admin delete staff
-  app.delete('/api/admin/staff/:id', (req: Request, res: Response) => {
+  app.delete('/api/admin/staff/:id', async (req: Request, res: Response) => {
     const stf = staffList.find(s => s.id === req.params.id || s.userId === req.params.id);
     if (!stf) {
       return res.status(404).json({ error: 'الموظف غير موجود.' });
@@ -2451,6 +2688,7 @@ async function startServer() {
     staffList = staffList.filter(s => s.id !== stf.id && s.userId !== stf.userId);
 
     if (deletedStaffUserId) {
+      await deleteFirebaseAuthUser(deletedStaffUserId);
       users = users.filter(u => u.id !== deletedStaffUserId);
       delete userPasswords[deletedStaffUserId];
     }
