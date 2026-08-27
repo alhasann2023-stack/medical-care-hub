@@ -37,6 +37,8 @@ import {
 import { Doctor, MedicalService, AuditLog, Staff } from '../../types/medical';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { AdminPaymentsManager } from './AdminPaymentsManager';
+import { Receipt, CreditCard } from 'lucide-react';
 
 export const HospitalAdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -45,7 +47,7 @@ export const HospitalAdminDashboard: React.FC = () => {
   const [services, setServices] = useState<MedicalService[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'DOCTORS' | 'STAFF' | 'SERVICES' | 'AUDIT_LOGS'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PAYMENTS' | 'DOCTORS' | 'STAFF' | 'SERVICES' | 'AUDIT_LOGS'>('OVERVIEW');
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [notificationMsg, setNotificationMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -658,6 +660,18 @@ export const HospitalAdminDashboard: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setActiveTab('PAYMENTS')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === 'PAYMENTS'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white text-emerald-800 border border-emerald-300/60 hover:bg-emerald-50'
+          }`}
+        >
+          <Receipt className="w-4 h-4 text-emerald-600" />
+          <span>المدفوعات وسندات القبض (الفواتير)</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('DOCTORS')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
             activeTab === 'DOCTORS'
@@ -761,6 +775,11 @@ export const HospitalAdminDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Tab: Financial & Payments Management */}
+      {activeTab === 'PAYMENTS' && (
+        <AdminPaymentsManager onShowNotification={showNotification} />
       )}
 
       {/* Tab 2: Doctors Management */}

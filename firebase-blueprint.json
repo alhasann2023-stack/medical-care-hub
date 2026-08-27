@@ -119,6 +119,38 @@
       },
       "required": ["id", "nameAr", "price"]
     },
+    "Payment": {
+      "title": "Payment",
+      "description": "Financial payment transaction records for bookings and medical consultations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "patientName": { "type": "string" },
+        "patientPhone": { "type": "string" },
+        "serviceType": { "type": "string", "enum": ["APPOINTMENT_BOOKING", "MEDICAL_CONSULTATION", "LAB_TEST", "PROCEDURE"] },
+        "appointmentId": { "type": "string" },
+        "consultationId": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "doctorName": { "type": "string" },
+        "doctorSpecialty": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "paymentMethod": { "type": "string", "enum": ["CREDIT_CARD", "MADA", "APPLE_PAY", "STC_PAY", "WAIVED", "CASH", "INSURANCE"] },
+        "paymentStatus": { "type": "string", "enum": ["PAYMENT_REQUIRED", "PAYMENT_PENDING", "PAYMENT_SUCCESS", "PAYMENT_FAILED", "PAYMENT_CANCELLED", "REFUND_PENDING", "REFUNDED", "WAIVED"] },
+        "transactionReference": { "type": "string" },
+        "gatewayTransactionId": { "type": "string" },
+        "gatewayProvider": { "type": "string" },
+        "waivedBy": { "type": "string" },
+        "waivedReason": { "type": "string" },
+        "receiptUrl": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "confirmedAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "patientId", "doctorId", "amount", "currency", "paymentMethod", "paymentStatus", "transactionReference"]
+    },
     "Appointment": {
       "title": "Appointment",
       "description": "Clinic and telemedicine appointment booking record",
@@ -141,6 +173,15 @@
         "clinicRoom": { "type": "string" },
         "reason": { "type": "string" },
         "status": { "type": "string" },
+        "paymentId": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "paymentAmount": { "type": "number" },
+        "currency": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "transactionReference": { "type": "string" },
+        "isWaived": { "type": "boolean" },
+        "waiverReason": { "type": "string" },
+        "rescheduleRequestedDate": { "type": "string" },
         "coordinatorNotes": { "type": "string" },
         "patientNotes": { "type": "string" },
         "createdAt": { "type": "string" },
@@ -167,7 +208,13 @@
         "problemDescription": { "type": "string" },
         "symptoms": { "type": "array", "items": { "type": "string" } },
         "duration": { "type": "string" },
-        "status": { "type": "string", "enum": ["PENDING", "ANSWERED", "CLOSED"] },
+        "status": { "type": "string" },
+        "consultationFee": { "type": "number" },
+        "currency": { "type": "string" },
+        "paymentId": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "transactionReference": { "type": "string" },
         "doctorAdvice": { "type": "string" },
         "doctorNotes": { "type": "string" },
         "treatmentPlan": { "type": "string" },
@@ -180,6 +227,77 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["id", "patientId", "doctorId", "title", "problemDescription", "status"]
+    },
+    "FollowUpAppointment": {
+      "title": "FollowUpAppointment",
+      "description": "Doctor-scheduled follow up visits for patient medical review",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "patientName": { "type": "string" },
+        "patientPhone": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "doctorName": { "type": "string" },
+        "doctorSpecialty": { "type": "string" },
+        "originalAppointmentId": { "type": "string" },
+        "originalConsultationId": { "type": "string" },
+        "followUpDate": { "type": "string" },
+        "followUpTime": { "type": "string" },
+        "reason": { "type": "string" },
+        "notes": { "type": "string" },
+        "status": { "type": "string", "enum": ["SCHEDULED", "REMINDED", "CONFIRMED", "COMPLETED", "CANCELLED"] },
+        "reminderSettings": { "type": "object" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "patientId", "doctorId", "followUpDate", "status"]
+    },
+    "Refund": {
+      "title": "Refund",
+      "description": "Financial refund transactions for cancelled bookings and consultations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "paymentId": { "type": "string" },
+        "appointmentId": { "type": "string" },
+        "consultationId": { "type": "string" },
+        "patientId": { "type": "string" },
+        "patientName": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "reason": { "type": "string" },
+        "status": { "type": "string", "enum": ["REFUND_PENDING", "REFUNDED", "REJECTED"] },
+        "initiatedBy": { "type": "string" },
+        "initiatedByName": { "type": "string" },
+        "initiatedByRole": { "type": "string" },
+        "transactionReference": { "type": "string" },
+        "gatewayRefundId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "confirmedAt": { "type": "string" }
+      },
+      "required": ["id", "paymentId", "patientId", "amount", "reason", "status"]
+    },
+    "ReminderSchedule": {
+      "title": "ReminderSchedule",
+      "description": "Automated appointment and follow up alert schedules",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "appointmentId": { "type": "string" },
+        "followUpId": { "type": "string" },
+        "patientId": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "targetDateTime": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "offsetsMinutes": { "type": "array", "items": { "type": "number" } },
+        "sentOffsets": { "type": "array", "items": { "type": "number" } },
+        "channels": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "patientId", "targetDateTime", "status"]
     },
     "MedicalExamination": {
       "title": "MedicalExamination",
@@ -283,6 +401,9 @@
         "message": { "type": "string" },
         "type": { "type": "string" },
         "referenceId": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "transactionReference": { "type": "string" },
         "isRead": { "type": "boolean" },
         "createdAt": { "type": "string" },
         "updatedAt": { "type": "string" }
@@ -291,7 +412,7 @@
     },
     "AuditLog": {
       "title": "AuditLog",
-      "description": "System security and administrative action audit trail",
+      "description": "System security, financial, and administrative action audit trail",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -332,6 +453,10 @@
       "schema": "MedicalService",
       "description": "Hospital medical clinic services"
     },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Secure financial payments collection"
+    },
     "/appointments/{appointmentId}": {
       "schema": "Appointment",
       "description": "Scheduled in-clinic and virtual appointments bookings"
@@ -339,6 +464,18 @@
     "/consultations/{consultationId}": {
       "schema": "Consultation",
       "description": "Patient medical consultations and doctor clinical replies"
+    },
+    "/followUpAppointments/{followUpId}": {
+      "schema": "FollowUpAppointment",
+      "description": "Doctor scheduled follow-up visits"
+    },
+    "/refunds/{refundId}": {
+      "schema": "Refund",
+      "description": "Financial refund requests and executions"
+    },
+    "/reminderSchedules/{reminderId}": {
+      "schema": "ReminderSchedule",
+      "description": "Automated notification reminder schedules"
     },
     "/examinations/{examinationId}": {
       "schema": "MedicalExamination",
@@ -358,11 +495,11 @@
     },
     "/notifications/{notificationId}": {
       "schema": "AppNotification",
-      "description": "User notifications"
+      "description": "User multi-role notifications"
     },
     "/auditLogs/{logId}": {
       "schema": "AuditLog",
-      "description": "Platform audit trails"
+      "description": "Platform immutable audit trails"
     }
   }
 }

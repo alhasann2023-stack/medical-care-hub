@@ -1,15 +1,71 @@
 export type UserRole = 'PATIENT' | 'DOCTOR' | 'CUSTOMER_SERVICE' | 'HOSPITAL_ADMIN';
 
 export type AppointmentStatus = 
+  | 'PAYMENT_REQUIRED'
   | 'NEW'
   | 'PENDING'
   | 'CONTACTED'
   | 'CONFIRMED'
   | 'COMPLETED'
   | 'CANCELLED'
-  | 'NO_SHOW';
+  | 'NO_SHOW'
+  | 'RESCHEDULE_REQUESTED';
 
-export type ConsultationStatus = 'PENDING' | 'ANSWERED' | 'CLOSED';
+export type ConsultationStatus = 
+  | 'PAYMENT_REQUIRED'
+  | 'PAID_PENDING_DOCTOR'
+  | 'PENDING'
+  | 'ANSWERED'
+  | 'CLOSED'
+  | 'CANCELLED'
+  | 'REFUNDED';
+
+export type CurrencyCode = 'YER' | 'USD' | 'SAR';
+
+export type PaymentProviderType = 
+  | 'KURAIMI' 
+  | 'VISA_MASTERCARD' 
+  | 'MADA' 
+  | 'APPLE_PAY' 
+  | 'STC_PAY' 
+  | 'CASH' 
+  | 'WAIVED';
+
+export type KuraimiPaymentChannel = 'KURAIMI_EXPRESS' | 'HASEB_PAY' | 'KURAIMI_APP';
+
+export type PaymentStatus = 
+  | 'CREATED'
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'SUCCESS'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'EXPIRED'
+  | 'REFUND_PENDING'
+  | 'REFUNDED'
+  | 'WAIVED'
+  // Backward-compatibility aliases
+  | 'PAYMENT_REQUIRED'
+  | 'PAYMENT_PENDING'
+  | 'PAYMENT_SUCCESS'
+  | 'PAYMENT_FAILED'
+  | 'PAYMENT_CANCELLED';
+
+export type PaymentMethod = 
+  | 'KURAIMI'
+  | 'KURAIMI_EXPRESS'
+  | 'HASEB_PAY'
+  | 'VISA'
+  | 'MASTERCARD'
+  | 'CREDIT_CARD'
+  | 'MADA'
+  | 'APPLE_PAY'
+  | 'STC_PAY'
+  | 'WAIVED'
+  | 'CASH'
+  | 'INSURANCE';
+
+export type NotificationChannel = 'IN_APP' | 'SMS' | 'EMAIL' | 'WHATSAPP' | 'PUSH';
 
 export type TestStatus = 'ORDERED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 
@@ -73,6 +129,7 @@ export interface Doctor {
   bioAr: string;
   bioEn: string;
   consultationFee: number;
+  multiCurrencyPricing?: MultiCurrencyPrice;
   avatar: string;
   roomNumber: string;
   rating: number;
@@ -115,9 +172,160 @@ export interface MedicalService {
   descriptionAr: string;
   descriptionEn: string;
   price: number;
+  multiCurrencyPricing?: MultiCurrencyPrice;
   durationMinutes: number;
   category?: string;
   isActive: boolean;
+}
+
+export interface MultiCurrencyPrice {
+  YER: number;
+  USD: number;
+  SAR: number;
+}
+
+export interface CurrencyConfig {
+  code: CurrencyCode;
+  nameAr: string;
+  nameEn: string;
+  symbolAr: string;
+  symbolEn: string;
+  isDefault?: boolean;
+  isActive: boolean;
+  exchangeRateToSAR: number; // e.g. 1 USD = 3.75 SAR, 1 SAR = ~420 YER (1 YER = 0.00238 SAR)
+  exchangeRateToUSD: number;
+  decimals: number;
+  flagIcon: string;
+  supportedProviders: PaymentProviderType[];
+}
+
+export interface KuraimiMerchantConfig {
+  merchantId: string;
+  terminalId: string;
+  serviceKey: string;
+  serviceSecret: string;
+  environment: 'SANDBOX' | 'LIVE';
+  webhookUrl: string;
+  enableHasebPay: boolean;
+  enableExpressPay: boolean;
+  allowedCurrencies: CurrencyCode[];
+}
+
+export interface CardGatewayConfig {
+  gatewayProvider: 'MPGS' | 'CYBERSOURCE' | 'STRIPE' | 'NETWORK_INTERNATIONAL';
+  merchantId: string;
+  publishableKey: string;
+  secretKey: string;
+  environment: 'SANDBOX' | 'LIVE';
+  require3DSecure: boolean;
+  allowedCurrencies: CurrencyCode[];
+}
+
+export interface PaymentSettings {
+  defaultCurrency: CurrencyCode;
+  supportedCurrencies: CurrencyConfig[];
+  kuraimi: KuraimiMerchantConfig;
+  cardGateway: CardGatewayConfig;
+  enableCashOnArrival: boolean;
+  enableWaiverOption: boolean;
+  vatPercentage: number;
+  gatewayFeePercentage: number;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+export interface PaymentLedgerEntry {
+  id: string;
+  paymentId: string;
+  receiptNumber: string;
+  transactionReference: string;
+  patientId: string;
+  patientName: string;
+  serviceType: string;
+  serviceName: string;
+  currency: CurrencyCode;
+  grossAmount: number;
+  gatewayFee: number;
+  vatAmount: number;
+  netAmount: number;
+  refundedAmount: number;
+  provider: PaymentProviderType;
+  paymentMethod: PaymentMethod;
+  status: PaymentStatus;
+  settlementStatus: 'SETTLED' | 'PENDING' | 'REFUNDED' | 'FAILED';
+  createdAt: string;
+  settledAt?: string;
+  notes?: string;
+}
+
+export interface PaymentLedgerSummary {
+  currency: CurrencyCode;
+  totalGross: number;
+  totalGatewayFees: number;
+  totalVat: number;
+  totalNet: number;
+  totalRefunds: number;
+  successCount: number;
+  pendingCount: number;
+  refundCount: number;
+  failedCount: number;
+}
+
+export interface Payment {
+  id: string;
+  paymentId?: string;
+  receiptNumber?: string;
+  patientId: string;
+  patientName: string;
+  patientPhone?: string;
+  patientMrn?: string;
+  serviceType: 'APPOINTMENT_BOOKING' | 'MEDICAL_CONSULTATION' | 'LAB_TEST' | 'PROCEDURE' | 'APPOINTMENT' | 'CONSULTATION' | 'MEDICATION';
+  appointmentId?: string;
+  consultationId?: string;
+  serviceReferenceId?: string;
+  doctorId?: string;
+  doctorName?: string;
+  doctorSpecialty?: string;
+  serviceId?: string;
+  serviceName: string;
+  amount: number;
+  currency: CurrencyCode | string; // 'YER' | 'USD' | 'SAR'
+  baseCurrency?: CurrencyCode;
+  exchangeRate?: number;
+  grossAmount?: number;
+  gatewayFee?: number;
+  vatAmount?: number;
+  netAmount?: number;
+  refundAmount?: number;
+  paymentProvider?: PaymentProviderType;
+  paymentMethod: PaymentMethod;
+  kuraimiDetails?: {
+    channel?: KuraimiPaymentChannel;
+    customerAccount?: string;
+    hasebTransactionCode?: string;
+    expressCode?: string;
+    terminalId?: string;
+    authCode?: string;
+    statusDescription?: string;
+  };
+  cardBrand?: string;
+  last4?: string;
+  cardHolderName?: string;
+  paymentStatus: PaymentStatus;
+  status?: PaymentStatus;
+  transactionReference: string;
+  gatewayTransactionId?: string;
+  gatewayProvider?: string;
+  gatewayResponseCode?: string;
+  waivedBy?: string;
+  waivedByName?: string;
+  waivedReason?: string;
+  isWaived?: boolean;
+  receiptUrl?: string;
+  paidAt?: string;
+  createdAt: string;
+  confirmedAt?: string;
+  updatedAt?: string;
 }
 
 export interface Appointment {
@@ -138,10 +346,31 @@ export interface Appointment {
   confirmedTime?: string;
   clinicRoom?: string;
   status: AppointmentStatus;
+  
+  // Payment Integration Fields
+  paymentId?: string;
+  paymentStatus?: PaymentStatus;
+  paymentAmount?: number;
+  currency?: string;
+  paymentMethod?: PaymentMethod;
+  transactionReference?: string;
+  paymentTransactionRef?: string;
+  paymentDate?: string;
+  isWaived?: boolean;
+  waiverReason?: string;
+  waiverApprovedBy?: string;
+  waiverApprovedAt?: string;
+  
+  // Reschedule Fields
+  rescheduleRequestedDate?: string;
+  rescheduleRequestedPeriod?: PreferredPeriod;
+  rescheduleReason?: string;
+  
   coordinatorNotes?: string;
   patientNotes?: string;
   createdAt: string;
   updatedAt: string;
+  confirmedAt?: string;
 }
 
 export interface ConsultationMessage {
@@ -176,11 +405,30 @@ export interface Consultation {
   symptoms: string[];
   duration: string; // e.g. 'منذ 3 أيام' / '3 days'
   status: ConsultationStatus;
+  
+  // Payment Integration Fields
+  consultationFee?: number;
+  paymentAmount?: number;
+  currency?: string;
+  paymentId?: string;
+  paymentStatus?: PaymentStatus;
+  paymentMethod?: PaymentMethod;
+  transactionReference?: string;
+  paymentTransactionRef?: string;
+  paymentDate?: string;
+  isWaived?: boolean;
+  waiverReason?: string;
+  waiverApprovedBy?: string;
+  waiverApprovedAt?: string;
+
   doctorAdvice?: string;
   doctorNotes?: string; // Internal medical notes
   suggestedAction?: string;
   treatmentPlan?: string;
   requireInPersonVisit?: boolean;
+  orderedLabTests?: string[];
+  recommendedPrescription?: string;
+  
   attachments?: {
     name: string;
     url: string;
@@ -190,6 +438,104 @@ export interface Consultation {
   messages: ConsultationMessage[];
   createdAt: string;
   answeredAt?: string;
+  updatedAt?: string;
+}
+
+export interface FollowUpAppointment {
+  id: string;
+  followUpId?: string;
+  patientId: string;
+  patientName: string;
+  patientPhone: string;
+  patientMrn?: string;
+  doctorId: string;
+  doctorName: string;
+  doctorSpecialty: string;
+  clinicRoom?: string;
+  sourceType?: 'APPOINTMENT' | 'CONSULTATION';
+  sourceId?: string;
+  originalAppointmentId?: string;
+  originalConsultationId?: string;
+  followUpDate: string; // e.g. 2026-09-25
+  followUpTime: string; // e.g. 17:00
+  scheduledDate?: string;
+  scheduledTime?: string;
+  isFreeFollowUp?: boolean;
+  reason: string;
+  notes?: string;
+  doctorNotes?: string;
+  status: 'SCHEDULED' | 'REMINDED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+  reminderSent?: boolean;
+  reminderSettings?: {
+    days30?: boolean;
+    days7?: boolean;
+    hours24?: boolean;
+    hours2?: boolean;
+    minutes30?: boolean;
+    remind30Days?: boolean;
+    remind7Days?: boolean;
+    remind24Hours?: boolean;
+    remind2Hours?: boolean;
+    remind30Minutes?: boolean;
+  };
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface Refund {
+  id: string;
+  refundId?: string;
+  paymentId: string;
+  appointmentId?: string;
+  consultationId?: string;
+  serviceType?: string;
+  serviceReferenceId?: string;
+  patientId: string;
+  patientName: string;
+  amount: number;
+  currency: string;
+  reason: string;
+  status: 'REFUND_PENDING' | 'REFUNDED' | 'REJECTED';
+  initiatedBy?: string;
+  initiatedByName?: string;
+  initiatedByRole?: UserRole;
+  transactionReference?: string;
+  refundTransactionRef?: string;
+  processedBy?: string;
+  processedByUserId?: string;
+  processedAt?: string;
+  gatewayRefundId?: string;
+  createdAt: string;
+  confirmedAt?: string;
+}
+
+export interface ReminderSchedule {
+  id: string;
+  appointmentId?: string;
+  followUpId?: string;
+  targetType?: 'APPOINTMENT' | 'FOLLOW_UP' | 'CONSULTATION';
+  targetId?: string;
+  patientId: string;
+  patientUserId?: string;
+  patientName?: string;
+  patientPhone?: string;
+  patientEmail?: string;
+  doctorId?: string;
+  doctorName?: string;
+  scheduledDate?: string;
+  scheduledTime?: string;
+  targetDateTime?: string;
+  title?: string;
+  message?: string;
+  offsetsMinutes?: number[]; // e.g. [1440, 120, 30] for 24h, 2h, 30m
+  sentOffsets?: number[];
+  reminderOffset?: '30_DAYS' | '7_DAYS' | '24_HOURS' | '2_HOURS' | '30_MINUTES';
+  channels?: ('IN_APP' | 'SMS' | 'EMAIL' | 'WHATSAPP' | NotificationChannel)[];
+  status?: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  isActive?: boolean;
+  isSent?: boolean;
+  sentAt?: string;
+  createdAt: string;
 }
 
 export interface VitalSigns {
@@ -316,7 +662,7 @@ export interface Prescription {
 
 export interface TimelineItem {
   id: string;
-  type: 'EXAMINATION' | 'TEST' | 'RESULT' | 'PRESCRIPTION' | 'CONSULTATION' | 'REPORT';
+  type: 'EXAMINATION' | 'TEST' | 'RESULT' | 'PRESCRIPTION' | 'CONSULTATION' | 'REPORT' | 'PAYMENT' | 'FOLLOW_UP';
   date: string;
   title: string;
   subtitle: string;
@@ -332,11 +678,14 @@ export interface AppNotification {
   userId: string;
   title: string;
   message: string;
-  type: 'APPOINTMENT' | 'CONSULTATION' | 'TEST_RESULT' | 'REPORT' | 'SYSTEM';
+  type: 'PAYMENT' | 'APPOINTMENT' | 'CONSULTATION' | 'FOLLOW_UP' | 'REMINDER' | 'REFUND' | 'TEST_RESULT' | 'REPORT' | 'SYSTEM';
   isRead: boolean;
   relatedId?: string;
   referenceId?: string;
   actionUrl?: string;
+  amount?: number;
+  currency?: string;
+  transactionReference?: string;
   createdAt: string;
 }
 
@@ -354,6 +703,7 @@ export interface AuditLog {
   ipAddress: string;
   timestamp?: string;
   createdAt?: string;
+  status?: string;
 }
 
 export interface DashboardStats {
@@ -366,4 +716,13 @@ export interface DashboardStats {
   completedConsultations: number;
   medicalTestsCount: number;
   medicalReportsCount: number;
+  
+  // Payment Stats
+  totalRevenue: number;
+  todayRevenue: number;
+  bookingPaymentsCount: number;
+  consultationPaymentsCount: number;
+  successfulPaymentsCount: number;
+  failedPaymentsCount: number;
+  refundedAmount: number;
 }

@@ -7,6 +7,10 @@ import {
   MedicalService,
   Appointment,
   Consultation,
+  Payment,
+  FollowUpAppointment,
+  Refund,
+  ReminderSchedule,
   MedicalExamination,
   MedicalTest,
   MedicalReport,
@@ -362,9 +366,221 @@ export const INITIAL_STAFF: Staff[] = [
   }
 ];
 
-export const INITIAL_APPOINTMENTS: Appointment[] = [];
+export const INITIAL_PAYMENTS: Payment[] = [
+  {
+    id: 'pay-2026-001',
+    paymentId: 'pay-2026-001',
+    patientId: 'pat-1',
+    patientName: 'سارة خالد المنصور',
+    patientPhone: '+966501112233',
+    patientMrn: 'MRN-2026-8801',
+    serviceType: 'APPOINTMENT_BOOKING',
+    appointmentId: 'apt-2026-101',
+    doctorId: 'doc-1',
+    doctorName: 'د. فيصل العتيبي',
+    doctorSpecialty: 'أمراض القلب والأوعية الدموية',
+    serviceId: 'srv-1',
+    serviceName: 'كشف استشاري قلب مع تخطيط قلب كهربائي (ECG)',
+    amount: 350,
+    currency: 'SAR',
+    paymentMethod: 'MADA',
+    paymentStatus: 'PAYMENT_SUCCESS',
+    status: 'PAYMENT_SUCCESS',
+    transactionReference: 'TXN-MADA-8849201',
+    gatewayTransactionId: 'gw_tx_77392819',
+    gatewayProvider: 'Saudi Payments (Mada Gateway)',
+    receiptUrl: 'https://medicalcarehub.com/receipts/pay-2026-001.pdf',
+    createdAt: '2026-08-25T10:00:00Z',
+    confirmedAt: '2026-08-25T10:02:15Z'
+  },
+  {
+    id: 'pay-2026-002',
+    paymentId: 'pay-2026-002',
+    patientId: 'pat-1',
+    patientName: 'سارة خالد المنصور',
+    patientPhone: '+966501112233',
+    patientMrn: 'MRN-2026-8801',
+    serviceType: 'MEDICAL_CONSULTATION',
+    consultationId: 'cns-2026-201',
+    doctorId: 'doc-2',
+    doctorName: 'د. منى الغامدي',
+    doctorSpecialty: 'الطب الباطني والغدد الصماء',
+    serviceName: 'استشارة طبية باطنية وسكري عن بُعد',
+    amount: 300,
+    currency: 'SAR',
+    paymentMethod: 'APPLE_PAY',
+    paymentStatus: 'PAYMENT_SUCCESS',
+    status: 'PAYMENT_SUCCESS',
+    transactionReference: 'TXN-APAY-9938210',
+    gatewayTransactionId: 'gw_tx_88192301',
+    gatewayProvider: 'Apple Pay Gateway',
+    receiptUrl: 'https://medicalcarehub.com/receipts/pay-2026-002.pdf',
+    createdAt: '2026-08-25T14:30:00Z',
+    confirmedAt: '2026-08-25T14:31:05Z'
+  }
+];
 
-export const INITIAL_CONSULTATIONS: Consultation[] = [];
+export const INITIAL_APPOINTMENTS: Appointment[] = [
+  {
+    id: 'apt-2026-101',
+    patientId: 'pat-1',
+    patientName: 'سارة خالد المنصور',
+    patientPhone: '+966501112233',
+    patientMrn: 'MRN-2026-8801',
+    doctorId: 'doc-1',
+    doctorName: 'د. فيصل العتيبي',
+    doctorSpecialty: 'أمراض القلب والأوعية الدموية',
+    serviceId: 'srv-1',
+    serviceName: 'كشف استشاري قلب مع تخطيط قلب كهربائي (ECG)',
+    preferredDate: '2026-08-28',
+    preferredPeriod: 'MORNING',
+    confirmedDate: '2026-08-28',
+    confirmedTime: '10:30 ص',
+    clinicRoom: 'عيادة 201 - جناح القلب',
+    reason: 'متابعة نوبات خفقان خفيفة وفحص سنوي شامل',
+    status: 'CONFIRMED',
+    paymentId: 'pay-2026-001',
+    paymentStatus: 'PAYMENT_SUCCESS',
+    paymentAmount: 350,
+    currency: 'SAR',
+    paymentMethod: 'MADA',
+    transactionReference: 'TXN-MADA-8849201',
+    coordinatorNotes: 'تم تأكيد الموعد وتنسيق التوقيت الصباحي مع المريضة.',
+    patientNotes: 'يفضل الفترة الصباحية الأولى.',
+    createdAt: '2026-08-25T10:00:00Z',
+    updatedAt: '2026-08-25T10:30:00Z',
+    confirmedAt: '2026-08-25T10:30:00Z'
+  },
+  {
+    id: 'apt-2026-102',
+    patientId: 'pat-1',
+    patientName: 'سارة خالد المنصور',
+    patientPhone: '+966501112233',
+    patientMrn: 'MRN-2026-8801',
+    doctorId: 'doc-3',
+    doctorName: 'د. طارق الشهري',
+    doctorSpecialty: 'جراحة العظام والمفاصل والعمود الفقري',
+    serviceId: 'srv-4',
+    serviceName: 'استشارة عظام ومفاصل وفحص الإصابات الحركية',
+    preferredDate: '2026-08-30',
+    preferredPeriod: 'EVENING',
+    reason: 'ألم مفصل الركبة بعد التمارين الرياضية',
+    status: 'PENDING',
+    paymentId: 'pay-2026-003',
+    paymentStatus: 'PAYMENT_SUCCESS',
+    paymentAmount: 320,
+    currency: 'SAR',
+    paymentMethod: 'CREDIT_CARD',
+    transactionReference: 'TXN-CC-7711209',
+    coordinatorNotes: 'مدفوع وبانتظار اتصال خدمة العملاء لتثبيت الوقت.',
+    patientNotes: 'أرجو تثبيت الموعد بعد الساعة 5 مساءً.',
+    createdAt: '2026-08-26T08:00:00Z',
+    updatedAt: '2026-08-26T08:05:00Z'
+  }
+];
+
+export const INITIAL_CONSULTATIONS: Consultation[] = [
+  {
+    id: 'cns-2026-201',
+    patientId: 'pat-1',
+    patientName: 'سارة خالد المنصور',
+    patientPhone: '+966501112233',
+    patientMrn: 'MRN-2026-8801',
+    patientAge: 32,
+    patientGender: 'FEMALE',
+    doctorId: 'doc-2',
+    doctorName: 'د. منى الغامدي',
+    doctorSpecialty: 'الطب الباطني والغدد الصماء',
+    title: 'استشارة ضبط جرعة الغدة الدرقية ونتائج التحليل',
+    problemDescription: 'أشعر بخمول طفيف وقمت بعمل تحليل TSH وكانت النتيجة 4.8، هل أحتاج لتعديل جرعة الثيروكسين الحالية 50 مكجم؟',
+    symptoms: ['خمول طفيف', 'جفاف بسيط في الجلد'],
+    duration: 'منذ أسبوعين',
+    status: 'ANSWERED',
+    consultationFee: 300,
+    currency: 'SAR',
+    paymentId: 'pay-2026-002',
+    paymentStatus: 'PAYMENT_SUCCESS',
+    paymentMethod: 'APPLE_PAY',
+    transactionReference: 'TXN-APAY-9938210',
+    doctorAdvice: 'أهلاً بكِ سارة. بعد مراجعة معدل TSH البالغ 4.8، ننصح برفع الجرعة تدريجياً إلى 75 مكجم 5 أيام في الأسبوع مع الاستمرار على 50 مكجم ليومين، وإعادة التحليل بعد 6 أسابيع.',
+    doctorNotes: 'مريضة ملتزمة، تم إعطاء التوصية العلاجية مع جدولة متابعة بعد 6 أسابيع.',
+    treatmentPlan: 'تعديل جرعة التروكسين وإجراء فحص TSH و FT4 الدوري.',
+    suggestedAction: 'تعديل الجرعة وإجراء تحليل دوري.',
+    requireInPersonVisit: false,
+    attachments: [],
+    messages: [
+      {
+        id: 'msg-1',
+        consultationId: 'cns-2026-201',
+        senderId: 'usr-pat-1',
+        senderName: 'سارة خالد المنصور',
+        senderRole: 'PATIENT',
+        message: 'أشعر بخمول طفيف وقمت بعمل تحليل TSH وكانت النتيجة 4.8، هل أحتاج لتعديل جرعة الثيروكسين الحالية 50 مكجم؟',
+        createdAt: '2026-08-25T14:30:00Z'
+      },
+      {
+        id: 'msg-2',
+        consultationId: 'cns-2026-201',
+        senderId: 'usr-doc-2',
+        senderName: 'د. منى الغامدي',
+        senderRole: 'DOCTOR',
+        message: 'أهلاً بكِ سارة. بعد مراجعة معدل TSH البالغ 4.8، ننصح برفع الجرعة تدريجياً إلى 75 مكجم وإعادة التحليل بعد 6 أسابيع.',
+        createdAt: '2026-08-25T16:00:00Z'
+      }
+    ],
+    createdAt: '2026-08-25T14:30:00Z',
+    answeredAt: '2026-08-25T16:00:00Z',
+    updatedAt: '2026-08-25T16:00:00Z'
+  }
+];
+
+export const INITIAL_FOLLOW_UPS: FollowUpAppointment[] = [
+  {
+    id: 'flw-2026-001',
+    followUpId: 'flw-2026-001',
+    patientId: 'pat-1',
+    patientName: 'سارة خالد المنصور',
+    patientPhone: '+966501112233',
+    patientMrn: 'MRN-2026-8801',
+    doctorId: 'doc-2',
+    doctorName: 'د. منى الغامدي',
+    doctorSpecialty: 'الطب الباطني والغدد الصماء',
+    originalConsultationId: 'cns-2026-201',
+    followUpDate: '2026-09-25',
+    followUpTime: '11:00 ص',
+    reason: 'متابعة نتائج تحليل وظائف الغدة TSH بعد تعديل الجرعة',
+    notes: 'إحضار نتائج التحاليل المخبرية الجديدة قبل الحضور.',
+    status: 'SCHEDULED',
+    reminderSettings: {
+      days30: true,
+      days7: true,
+      hours24: true,
+      hours2: true,
+      minutes30: true
+    },
+    createdAt: '2026-08-25T16:00:00Z'
+  }
+];
+
+export const INITIAL_REFUNDS: Refund[] = [];
+
+export const INITIAL_REMINDERS: ReminderSchedule[] = [
+  {
+    id: 'rem-1',
+    appointmentId: 'apt-2026-101',
+    patientId: 'pat-1',
+    patientPhone: '+966501112233',
+    doctorId: 'doc-1',
+    targetDateTime: '2026-08-28T10:30:00Z',
+    title: 'تذكير بموعد عيادة القلب',
+    message: 'تذكير بموعدك مع د. فيصل العتيبي يوم 28 أغسطس الساعة 10:30 ص في عيادة 201.',
+    offsetsMinutes: [1440, 120, 30],
+    sentOffsets: [],
+    channels: ['IN_APP', 'SMS', 'EMAIL'],
+    status: 'ACTIVE',
+    createdAt: '2026-08-25T10:30:00Z'
+  }
+];
 
 export const INITIAL_EXAMINATIONS: MedicalExamination[] = [];
 
@@ -374,6 +590,81 @@ export const INITIAL_REPORTS: MedicalReport[] = [];
 
 export const INITIAL_PRESCRIPTIONS: Prescription[] = [];
 
-export const INITIAL_NOTIFICATIONS: AppNotification[] = [];
+export const INITIAL_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: 'notif-1',
+    userId: 'usr-pat-1',
+    title: 'تم استلام دفعتك بنجاح',
+    message: 'تم استلام دفعة 350 ر.س لرسوم حجز موعد عيادة القلب (مرجع TXN-MADA-8849201). جاري التنسيق مع خدمة العملاء.',
+    type: 'PAYMENT',
+    referenceId: 'pay-2026-001',
+    amount: 350,
+    currency: 'SAR',
+    transactionReference: 'TXN-MADA-8849201',
+    isRead: false,
+    createdAt: '2026-08-25T10:02:15Z'
+  },
+  {
+    id: 'notif-2',
+    userId: 'usr-pat-1',
+    title: 'تم تأكيد موعدك الطبي!',
+    message: 'تم تأكيد موعدك مع د. فيصل العتيبي يوم 2026-08-28 الساعة 10:30 ص في عيادة 201 - جناح القلب.',
+    type: 'APPOINTMENT',
+    referenceId: 'apt-2026-101',
+    isRead: false,
+    createdAt: '2026-08-25T10:30:00Z'
+  },
+  {
+    id: 'notif-3',
+    userId: 'usr-pat-1',
+    title: 'حدد الطبيب موعد المراجعة القادم',
+    message: 'حددت د. منى الغامدي موعد المراجعة القادم في 25 سبتمبر 2026 الساعة 11:00 ص لمتابعة نتائج التحاليل.',
+    type: 'FOLLOW_UP',
+    referenceId: 'flw-2026-001',
+    isRead: false,
+    createdAt: '2026-08-25T16:00:00Z'
+  },
+  {
+    id: 'notif-4',
+    userId: 'usr-cs-1',
+    title: 'تم دفع رسوم حجز جديدة',
+    message: 'قام المريض سارة خالد المنصور بدفع رسوم حجز عيادة العظام (320 ر.س) - بانتظار تأكيد وتنسيق الموعد.',
+    type: 'PAYMENT',
+    referenceId: 'apt-2026-102',
+    amount: 320,
+    currency: 'SAR',
+    transactionReference: 'TXN-CC-7711209',
+    isRead: false,
+    createdAt: '2026-08-26T08:05:00Z'
+  }
+];
 
-export const INITIAL_AUDIT_LOGS: AuditLog[] = [];
+export const INITIAL_AUDIT_LOGS: AuditLog[] = [
+  {
+    id: 'aud-1',
+    userId: 'usr-pat-1',
+    userName: 'سارة خالد المنصور',
+    userRole: 'PATIENT',
+    action: 'PAYMENT_COMPLETED',
+    entityType: 'PAYMENT',
+    entityId: 'pay-2026-001',
+    details: 'إتمام دفع رسوم حجز الموعد بقيمة 350 ر.س عبر بوابة مدى',
+    ipAddress: '192.168.1.1',
+    timestamp: '2026-08-25T10:02:15Z',
+    createdAt: '2026-08-25T10:02:15Z'
+  },
+  {
+    id: 'aud-2',
+    userId: 'usr-cs-1',
+    userName: 'نورة السعيد',
+    userRole: 'CUSTOMER_SERVICE',
+    action: 'CONFIRM_APPOINTMENT',
+    entityType: 'APPOINTMENT',
+    entityId: 'apt-2026-101',
+    details: 'تأكيد الموعد الطبي للمريض سارة خالد المنصور بعد التحقق من دفع الرسوم',
+    ipAddress: '192.168.1.5',
+    timestamp: '2026-08-25T10:30:00Z',
+    createdAt: '2026-08-25T10:30:00Z'
+  }
+];
+

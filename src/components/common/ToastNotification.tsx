@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, MessageSquare, FileText, Activity, Bell, X, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Calendar, MessageSquare, FileText, Activity, Bell, X, ArrowLeft, CheckCircle2, CreditCard, Clock, RotateCcw } from 'lucide-react';
 import { AppNotification } from '../../types/medical';
 
 export interface ToastItem {
   id: string;
   title: string;
   message: string;
-  type: 'APPOINTMENT' | 'CONSULTATION' | 'TEST_RESULT' | 'REPORT' | 'SYSTEM';
+  type: 'PAYMENT' | 'FOLLOW_UP' | 'REMINDER' | 'REFUND' | 'APPOINTMENT' | 'CONSULTATION' | 'TEST_RESULT' | 'REPORT' | 'SYSTEM';
   relatedId?: string;
   timestamp?: string;
   onClick?: () => void;
@@ -27,6 +27,13 @@ export const ToastNotification: React.FC<ToastNotificationProps> = ({
 
   const getIcon = (type: string) => {
     switch (type) {
+      case 'PAYMENT':
+        return <CreditCard className="w-5 h-5 text-emerald-600" />;
+      case 'FOLLOW_UP':
+      case 'REMINDER':
+        return <Clock className="w-5 h-5 text-amber-600" />;
+      case 'REFUND':
+        return <RotateCcw className="w-5 h-5 text-blue-600" />;
       case 'APPOINTMENT':
         return <Calendar className="w-5 h-5 text-blue-600" />;
       case 'CONSULTATION':
@@ -42,6 +49,14 @@ export const ToastNotification: React.FC<ToastNotificationProps> = ({
 
   const getTypeBadge = (type: string) => {
     switch (type) {
+      case 'PAYMENT':
+        return { label: 'سداد وفواتير', bg: 'bg-emerald-100 text-emerald-800' };
+      case 'FOLLOW_UP':
+        return { label: 'موعد مراجعة', bg: 'bg-amber-100 text-amber-800' };
+      case 'REMINDER':
+        return { label: 'تذكير طبي', bg: 'bg-amber-100 text-amber-800' };
+      case 'REFUND':
+        return { label: 'استرداد مالي', bg: 'bg-blue-100 text-blue-800' };
       case 'APPOINTMENT':
         return { label: 'حجز ومواعيد', bg: 'bg-blue-100 text-blue-800' };
       case 'CONSULTATION':

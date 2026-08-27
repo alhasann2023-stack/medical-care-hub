@@ -22,7 +22,11 @@ import {
   Settings,
   Trash2,
   Stethoscope,
-  CheckCheck
+  CheckCheck,
+  CreditCard,
+  Receipt,
+  RotateCcw,
+  ShieldCheck
 } from 'lucide-react';
 import { 
   Patient, 
@@ -31,7 +35,8 @@ import {
   Consultation, 
   MedicalTest, 
   MedicalReport, 
-  Prescription 
+  Prescription,
+  FollowUpAppointment
 } from '../../types/medical';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -40,6 +45,8 @@ import { PrintableReportModal } from '../common/PrintableReportModal';
 import { PrintablePrescriptionModal } from '../common/PrintablePrescriptionModal';
 import { ConsultationReminderBanner } from './ConsultationReminderBanner';
 import { localReminderService, ReminderItem } from '../../services/localReminderService';
+import { PatientInvoicesModal } from './PatientInvoicesModal';
+import { PaymentCheckoutModal } from '../common/PaymentCheckoutModal';
 
 interface PatientDashboardProps {
   onOpenBooking: () => void;
@@ -59,6 +66,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const { user, patientProfile } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
+  const [followUps, setFollowUps] = useState<FollowUpAppointment[]>([]);
   const [doctorsList, setDoctorsList] = useState<Doctor[]>([]);
   const [tests, setTests] = useState<MedicalTest[]>([]);
   const [reports, setReports] = useState<MedicalReport[]>([]);
@@ -76,6 +84,19 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
   const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
   const [showAllConsultationsModal, setShowAllConsultationsModal] = useState<boolean>(false);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState<boolean>(false);
+
+  // Checkout Modal State
+  const [checkoutData, setCheckoutData] = useState<{
+    isOpen: boolean;
+    serviceType: 'APPOINTMENT' | 'CONSULTATION' | 'LAB_TEST' | 'OTHER';
+    serviceReferenceId: string;
+    serviceName: string;
+    amount: number;
+    doctorId?: string;
+    doctorName?: string;
+    doctorSpecialty?: string;
+  } | null>(null);
 
   const patientId = patientProfile?.id || user?.id || 'pat-1';
 
@@ -193,7 +214,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      const [aptRes, cnsRes, tstRes, repRes, rxRes, docsRes] = await Promise.all([
+      const [aptRes, cnsRes, tstRes, repRes, rxRes, docsRes, followUpRes] = await Promise.all([
         api.getAppointments({ patientId }),
         api.getConsultations({ 
           patientId,
@@ -203,7 +224,8 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
         api.getTests(patientId),
         api.getReports(patientId),
         api.getPrescriptions(patientId),
-        api.getDoctors(undefined, true)
+        api.getDoctors(undefined, true),
+        api.getFollowUps({ patientId })
       ]);
 
       setAppointments(aptRes);
@@ -212,6 +234,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
       setReports(repRes);
       setPrescriptions(rxRes);
       setDoctorsList(docsRes);
+      setFollowUps(followUpRes);
       checkForReminders(aptRes, cnsRes, docsRes);
     } catch (err) {
       console.error('Failed to load patient dashboard:', err);
@@ -296,6 +319,14 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
           {/* Primary Quick Action Buttons & Reminder Trigger */}
           <div className="flex flex-wrap items-center gap-2.5">
             <button
+              onClick={() => setIsInvoiceModalOpen(true)}
+              className="px-3.5 py-2.5 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-200 hover:text-white font-bold text-xs transition-all border border-emerald-400/40 flex items-center gap-1.5 cursor-pointer shadow-sm"
+              title="عرض سجل المدفوعات والفواتير وسندات القبض"
+            >
+              <Receipt className="w-4 h-4 text-emerald-300" />
+              <span>الفواتير والمدفوعات</span>
+            </button>
+            <button
               onClick={handleTriggerTestReminder}
               className="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all border border-white/20 flex items-center gap-1.5 cursor-pointer"
               title="تجربة نظام التنبيه قبل الموعد بـ 30 دقيقة ورنين التذكير"
@@ -337,8 +368,8 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
         </div>
       </div>
 
-      {/* 4 Feature Shortcut Cards (فحوصاتي، تقاريري، السجل الزمني، أدويتي) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+      {/* 5 Feature Shortcut Cards (فحوصاتي، تقاريري، السجل الزمني، أدويتي، الفواتير) */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
         <button
           onClick={onOpenBooking}
           className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-blue-300 hover:shadow-md transition-all text-start group cursor-pointer"
@@ -381,6 +412,17 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
           </div>
           <h3 className="font-extrabold text-sm text-slate-900">تقاريري الطبية</h3>
           <p className="text-xs text-slate-500 mt-0.5">{reports.length} تقارير رسمية</p>
+        </button>
+
+        <button
+          onClick={() => setIsInvoiceModalOpen(true)}
+          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-emerald-400 hover:shadow-md transition-all text-start group cursor-pointer"
+        >
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <Receipt className="w-5 h-5" />
+          </div>
+          <h3 className="font-extrabold text-sm text-slate-900">الفواتير والسداد</h3>
+          <p className="text-xs text-slate-500 mt-0.5">سجل الدفع وسندات القبض</p>
         </button>
       </div>
 
@@ -1054,6 +1096,37 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Patient Invoices Modal */}
+      {isInvoiceModalOpen && (
+        <PatientInvoicesModal
+          isOpen={isInvoiceModalOpen}
+          onClose={() => setIsInvoiceModalOpen(false)}
+        />
+      )}
+
+      {/* Payment Checkout Modal */}
+      {checkoutData && checkoutData.isOpen && (
+        <PaymentCheckoutModal
+          isOpen={checkoutData.isOpen}
+          onClose={() => setCheckoutData(null)}
+          onSuccess={(payment) => {
+            setCheckoutData(null);
+            loadDashboardData();
+          }}
+          serviceType={checkoutData.serviceType}
+          serviceReferenceId={checkoutData.serviceReferenceId}
+          serviceName={checkoutData.serviceName}
+          amount={checkoutData.amount}
+          currency="SAR"
+          patientId={patientId}
+          patientName={patientProfile?.fullName || user?.fullName || 'المريض'}
+          patientPhone={patientProfile?.phone || user?.phone || ''}
+          doctorId={checkoutData.doctorId}
+          doctorName={checkoutData.doctorName}
+          doctorSpecialty={checkoutData.doctorSpecialty}
+        />
       )}
     </div>
   );

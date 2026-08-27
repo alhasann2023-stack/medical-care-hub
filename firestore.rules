@@ -20,6 +20,9 @@ service cloud.firestore {
     match /services/{serviceId} {
       allow read, write: if true;
     }
+    match /payments/{paymentId} {
+      allow read, write: if true;
+    }
     match /appointments/{appointmentId} {
       allow read, write: if true;
     }
@@ -28,6 +31,15 @@ service cloud.firestore {
       match /messages/{messageId} {
         allow read, write: if true;
       }
+    }
+    match /followUpAppointments/{followUpId} {
+      allow read, write: if true;
+    }
+    match /refunds/{refundId} {
+      allow read, write: if true;
+    }
+    match /reminderSchedules/{reminderId} {
+      allow read, write: if true;
     }
     match /examinations/{examinationId} {
       allow read, write: if true;
@@ -55,4 +67,3 @@ service cloud.firestore {
     }
   }
 }
-

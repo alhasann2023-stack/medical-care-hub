@@ -1,4 +1,3 @@
-
 import React, {
   createContext,
   useContext,
@@ -741,14 +740,14 @@ export const AuthProvider: React.FC<{
                       }
 
 
-                      const finalUser =
+                      const finalUser: User =
                         isAdminEmail(
                           fbUser.email
                         )
                           ? {
                               ...updatedUser,
                               role:
-                                'HOSPITAL_ADMIN'
+                                'HOSPITAL_ADMIN' as UserRole
                             }
                           : updatedUser;
 

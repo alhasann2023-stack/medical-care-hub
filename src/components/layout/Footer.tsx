@@ -27,7 +27,7 @@ export const Footer: React.FC = () => {
           </div>
 
           {/* Col 2: Clinical Specialties */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h4 className="text-white font-bold text-sm border-b border-slate-800 pb-2">الأقسام والعيادات</h4>
             <ul className="space-y-2 text-xs text-slate-400">
               <li className="hover:text-white transition-colors cursor-pointer">• مركز أمراض وجراحة القلب</li>
@@ -39,7 +39,7 @@ export const Footer: React.FC = () => {
           </div>
 
           {/* Col 3: Patient Care Hours */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h4 className="text-white font-bold text-sm border-b border-slate-800 pb-2">أوقات العمل والتنسيق</h4>
             <div className="space-y-2 text-xs text-slate-400">
               <div className="flex items-start gap-2">
@@ -60,20 +60,20 @@ export const Footer: React.FC = () => {
           </div>
 
           {/* Col 4: Contact & Support */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h4 className="text-white font-bold text-sm border-b border-slate-800 pb-2">التواصل وخدمة المرضى</h4>
             <div className="space-y-2.5 text-xs text-slate-400">
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-cyan-400 shrink-0" />
-                <span>مركز الاتصال الموحد: 776458925</span>
+                <span>مركز الاتصال الموحد: 920008899</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-cyan-400 shrink-0" />
-                <span>nashwann1991@gmail.com</span>
+                <span>support@medicalcarehub.com</span>
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-cyan-400 shrink-0" />
-                <span> اليمن صنعاء شارع الزبيري امام الهدى</span>
+                <span>المملكة العربية السعودية - الرياض - طريق الملك فهد</span>
               </div>
             </div>
           </div>

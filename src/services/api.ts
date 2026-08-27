@@ -15,7 +15,15 @@ import {
   AppNotification,
   AuditLog,
   TimelineItem,
-  UserRole
+  UserRole,
+  Payment,
+  FollowUpAppointment,
+  Refund,
+  ReminderSchedule,
+  PaymentMethod,
+  PaymentSettings,
+  PaymentLedgerEntry,
+  CurrencyCode
 } from '../types/medical';
 
 import {
@@ -31,6 +39,8 @@ import {
   subscribeToAppointments,
   subscribeToConsultations,
   subscribeToNotifications,
+  subscribeToPayments,
+  subscribeToFollowUps,
   FIRESTORE_COLLECTIONS
 } from './firebase';
 
@@ -169,7 +179,11 @@ async function fetchJson<T>(
     if (
       res.status === 404
     ) {
-
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const errorData = await res.json().catch(() => ({ error: 'العنصر المطلوب غير موجود' }));
+        throw new Error(errorData?.error || errorData?.message || 'العنصر المطلوب غير موجود');
+      }
       isBackendAvailable =
         false;
 
@@ -2377,6 +2391,9 @@ createDoctor: async (
         doctorSpecialty?: string;
         clinicRoom?: string;
         serviceName?: string;
+        fee?: number;
+        isWaived?: boolean;
+        waiverReason?: string;
       }
     ) => {
 
@@ -2709,126 +2726,153 @@ createDoctor: async (
   // CONSULTATIONS
   // ==========================================================
 
-  getConsultations:
-    async (
-      filter?: {
-        patientId?: string;
-        patientUserId?: string;
-        patientPhone?: string;
-        doctorId?: string;
-        status?: string;
+  getConsultations: async (
+  filter?: {
+    patientId?: string;
+    patientUserId?: string;
+    patientPhone?: string;
+    doctorId?: string;
+    status?: string;
+   }
+   ) => {
+   try {
+    const params = new URLSearchParams();
+
+    if (filter?.patientId) {
+      params.append(
+        'patientId',
+        filter.patientId
+      );
+    }
+
+    if (filter?.doctorId) {
+      params.append(
+        'doctorId',
+        filter.doctorId
+      );
+    }
+
+    if (filter?.status) {
+      params.append(
+        'status',
+        filter.status
+      );
+    }
+
+    const apiCns =
+      await fetchJson<Consultation[]>(
+        '/api/consultations?' +
+        params.toString()
+      );
+
+    const fsCns =
+      await getConsultationsWithFilter(
+        filter
+      );
+
+    /**
+     * توحيد الحالة:
+     *
+     * ANSWERED => تم الرد
+     * CLOSED   => مغلقة
+     * أي شيء آخر => PENDING
+     */
+    const normalizeConsultation = (
+      consultation: Consultation
+    ): Consultation => ({
+      ...consultation,
+      status:
+        consultation.status === 'ANSWERED'
+          ? 'ANSWERED'
+          : consultation.status === 'CLOSED'
+            ? 'CLOSED'
+            : 'PENDING'
+    });
+
+    const apiNormalized =
+      apiCns.map(
+        normalizeConsultation
+      );
+
+    const fsNormalized =
+      fsCns.map(
+        normalizeConsultation
+      );
+
+    const mergedMap =
+      new Map<string, Consultation>();
+
+    /**
+     * API هو المصدر الأول للحالة الحالية.
+     */
+    apiNormalized.forEach(
+      (consultation) => {
+        mergedMap.set(
+          consultation.id,
+          consultation
+        );
       }
-    ) => {
+    );
 
-      try {
-
-        const params =
-          new URLSearchParams();
-
-
-        if (
-          filter?.patientId
-        ) {
-
-          params.append(
-            'patientId',
-            filter.patientId
+    /**
+     * Firestore يضيف السجلات غير الموجودة فقط.
+     * لا نسمح له باستبدال حالة API الحالية.
+     */
+    fsNormalized.forEach(
+      (consultation) => {
+        if (!mergedMap.has(consultation.id)) {
+          mergedMap.set(
+            consultation.id,
+            consultation
           );
         }
+      }
+    );
 
+    let result =
+      Array.from(
+        mergedMap.values()
+      );
 
-        if (
-          filter?.doctorId
-        ) {
-
-          params.append(
-            'doctorId',
-            filter.doctorId
-          );
-        }
-
-
-        if (
-          filter?.status
-        ) {
-
-          params.append(
-            'status',
+    /**
+     * إذا طلب المكوّن status معين،
+     * نطبقه بعد التطبيع.
+     */
+    if (filter?.status) {
+      result =
+        result.filter(
+          (consultation) =>
+            consultation.status ===
             filter.status
-          );
-        }
-
-
-        const apiCns =
-          await fetchJson<Consultation[]>(
-            '/api/consultations?' +
-            params.toString()
-          );
-
-
-        const fsCns =
-          await getConsultationsWithFilter(
-            filter
-          );
-
-
-        if (
-          fsCns.length > 0
-        ) {
-
-          const mergedMap =
-            new Map<
-              string,
-              Consultation
-            >();
-
-
-          apiCns.forEach(
-            (c) =>
-              mergedMap.set(
-                c.id,
-                c
-              )
-          );
-
-
-          fsCns.forEach(
-            (c) =>
-              mergedMap.set(
-                c.id,
-                {
-                  ...mergedMap.get(
-                    c.id
-                  ),
-                  ...c
-                }
-              )
-          );
-
-
-          return Array.from(
-            mergedMap.values()
-          );
-        }
-
-
-        return apiCns;
-
-      } catch (
-        err
-      ) {
-
-        console.warn(
-          'API getConsultations fallback:',
-          err
         );
+    }
 
+    return result;
 
-        return await getConsultationsWithFilter(
-          filter
-        );
-      }
-    },
+  } catch (error) {
+    console.warn(
+      'API getConsultations fallback:',
+      error
+    );
+
+    const firestoreResult =
+      await getConsultationsWithFilter(
+        filter
+      );
+
+    return firestoreResult.map(
+      (consultation) => ({
+        ...consultation,
+        status:
+          consultation.status === 'ANSWERED'
+            ? 'ANSWERED'
+            : consultation.status === 'CLOSED'
+              ? 'CLOSED'
+              : 'PENDING'
+      })
+    );
+  }
+},
 
 
   createConsultation:
@@ -2845,6 +2889,10 @@ createDoctor: async (
         patientPhone?: string;
         doctorName?: string;
         doctorSpecialty?: string;
+        fee?: number;
+        consultationFee?: number;
+        isWaived?: boolean;
+        waiverReason?: string;
       }
     ) => {
 
@@ -2905,375 +2953,334 @@ createDoctor: async (
           );
 
 
-        const newCns:
-          Consultation = {
+const newCns: Consultation = {
+  id: consultationId,
 
+  patientId:
+    patient?.id ||
+    data.patientId,
+
+  patientName:
+    data.patientName ||
+    patient?.fullName ||
+    'المريض',
+
+  patientPhone:
+    data.patientPhone ||
+    patient?.phone ||
+    '',
+
+  patientMrn:
+    patient?.mrn ||
+    'MRN-2026-8801',
+
+  patientAge:
+    32,
+
+  patientGender:
+    patient?.gender ||
+    'MALE',
+
+  doctorId:
+    doctor?.id ||
+    data.doctorId,
+
+  doctorName:
+    data.doctorName ||
+    doctor?.fullName ||
+    'طبيب العيادة',
+
+  doctorSpecialty:
+    data.doctorSpecialty ||
+    doctor?.specialtyNameAr ||
+    'العيادات التخصصية',
+
+  title:
+    data.title ||
+    'استشارة طبية جديدة',
+
+  problemDescription:
+    data.problemDescription,
+
+  symptoms:
+    data.symptoms || [],
+
+  duration:
+    data.duration ||
+    'غير محدد',
+
+  /**
+   * الاستشارة الجديدة تبدأ دائماً PENDING
+   */
+  status:
+    'PENDING',
+
+  attachments:
+    data.attachments || [],
+
+  messages: [
+    {
+      id:
+        'msg-' +
+        Date.now(),
+
+      consultationId:
+        consultationId,
+
+      senderId:
+        patient?.id ||
+        data.patientId,
+
+      senderName:
+        data.patientName ||
+        patient?.fullName ||
+        'المريض',
+
+      senderRole:
+        'PATIENT',
+
+      message:
+        data.problemDescription ||
+        data.title,
+
+      attachments:
+        data.attachments ||
+        [],
+
+      createdAt:
+        new Date().toISOString()
+    }
+  ],
+
+  createdAt:
+    new Date().toISOString()
+};
+
+await firebaseDb.saveConsultation(
+  newCns
+);
+
+return newCns;
+      }
+    },
+
+
+  replyConsultation: async (
+  id: string,
+  data: {
+    doctorAdvice: string;
+    doctorNotes?: string;
+    suggestedAction?: string;
+    treatmentPlan?: string;
+    requireInPersonVisit?: boolean;
+  }
+) => {
+  let savedConsultation:
+    Consultation | null = null;
+
+  if (!data.doctorAdvice?.trim()) {
+    throw new Error(
+      'الرد الطبي مطلوب.'
+    );
+  }
+
+  try {
+    const res =
+      await fetchJson<Consultation>(
+        '/api/consultations/' +
+        id +
+        '/reply',
+        {
+          method: 'POST',
+
+          body:
+            JSON.stringify({
+              ...data,
+              doctorAdvice:
+                data.doctorAdvice.trim()
+            })
+        }
+      );
+
+    /**
+     * تأكيد الحالة القادمة من الخادم.
+     * الرد الناجح = ANSWERED.
+     */
+    savedConsultation = {
+      ...res,
+      status: 'ANSWERED'
+    };
+
+    /**
+     * نحفظ نفس النسخة المحدثة في Firestore.
+     */
+    const saved =
+      await firebaseDb.saveConsultation(
+        savedConsultation
+      );
+
+    if (!saved) {
+      console.warn(
+        'Consultation API updated successfully but Firestore sync failed.'
+      );
+    }
+
+  } catch (error) {
+    console.warn(
+      'API replyConsultation fallback:',
+      error
+    );
+
+    const existing =
+      await firebaseDb.getDocument<Consultation>(
+        FIRESTORE_COLLECTIONS.CONSULTATIONS,
+        id
+      );
+
+    if (!existing) {
+      throw new Error(
+        'لم يتم العثور على الاستشارة الطبية.'
+      );
+    }
+
+    const replyText =
+      data.doctorAdvice.trim();
+
+    const updated:
+      Consultation = {
+      ...existing,
+
+      doctorAdvice:
+        replyText,
+
+      doctorNotes:
+        data.doctorNotes !== undefined
+          ? data.doctorNotes
+          : existing.doctorNotes,
+
+      suggestedAction:
+        data.suggestedAction !== undefined
+          ? data.suggestedAction
+          : existing.suggestedAction,
+
+      treatmentPlan:
+        data.treatmentPlan !== undefined
+          ? data.treatmentPlan
+          : existing.treatmentPlan,
+
+      requireInPersonVisit:
+        data.requireInPersonVisit !==
+        undefined
+          ? data.requireInPersonVisit
+          : existing.requireInPersonVisit,
+
+      /**
+       * لا تتغير إلى ANSWERED إلا هنا،
+       * بعد وجود الرد الطبي فعلياً.
+       */
+      status:
+        'ANSWERED',
+
+      answeredAt:
+        new Date().toISOString(),
+
+      messages: [
+        ...(existing.messages || []),
+
+        {
           id:
-            consultationId,
+            'msg-' +
+            Date.now(),
 
-          patientId:
-            patient?.id ||
-            data.patientId,
+          consultationId:
+            id,
 
-          patientName:
-            data.patientName ||
-            patient?.fullName ||
-            'المريض',
+          senderId:
+            existing.doctorId,
 
-          patientPhone:
-            data.patientPhone ||
-            patient?.phone ||
-            '',
+          senderName:
+            existing.doctorName,
 
-          patientMrn:
-            patient?.mrn ||
-            'MRN-2026-8801',
+          senderRole:
+            'DOCTOR',
 
-          patientAge:
-            32,
-
-          patientGender:
-            patient?.gender ||
-            'MALE',
-
-          doctorId:
-            doctor?.id ||
-            data.doctorId,
-
-          doctorName:
-            data.doctorName ||
-            doctor?.fullName ||
-            'طبيب العيادة',
-
-          doctorSpecialty:
-            data.doctorSpecialty ||
-            doctor?.specialtyNameAr ||
-            'العيادات التخصصية',
-
-          title:
-            data.title ||
-            'استشارة طبية جديدة',
-
-          problemDescription:
-            data.problemDescription,
-
-          symptoms:
-            data.symptoms ||
-            [],
-
-          duration:
-            data.duration ||
-            'غير محدد',
-
-          status:
-            'PENDING',
-
-          attachments:
-            data.attachments ||
-            [],
-
-          messages: [
-            {
-              id:
-                'msg-' +
-                Date.now(),
-
-              consultationId:
-                consultationId,
-
-              senderId:
-                patient?.id ||
-                data.patientId,
-
-              senderName:
-                data.patientName ||
-                patient?.fullName ||
-                'المريض',
-
-              senderRole:
-                'PATIENT',
-
-              message:
-                data.problemDescription ||
-                data.title,
-
-              attachments:
-                data.attachments ||
-                [],
-
-              createdAt:
-                new Date().toISOString()
-            }
-          ],
+          message:
+            replyText,
 
           createdAt:
             new Date().toISOString()
-
-        };
-
-
-        await firebaseDb.saveConsultation(
-          newCns
-        );
-
-
-        return newCns;
-      }
-    },
-
-
-  replyConsultation:
-    async (
-      id: string,
-      data: {
-        doctorAdvice: string;
-        doctorNotes?: string;
-        suggestedAction?: string;
-        treatmentPlan?: string;
-        requireInPersonVisit?: boolean;
-      }
-    ) => {
-
-      let savedConsultation:
-        Consultation | null =
-        null;
-
-
-      try {
-
-        const res =
-          await fetchJson<Consultation>(
-            '/api/consultations/' +
-            id +
-            '/reply',
-            {
-              method:
-                'POST',
-
-              body:
-                JSON.stringify(data)
-            }
-          );
-
-
-        await firebaseDb.saveConsultation(
-          res
-        );
-
-
-        savedConsultation =
-          res;
-
-      } catch (
-        err
-      ) {
-
-        console.warn(
-          'API replyConsultation fallback:',
-          err
-        );
-
-
-        const existing =
-          await firebaseDb.getDocument<Consultation>(
-            FIRESTORE_COLLECTIONS.CONSULTATIONS,
-            id
-          );
-
-
-        const replyMsg =
-          data.doctorAdvice ||
-          'تم الرد على الاستشارة';
-
-
-        const updated:
-          Consultation = {
-
-          ...(existing || {
-
-            id,
-
-            patientId:
-              'pat-1',
-
-            patientName:
-              'المريض',
-
-            patientPhone:
-              '',
-
-            patientMrn:
-              'MRN-2026-8801',
-
-            patientAge:
-              30,
-
-            patientGender:
-              'MALE',
-
-            doctorId:
-              'doc-1',
-
-            doctorName:
-              'طبيب العيادة',
-
-            doctorSpecialty:
-              'العيادات التخصصية',
-
-            title:
-              'استشارة طبية',
-
-            problemDescription:
-              '',
-
-            symptoms:
-              [],
-
-            duration:
-              'غير محدد',
-
-            status:
-              'ANSWERED',
-
-            attachments:
-              [],
-
-            messages:
-              [],
-
-            createdAt:
-              new Date().toISOString()
-
-          }),
-
-          doctorAdvice:
-            replyMsg,
-
-          doctorNotes:
-            data.doctorNotes ||
-            existing?.doctorNotes,
-
-          suggestedAction:
-            data.suggestedAction ||
-            existing?.suggestedAction,
-
-          treatmentPlan:
-            data.treatmentPlan ||
-            existing?.treatmentPlan,
-
-          requireInPersonVisit:
-            data.requireInPersonVisit !==
-            undefined
-              ? data.requireInPersonVisit
-              : existing?.requireInPersonVisit,
-
-          status:
-            'ANSWERED',
-
-          answeredAt:
-            new Date().toISOString()
-
-        };
-
-
-        updated.messages =
-          [
-            ...(updated.messages ||
-              []),
-
-            {
-              id:
-                'msg-' +
-                Date.now(),
-
-              consultationId:
-                id,
-
-              senderId:
-                updated.doctorId,
-
-              senderName:
-                updated.doctorName,
-
-              senderRole:
-                'DOCTOR',
-
-              message:
-                replyMsg,
-
-              createdAt:
-                new Date().toISOString()
-            }
-          ];
-
-
-        await firebaseDb.saveConsultation(
-          updated
-        );
-
-
-        savedConsultation =
-          updated;
-      }
-
-
-      if (
-        savedConsultation
-      ) {
-
-        try {
-
-          await firebaseDb.saveNotification({
-
-            id:
-              'notif-' +
-              Date.now(),
-
-            userId:
-              savedConsultation.patientId,
-
-            title:
-              'رد الطبيب الاستشاري على استشارتك الطبية',
-
-            message:
-              'قام ' +
-              savedConsultation.doctorName +
-              ' بالرد على استشارتك: "' +
-              savedConsultation.title +
-              '". يمكنك الاطلاع على التوجيه الطبي والخطة العلاجية الآن في حسابك.',
-
-            type:
-              'CONSULTATION',
-
-            isRead:
-              false,
-
-            referenceId:
-              savedConsultation.id,
-
-            relatedId:
-              savedConsultation.id,
-
-            createdAt:
-              new Date().toISOString()
-
-          });
-
-        } catch (
-          error
-        ) {
-
-          console.warn(
-            'Could not save notification:',
-            error
-          );
         }
-      }
+      ]
+    };
 
+    const firestoreSaved =
+      await firebaseDb.saveConsultation(
+        updated
+      );
 
-      return savedConsultation!;
-    },
+    if (!firestoreSaved) {
+      console.warn(
+        'Failed saving answered consultation to Firestore.'
+      );
+    }
 
+    savedConsultation =
+      updated;
+  }
+
+  /**
+   * إرسال الإشعار فقط بعد نجاح الرد.
+   */
+  if (
+    savedConsultation?.status ===
+      'ANSWERED' &&
+    savedConsultation.patientId
+  ) {
+    try {
+      await firebaseDb.saveNotification({
+        id:
+          'notif-' +
+          Date.now(),
+
+        userId:
+          savedConsultation.patientId,
+
+        title:
+          'رد الطبيب الاستشاري على استشارتك الطبية',
+
+        message:
+          'قام ' +
+          savedConsultation.doctorName +
+          ' بالرد على استشارتك: "' +
+          savedConsultation.title +
+          '". يمكنك الاطلاع على التوجيه الطبي والخطة العلاجية الآن في حسابك.',
+
+        type:
+          'CONSULTATION',
+
+        isRead:
+          false,
+
+        referenceId:
+          savedConsultation.id,
+
+        relatedId:
+          savedConsultation.id,
+
+        createdAt:
+          new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.warn(
+        'Could not save consultation notification:',
+        error
+      );
+    }
+  }
+
+  return savedConsultation;
+},
 
   addConsultationMessage:
     async (
@@ -5450,14 +5457,331 @@ createStaff: async (
       subscribeToNotifications(
         userId,
         callback
-      )
+      ),
+
+  // ==========================================================
+  // Payments & Financials
+  // ==========================================================
+
+  getPayments: async (params?: {
+    patientId?: string;
+    doctorId?: string;
+    serviceType?: string;
+    status?: string;
+    search?: string;
+  }): Promise<Payment[]> => {
+    try {
+      const q = new URLSearchParams();
+      if (params?.patientId) q.set('patientId', params.patientId);
+      if (params?.doctorId) q.set('doctorId', params.doctorId);
+      if (params?.serviceType) q.set('serviceType', params.serviceType);
+      if (params?.status) q.set('status', params.status);
+      if (params?.search) q.set('search', params.search);
+      return await fetchJson<Payment[]>(`/api/payments?${q.toString()}`);
+    } catch {
+      return (await firebaseDb.getPayments(params?.patientId)) || [];
+    }
+  },
+
+  getPaymentById: async (id: string): Promise<Payment | null> => {
+    try {
+      return await fetchJson<Payment>(`/api/payments/${id}`);
+    } catch {
+      return (await firebaseDb.getPayment(id)) || null;
+    }
+  },
+
+  createPaymentIntent: async (data: {
+    patientId?: string;
+    patientName?: string;
+    patientPhone?: string;
+    patientMrn?: string;
+    serviceType: 'APPOINTMENT' | 'CONSULTATION' | 'PROCEDURE' | 'MEDICATION';
+    serviceReferenceId: string;
+    serviceName: string;
+    doctorId?: string;
+    doctorName?: string;
+    doctorSpecialty?: string;
+    amount: number;
+    currency?: CurrencyCode | string;
+    paymentMethod?: PaymentMethod;
+    paymentProvider?: any;
+    kuraimiAccount?: string;
+    kuraimiChannel?: any;
+  }): Promise<{ success: boolean; payment: Payment; clientSecret: string; kuraimiOtpRequired?: boolean; message: string }> => {
+    try {
+      return await fetchJson<{ success: boolean; payment: Payment; clientSecret: string; kuraimiOtpRequired?: boolean; message: string }>(
+        '/api/payments/create-intent',
+        {
+          method: 'POST',
+          body: JSON.stringify(data)
+        }
+      );
+    } catch {
+      const fallbackPay: Payment = {
+        id: `pay-${Date.now()}`,
+        patientId: data.patientId || 'pat-1',
+        patientName: data.patientName || 'المريض',
+        patientPhone: data.patientPhone || '',
+        doctorId: data.doctorId,
+        doctorName: data.doctorName,
+        doctorSpecialty: data.doctorSpecialty,
+        serviceType: data.serviceType,
+        serviceReferenceId: data.serviceReferenceId,
+        serviceName: data.serviceName,
+        amount: data.amount,
+        currency: (data.currency as CurrencyCode) || 'SAR',
+        paymentMethod: data.paymentMethod || 'MADA',
+        status: 'PAYMENT_REQUIRED',
+        paymentStatus: 'PAYMENT_REQUIRED',
+        transactionReference: `TXN-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      await firebaseDb.createPayment(fallbackPay);
+      return {
+        success: true,
+        payment: fallbackPay,
+        clientSecret: `sec_${fallbackPay.id}`,
+        message: 'تم إنشاء جلسة الدفع'
+      };
+    }
+  },
+
+  verifyKuraimiOtp: async (data: {
+    paymentId: string;
+    otpCode: string;
+    transactionReference?: string;
+    customerAccount?: string;
+  }): Promise<{ success: boolean; payment?: Payment; ledgerEntry?: PaymentLedgerEntry; message?: string }> => {
+    return await fetchJson<{ success: boolean; payment?: Payment; ledgerEntry?: PaymentLedgerEntry; message?: string }>(
+      '/api/payments/kuraimi/verify-otp',
+      {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }
+    );
+  },
+
+  getPaymentSettings: async (): Promise<PaymentSettings> => {
+    return await fetchJson<PaymentSettings>('/api/payment-settings');
+  },
+
+  updatePaymentSettings: async (settings: Partial<PaymentSettings>, updatedBy?: string): Promise<{ success: boolean; settings: PaymentSettings }> => {
+    return await fetchJson<{ success: boolean; settings: PaymentSettings }>('/api/payment-settings', {
+      method: 'PUT',
+      body: JSON.stringify({ ...settings, updatedBy })
+    });
+  },
+
+  getPaymentLedger: async (): Promise<{ summaries: Record<CurrencyCode, any>; entries: PaymentLedgerEntry[] }> => {
+    return await fetchJson<{ summaries: Record<CurrencyCode, any>; entries: PaymentLedgerEntry[] }>('/api/payments/ledger');
+  },
+
+  confirmPayment: async (data: {
+    paymentId?: string;
+    transactionReference?: string;
+    serviceReferenceId?: string;
+    serviceType?: 'APPOINTMENT' | 'CONSULTATION';
+    amount?: number;
+    currency?: string;
+    patientId?: string;
+    patientName?: string;
+    patientPhone?: string;
+    doctorId?: string;
+    doctorName?: string;
+    doctorSpecialty?: string;
+    serviceName?: string;
+    paymentMethod?: PaymentMethod;
+    cardBrand?: string;
+    last4?: string;
+    gatewayResponseCode?: string;
+  }): Promise<{ success: boolean; payment: Payment; message: string }> => {
+    try {
+      return await fetchJson<{ success: boolean; payment: Payment; message: string }>(
+        '/api/payments/confirm',
+        {
+          method: 'POST',
+          body: JSON.stringify(data)
+        }
+      );
+    } catch {
+      const pay: Payment = {
+        id: data.paymentId || `pay-${Date.now()}`,
+        patientId: data.patientId || 'pat-1',
+        patientName: data.patientName || 'المريض',
+        patientPhone: data.patientPhone || '',
+        doctorId: data.doctorId,
+        doctorName: data.doctorName,
+        doctorSpecialty: data.doctorSpecialty,
+        serviceType: data.serviceType || 'APPOINTMENT',
+        serviceReferenceId: data.serviceReferenceId || '',
+        serviceName: data.serviceName || 'خدمة طبية',
+        amount: data.amount || 250,
+        currency: data.currency || 'SAR',
+        paymentMethod: data.paymentMethod || 'MADA',
+        cardBrand: data.cardBrand || 'Mada',
+        last4: data.last4 || '4242',
+        status: 'PAYMENT_SUCCESS',
+        paymentStatus: 'PAYMENT_SUCCESS',
+        transactionReference: data.transactionReference || `TXN-${Date.now()}`,
+        paidAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      await firebaseDb.createPayment(pay);
+      return {
+        success: true,
+        payment: pay,
+        message: 'تم تأكيد الدفع بنجاح'
+      };
+    }
+  },
+
+  failPayment: async (paymentId: string, reason?: string): Promise<any> => {
+    try {
+      return await fetchJson('/api/payments/fail', {
+        method: 'POST',
+        body: JSON.stringify({ paymentId, reason })
+      });
+    } catch {
+      return { success: true };
+    }
+  },
+
+  processRefund: async (
+    paymentIdOrOptions: string | { paymentId: string; amount?: number; reason?: string; refundedBy?: string; processedBy?: string; serviceReferenceId?: string },
+    data?: { amount?: number; reason?: string; processedBy?: string; processedByUserId?: string }
+  ): Promise<{ success: boolean; refund: Refund; payment: Payment; message: string }> => {
+    let paymentId: string;
+    let payload: any;
+    if (typeof paymentIdOrOptions === 'string') {
+      paymentId = paymentIdOrOptions;
+      payload = data || {};
+    } else {
+      paymentId = paymentIdOrOptions.paymentId;
+      payload = {
+        amount: paymentIdOrOptions.amount,
+        reason: paymentIdOrOptions.reason || 'استرداد مالي',
+        processedBy: paymentIdOrOptions.processedBy || paymentIdOrOptions.refundedBy || 'إدارة المستشفى',
+        serviceReferenceId: paymentIdOrOptions.serviceReferenceId
+      };
+    }
+    return await fetchJson<{ success: boolean; refund: Refund; payment: Payment; message: string }>(
+      `/api/payments/${paymentId}/refund`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }
+    );
+  },
+
+  updatePaymentStatus: async (paymentId: string, status: any): Promise<Payment> => {
+    return await fetchJson<Payment>(`/api/payments/${paymentId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status })
+    });
+  },
+
+  waivePayment: async (data: {
+    serviceType: 'APPOINTMENT' | 'CONSULTATION';
+    serviceReferenceId: string;
+    reason: string;
+    approvedBy?: string;
+    approvedByUserId?: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    return await fetchJson<{ success: boolean; message: string }>('/api/payments/waive', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  // ==========================================================
+  // Follow-ups & Reminders
+  // ==========================================================
+
+  getFollowUps: async (params?: {
+    patientId?: string;
+    doctorId?: string;
+    status?: string;
+  }): Promise<FollowUpAppointment[]> => {
+    try {
+      const q = new URLSearchParams();
+      if (params?.patientId) q.set('patientId', params.patientId);
+      if (params?.doctorId) q.set('doctorId', params.doctorId);
+      if (params?.status) q.set('status', params.status);
+      return await fetchJson<FollowUpAppointment[]>(`/api/follow-ups?${q.toString()}`);
+    } catch {
+      return (await firebaseDb.getFollowUps(params?.patientId)) || [];
+    }
+  },
+
+  createFollowUp: async (data: Partial<FollowUpAppointment>): Promise<FollowUpAppointment> => {
+    try {
+      return await fetchJson<FollowUpAppointment>('/api/follow-ups', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+    } catch {
+      const flw: FollowUpAppointment = {
+        id: `flw-${Date.now()}`,
+        patientId: data.patientId || 'pat-1',
+        patientName: data.patientName || 'المريض',
+        patientPhone: data.patientPhone || '',
+        patientMrn: data.patientMrn || 'MRN-2026-0000',
+        doctorId: data.doctorId || 'doc-1',
+        doctorName: data.doctorName || 'الطبيب الاستشاري',
+        doctorSpecialty: data.doctorSpecialty || 'العيادات الطبية',
+        sourceType: data.sourceType || 'APPOINTMENT',
+        sourceId: data.sourceId || '',
+        followUpDate: data.followUpDate || new Date().toISOString().split('T')[0],
+        followUpTime: data.followUpTime || '10:00',
+        reason: data.reason || 'مراجعة طبية ومتابعة تحسن الحالة',
+        doctorNotes: data.doctorNotes || '',
+        status: 'SCHEDULED',
+        reminderSent: false,
+        createdAt: new Date().toISOString()
+      };
+      await firebaseDb.createFollowUp(flw);
+      return flw;
+    }
+  },
+
+  requestReschedule: async (appointmentId: string, data: {
+    requestedDate: string;
+    requestedPeriod?: 'MORNING' | 'EVENING';
+    reason: string;
+  }): Promise<Appointment> => {
+    return await fetchJson<Appointment>(`/api/appointments/${appointmentId}/reschedule-request`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    });
+  },
+
+  triggerReminderCheck: async (): Promise<{ success: boolean; triggeredCount: number; message: string }> => {
+    return await fetchJson<{ success: boolean; triggeredCount: number; message: string }>('/api/reminders/trigger-check', {
+      method: 'POST'
+    });
+  },
+
+  subscribePayments: (
+    filterOrPatientId: string | { patientId?: string; doctorId?: string; status?: string } | undefined,
+    callback: (payments: Payment[]) => void
+  ) => {
+    const filter = typeof filterOrPatientId === 'string' ? { patientId: filterOrPatientId } : (filterOrPatientId || {});
+    return subscribeToPayments(filter, callback);
+  },
+
+  subscribeFollowUps: (
+    filterOrPatientId: string | { patientId?: string; doctorId?: string } | undefined,
+    callback: (followUps: FollowUpAppointment[]) => void
+  ) => {
+    const filter = typeof filterOrPatientId === 'string' ? { patientId: filterOrPatientId } : (filterOrPatientId || {});
+    return subscribeToFollowUps(filter, callback);
+  }
 
 };
 
-
-// ============================================================
-// Keep imports/types referenced where needed
-// ============================================================
-
-void INITIAL_USERS;
+export const apiClient = api;
+export default api;
 

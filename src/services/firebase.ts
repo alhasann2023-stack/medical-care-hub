@@ -26,6 +26,10 @@ import {
   Staff, 
   Appointment, 
   Consultation, 
+  Payment,
+  FollowUpAppointment,
+  Refund,
+  ReminderSchedule,
   MedicalReport, 
   MedicalTest, 
   MedicalExamination, 
@@ -68,8 +72,12 @@ export const FIRESTORE_COLLECTIONS = {
   STAFF: 'staff',
   SPECIALTIES: 'specialties',
   SERVICES: 'services',
+  PAYMENTS: 'payments',
   APPOINTMENTS: 'appointments',
   CONSULTATIONS: 'consultations',
+  FOLLOW_UPS: 'followUpAppointments',
+  REFUNDS: 'refunds',
+  REMINDERS: 'reminderSchedules',
   EXAMINATIONS: 'examinations',
   TESTS: 'tests',
   REPORTS: 'reports',
@@ -484,6 +492,62 @@ export function subscribeToConsultations(
 }
 
 /**
+ * Realtime subscription to payments
+ */
+export function subscribeToPayments(
+  filter: {
+    patientId?: string;
+    doctorId?: string;
+    status?: string;
+  },
+  callback: (payments: Payment[]) => void
+): Unsubscribe {
+  return subscribeToCollection<Payment>(
+    FIRESTORE_COLLECTIONS.PAYMENTS,
+    (allPayments) => {
+      let list = [...allPayments];
+      if (filter.patientId) {
+        list = list.filter(p => p.patientId === filter.patientId || (p as any).patientUserId === filter.patientId);
+      }
+      if (filter.doctorId) {
+        list = list.filter(p => p.doctorId === filter.doctorId);
+      }
+      if (filter.status) {
+        list = list.filter(p => p.paymentStatus === filter.status || p.status === filter.status);
+      }
+      list.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+      callback(list);
+    }
+  );
+}
+
+/**
+ * Realtime subscription to follow-up appointments
+ */
+export function subscribeToFollowUps(
+  filter: {
+    patientId?: string;
+    doctorId?: string;
+  },
+  callback: (followUps: FollowUpAppointment[]) => void
+): Unsubscribe {
+  return subscribeToCollection<FollowUpAppointment>(
+    FIRESTORE_COLLECTIONS.FOLLOW_UPS,
+    (allFollowUps) => {
+      let list = [...allFollowUps];
+      if (filter.patientId) {
+        list = list.filter(f => f.patientId === filter.patientId);
+      }
+      if (filter.doctorId) {
+        list = list.filter(f => f.doctorId === filter.doctorId);
+      }
+      list.sort((a, b) => new Date(a.followUpDate || '').getTime() - new Date(b.followUpDate || '').getTime());
+      callback(list);
+    }
+  );
+}
+
+/**
  * Realtime subscription to notifications by user ID
  */
 export function subscribeToNotifications(
@@ -517,6 +581,8 @@ export default {
   subscribeToDoctors,
   subscribeToAppointments,
   subscribeToConsultations,
+  subscribeToPayments,
+  subscribeToFollowUps,
   subscribeToNotifications
 };
 
