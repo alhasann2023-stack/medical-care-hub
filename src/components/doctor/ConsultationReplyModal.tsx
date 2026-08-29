@@ -9,7 +9,8 @@ import {
   Paperclip, 
   AlertTriangle, 
   CheckCircle2,
-  FileText
+  FileText,
+  Download
 } from 'lucide-react';
 import { Consultation } from '../../types/medical';
 import { api } from '../../services/api';
@@ -120,6 +121,39 @@ export const ConsultationReplyModal: React.FC<ConsultationReplyModalProps> = ({
                     {sym}
                   </span>
                 ))}
+              </div>
+            )}
+
+            {consultation.attachments && Array.isArray(consultation.attachments) && consultation.attachments.length > 0 && (
+              <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
+                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
+                  المرفقات والتقارير المرسلة من المريض ({consultation.attachments.length}):
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {consultation.attachments.map((att, i) => {
+                    const hasValidUrl = att && att.url && att.url !== '#' && att.url !== '';
+                    return (
+                      <a
+                        key={i}
+                        href={hasValidUrl ? att.url : undefined}
+                        download={att.name || `attachment-${i + 1}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => {
+                          if (!hasValidUrl) e.preventDefault();
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 text-xs font-bold transition-colors cursor-pointer"
+                        title={hasValidUrl ? 'انقر لتنزيل أو فتح الملف' : 'ملف مرفق'}
+                      >
+                        <FileText className="w-4 h-4 text-emerald-700 shrink-0" />
+                        <span className="truncate max-w-[180px]">{att.name || 'ملف مرفق'}</span>
+                        {att.size && <span className="text-[10px] text-emerald-600 font-normal">({att.size})</span>}
+                        {hasValidUrl && <Download className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                      </a>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

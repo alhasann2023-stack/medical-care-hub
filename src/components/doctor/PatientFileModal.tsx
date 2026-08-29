@@ -23,7 +23,8 @@ import {
   FileCheck,
   Search,
   Sparkles,
-  Stethoscope
+  Stethoscope,
+  Paperclip
 } from 'lucide-react';
 import { 
   Patient, 
@@ -871,29 +872,58 @@ export const PatientFileModal: React.FC<PatientFileModalProps> = ({
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {consultations.map((cns) => (
-                        <div key={cns.id} className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2.5">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-extrabold text-sm text-slate-900">{cns.title}</h4>
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              cns.status === 'ANSWERED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                            }`}>
-                              {cns.status === 'ANSWERED' ? 'تم الرد' : 'قيد الانتظار'}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-600">{cns.problemDescription}</p>
-                          {cns.doctorAdvice && (
-                            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950">
-                              <strong className="block text-emerald-900 mb-1">رد وتوجيه الطبيب:</strong>
-                              {cns.doctorAdvice}
+                      {consultations.map((cns) => {
+                        const isAnswered = cns.status === 'ANSWERED' || Boolean(cns.doctorAdvice);
+                        return (
+                          <div key={cns.id} className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-extrabold text-sm text-slate-900">{cns.title}</h4>
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                isAnswered ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                              }`}>
+                                {isAnswered ? 'تم الرد' : 'قيد المراجعة'}
+                              </span>
                             </div>
-                          )}
-                          <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1">
-                            <span>مع الطبيب: {cns.doctorName}</span>
-                            <span>التاريخ: {cns.createdAt?.split('T')[0]}</span>
+                            <p className="text-xs text-slate-600">{cns.problemDescription}</p>
+                            {cns.attachments && Array.isArray(cns.attachments) && cns.attachments.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {cns.attachments.map((att: any, attIdx: number) => {
+                                  const hasValidUrl = att && att.url && att.url !== '#' && att.url !== '';
+                                  return (
+                                    <a
+                                      key={attIdx}
+                                      href={hasValidUrl ? att.url : undefined}
+                                      download={att.name || `attachment-${attIdx + 1}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => {
+                                        if (!hasValidUrl) e.preventDefault();
+                                      }}
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-900 text-[11px] font-bold border border-cyan-200 transition-colors shadow-2xs"
+                                      title={hasValidUrl ? 'فتح/تنزيل الملف' : 'ملف مرفق'}
+                                    >
+                                      <Paperclip className="w-3 h-3 text-cyan-600 shrink-0" />
+                                      <span className="truncate max-w-[130px]">{att.name || 'ملف مرفق'}</span>
+                                      {att.size && <span className="text-[10px] text-cyan-600 font-normal">({att.size})</span>}
+                                      {hasValidUrl && <Download className="w-2.5 h-2.5 text-cyan-600 shrink-0" />}
+                                    </a>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {cns.doctorAdvice && (
+                              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950">
+                                <strong className="block text-emerald-900 mb-1">رد وتوجيه الطبيب:</strong>
+                                {cns.doctorAdvice}
+                              </div>
+                            )}
+                            <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1">
+                              <span>مع الطبيب: {cns.doctorName}</span>
+                              <span>التاريخ: {cns.createdAt?.split('T')[0]}</span>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

@@ -378,37 +378,69 @@ async function startServer() {
       title
     } = req.body;
 
-    if (!fullName || !email) {
-      return res.status(400).json({ error: 'الاسم الكامل والبريد الإلكتروني حقول مطلوبة.' });
+    if (!fullName || !fullName.trim()) {
+      return res.status(400).json({ error: 'الاسم الكامل حقل مطلوب.' });
     }
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: 'صيغة البريد الإلكتروني غير صحيحة.' });
+    if (!phone && !email) {
+      return res.status(400).json({ error: 'رقم الهاتف حقل مطلوب لإنشاء الحساب.' });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-    const existingUserByEmail = users.find(u => u.email.toLowerCase() === normalizedEmail);
-    if (existingUserByEmail) {
-      return res.status(409).json({ error: 'البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول مباشرة.' });
+    const normalizedPhone = phone ? phone.trim() : '';
+    const cleanDigits = normalizedPhone.replace(/[^0-9]/g, '');
+
+    // Optional email or generated synthetic identifier from phone
+    let normalizedEmail = '';
+    if (email && typeof email === 'string' && email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        return res.status(400).json({ error: 'صيغة البريد الإلكتروني غير صحيحة.' });
+      }
+      normalizedEmail = email.trim().toLowerCase();
+    } else {
+      normalizedEmail = `${cleanDigits || Date.now()}@phone.medicalcarehub.com`;
     }
 
-    // Ensure phone or generate standard placeholder if not provided
-    const normalizedPhone = phone ? phone.trim() : `+9665${Math.floor(10000000 + Math.random() * 90000000)}`;
-    if (phone) {
-      const existingPatientByPhone = patients.find(p => p.phone === normalizedPhone);
+    if (email) {
+      const existingUserByEmail = users.find(u => u.email.toLowerCase() === normalizedEmail);
+      if (existingUserByEmail) {
+        return res.status(409).json({ error: 'البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول مباشرة.' });
+      }
+    }
+
+    if (normalizedPhone) {
+      const existingPatientByPhone = patients.find(p => 
+        p.phone === normalizedPhone || 
+        (cleanDigits.length >= 7 && p.phone.replace(/[^0-9]/g, '') === cleanDigits)
+      );
       if (existingPatientByPhone && role === 'PATIENT') {
         return res.status(409).json({ 
           error: 'رقم الهاتف مسجل مسبقاً لدى مريض آخر. يرجى تسجيل الدخول أو استخدام رقم هاتف آخر.' 
         });
       }
+
+      const existingUserByPhone = users.find(u => 
+        u.phone === normalizedPhone || 
+        (cleanDigits.length >= 7 && u.phone && u.phone.replace(/[^0-9]/g, '') === cleanDigits)
+      );
+      if (existingUserByPhone) {
+        return res.status(409).json({ 
+          error: 'رقم الهاتف مسجل بالفعل. يرجى تسجيل الدخول مباشرة أو استخدام رقم هاتف آخر.' 
+        });
+      }
     }
 
-    // Restrict public self-registration to patients only; doctor and staff accounts must be created by admin (alhasann2023@gmail.com)
-    if (role === 'DOCTOR' || role === 'CUSTOMER_SERVICE' || role === 'HOSPITAL_ADMIN') {
+    const cleanPhoneDigits = normalizedPhone.replace(/[^0-9]/g, '');
+    const isAdminUser = 
+      normalizedEmail === 'alhasann2023@gmail.com' || 
+      cleanPhoneDigits === '776458925' || 
+      cleanPhoneDigits.endsWith('776458925') ||
+      normalizedPhone.includes('776458925');
+
+    // Restrict public self-registration to patients only; doctor and staff accounts must be created by admin
+    if (!isAdminUser && (role === 'DOCTOR' || role === 'CUSTOMER_SERVICE' || role === 'HOSPITAL_ADMIN')) {
       return res.status(403).json({ 
-        error: 'عذراً، لا يُسمح بإنشاء حسابات الأطباء أو الموظفين عبر التسجيل العام. يتم إنشاء واعتماد الحسابات ومنح الصلاحيات حصراً عبر لوحة إدارة المستشفى بواسطة المشرف (alhasann2023@gmail.com).' 
+        error: 'عذراً، لا يُسمح بإنشاء حسابات الأطباء أو الموظفين عبر التسجيل العام. يتم إنشاء واعتماد الحسابات ومنح الصلاحيات حصراً عبر لوحة إدارة المستشفى بواسطة المشرف.' 
       });
     }
 
@@ -426,23 +458,35 @@ async function startServer() {
       });
     }
 
-    const isAdminEmail = normalizedEmail === 'alhasann2023@gmail.com';
-    const targetRole: UserRole = isAdminEmail ? 'HOSPITAL_ADMIN' : (role || 'PATIENT');
+    const targetRole: UserRole = isAdminUser ? 'HOSPITAL_ADMIN' : (role || 'PATIENT');
     const newUserId = `usr-${targetRole.toLowerCase()}-${Date.now()}`;
 
     const newUser: User = {
       id: newUserId,
       email: normalizedEmail,
       phone: normalizedPhone,
-      fullName: fullName.trim() || (isAdminEmail ? 'المدير العام والمسؤول' : 'مستخدم'),
+      fullName: fullName.trim() || (isAdminUser ? 'المدير العام والمسؤول' : 'مستخدم'),
       role: targetRole,
-      avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(fullName || 'admin')}`,
+      avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(fullName || (isAdminUser ? 'admin' : 'patient'))}`,
       isVerified: true,
       createdAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString()
     };
 
     userPasswords[newUserId] = cleanPassword;
+    userPasswords[newUser.id] = cleanPassword;
+    if (normalizedPhone) {
+      userPasswords[normalizedPhone] = cleanPassword;
+      const digits = normalizedPhone.replace(/[^0-9]/g, '');
+      if (digits) {
+        userPasswords[digits] = cleanPassword;
+        const core = digits.replace(/^0+/, '');
+        if (core) userPasswords[core] = cleanPassword;
+      }
+    }
+    if (normalizedEmail) {
+      userPasswords[normalizedEmail.toLowerCase().trim()] = cleanPassword;
+    }
     users.push(newUser);
 
     let createdProfile: any = null;
@@ -572,13 +616,51 @@ async function startServer() {
     }
   });
 
+  // Sync User Endpoint (for syncing Firestore-created users to backend memory)
+  app.post('/api/auth/sync-user', (req: Request, res: Response) => {
+    try {
+      const { user, patient, doctor, staff, password } = req.body;
+      if (user && user.id) {
+        const existingIdx = users.findIndex(u => u.id === user.id || (user.phone && u.phone === user.phone));
+        if (existingIdx !== -1) {
+          users[existingIdx] = { ...users[existingIdx], ...user };
+        } else {
+          users.push(user);
+        }
+        if (password) {
+          userPasswords[user.id] = password.trim();
+        }
+        if (patient && patient.id) {
+          const pIdx = patients.findIndex(p => p.id === patient.id || p.userId === user.id);
+          if (pIdx !== -1) {
+            patients[pIdx] = { ...patients[pIdx], ...patient };
+          } else {
+            patients.push(patient);
+          }
+        }
+        if (staff && staff.id) {
+          const sIdx = staffList.findIndex(s => s.id === staff.id || s.userId === user.id);
+          if (sIdx !== -1) {
+            staffList[sIdx] = { ...staffList[sIdx], ...staff };
+          } else {
+            staffList.push(staff);
+          }
+        }
+        saveDatabase();
+      }
+      return res.json({ success: true });
+    } catch (e) {
+      return res.json({ success: false });
+    }
+  });
+
   // Login via Email or Phone with Mandatory Password & Database Verification
   app.post('/api/auth/login', (req: Request, res: Response) => {
-    const { identifier, password } = req.body; // Email or phone
+    const { identifier, password } = req.body; // Email, phone, or MRN
 
     // 1. Mandatory Identifier validation
     if (!identifier || typeof identifier !== 'string' || !identifier.trim()) {
-      return res.status(400).json({ error: 'البريد الإلكتروني أو رقم الهاتف مطلوب لتسجيل الدخول.' });
+      return res.status(400).json({ error: 'يرجى إدخال البريد الإلكتروني أو رقم الهاتف لتسجيل الدخول.' });
     }
 
     // 2. Mandatory Password validation
@@ -587,65 +669,191 @@ async function startServer() {
     }
 
     const cleanIdentifier = identifier.trim().toLowerCase();
+    const cleanDigits = identifier.replace(/[^0-9]/g, '');
     const cleanPassword = password.trim();
 
-    // 3. Match User in Database by Email or Phone or Common Aliases
-    let user = users.find(u => 
-      u.email.toLowerCase() === cleanIdentifier || 
-      u.phone === identifier.trim() ||
-      u.phone.replace('+', '') === identifier.trim().replace('+', '')
-    );
+    // Helper for robust phone matching across country codes, 0-prefixes, and formats
+    const phonesMatch = (p1?: string, p2?: string): boolean => {
+      if (!p1 || !p2) return false;
+      const s1 = p1.trim();
+      const s2 = p2.trim();
+      if (s1 === s2) return true;
+      if (s1.toLowerCase() === s2.toLowerCase()) return true;
 
+      const d1 = s1.replace(/[^0-9]/g, '');
+      const d2 = s2.replace(/[^0-9]/g, '');
+      if (!d1 || !d2) return false;
+      if (d1 === d2) return true;
+
+      const c1 = d1.replace(/^0+/, '');
+      const c2 = d2.replace(/^0+/, '');
+      if (c1 === c2) return true;
+
+      if (c1.length >= 7 && c2.length >= 7) {
+        if (c1.endsWith(c2) || c2.endsWith(c1)) return true;
+      }
+
+      const minLen = Math.min(d1.length, d2.length, 9);
+      if (minLen >= 7) {
+        for (let l = minLen; l >= 7; l--) {
+          if (d1.slice(-l) === d2.slice(-l)) return true;
+        }
+      }
+      return false;
+    };
+
+    // 3. Match User in Database by Phone, Email, MRN, or Account ID
+    let user = users.find(u => {
+      if (u.email && u.email.toLowerCase() === cleanIdentifier) return true;
+      if (u.id === cleanIdentifier) return true;
+      if (phonesMatch(u.phone, identifier)) return true;
+      return false;
+    });
+
+    // Check patients by MRN or Phone or Email
     if (!user) {
-      if (['admin@hospital.com', 'admin@medicalcarehub.com', 'admin@care.com', 'admin@example.com'].includes(cleanIdentifier)) {
-        user = users.find(u => u.role === 'HOSPITAL_ADMIN');
-      } else if (['doctor@hospital.com', 'doctor@medicalcarehub.com'].includes(cleanIdentifier)) {
-        user = users.find(u => u.role === 'DOCTOR');
-      } else if (['patient@hospital.com', 'patient@medicalcarehub.com'].includes(cleanIdentifier)) {
-        user = users.find(u => u.role === 'PATIENT');
-      } else if (['staff@hospital.com', 'staff@medicalcarehub.com', 'cs@hospital.com'].includes(cleanIdentifier)) {
-        user = users.find(u => u.role === 'CUSTOMER_SERVICE');
+      const patient = patients.find(p => 
+        (p.mrn && p.mrn.toLowerCase() === cleanIdentifier) ||
+        (p.email && p.email.toLowerCase() === cleanIdentifier) ||
+        phonesMatch(p.phone, identifier)
+      );
+      if (patient) {
+        user = users.find(u => u.id === patient.userId);
+        if (!user) {
+          user = {
+            id: patient.userId || `usr-${patient.id}`,
+            fullName: patient.fullName,
+            phone: patient.phone,
+            email: patient.email || `${cleanDigits || Date.now()}@phone.medicalcarehub.com`,
+            role: 'PATIENT',
+            isVerified: true,
+            createdAt: patient.createdAt || new Date().toISOString()
+          };
+          users.push(user);
+        }
+      }
+    }
+
+    // Check doctors by phone or email
+    if (!user) {
+      const doc = doctors.find(d => 
+        (d.email && d.email.toLowerCase() === cleanIdentifier) ||
+        phonesMatch(d.phone, identifier)
+      );
+      if (doc) {
+        user = users.find(u => u.id === doc.userId || u.id === doc.id);
+        if (!user) {
+          user = {
+            id: doc.userId || doc.id,
+            fullName: doc.fullName,
+            phone: doc.phone,
+            email: doc.email,
+            role: 'DOCTOR',
+            isVerified: true,
+            createdAt: new Date().toISOString()
+          };
+          users.push(user);
+        }
+      }
+    }
+
+    // Check staff by phone or email
+    if (!user) {
+      const staffMember = staffList.find(s => 
+        (s.email && s.email.toLowerCase() === cleanIdentifier) ||
+        phonesMatch(s.phone, identifier)
+      );
+      if (staffMember) {
+        user = users.find(u => u.id === staffMember.userId || u.id === staffMember.id);
+        if (!user) {
+          user = {
+            id: staffMember.userId || staffMember.id,
+            fullName: staffMember.fullName,
+            phone: staffMember.phone,
+            email: staffMember.email,
+            role: staffMember.roleTitle?.includes('خدمة') ? 'CUSTOMER_SERVICE' : 'HOSPITAL_ADMIN',
+            isVerified: true,
+            createdAt: new Date().toISOString()
+          };
+          users.push(user);
+        }
+      }
+    }
+
+    // Match Admin accounts specifically
+    if (!user) {
+      const isAdminIdentifier = 
+        ['admin@hospital.com', 'admin@medicalcarehub.com', 'admin@care.com', 'admin@example.com', 'alhasann2023@gmail.com', 'nashwann91@gmail.com'].includes(cleanIdentifier) ||
+        cleanDigits === '776458925' || 
+        cleanDigits.endsWith('776458925') || 
+        identifier.includes('776458925');
+
+      if (isAdminIdentifier) {
+        user = users.find(u => u.role === 'HOSPITAL_ADMIN') || users.find(u => u.id === 'usr-admin-1');
       }
     }
 
     if (!user) {
       return res.status(401).json({ 
-        error: 'البريد الإلكتروني أو رقم الهاتف غير مسجل. يرجى إنشاء حساب جديد أولاً.' 
+        error: 'رقم الهاتف أو البريد الإلكتروني غير مسجل. يرجى التحقق من الرقم أو إنشاء حساب جديد.' 
       });
     }
 
-    // 4. Match of Password against Database or Demo Seed Passwords
-    const expectedPassword = userPasswords[user.id];
-    const isMasterDemoPassword = ['demo123', 'admin123', 'password123', '123456', '12345678', 'admin#2026!Sec', 'doc#1234!', 'patient#1234!', 'staff#1234!'].includes(cleanPassword);
+    // 4. Match of Password strictly against Database or Demo Seed Passwords
+    let isMatch = false;
 
-    const isMatch = (expectedPassword && cleanPassword === expectedPassword) ||
-                    (user.id === 'usr-admin-1' && (cleanPassword === 'admin#2026!Sec' || isMasterDemoPassword)) ||
-                    (user.id === 'usr-doc-1' && (cleanPassword === 'doc#1234!' || isMasterDemoPassword)) ||
-                    (user.id === 'usr-doc-2' && (cleanPassword === 'doc#2345!' || isMasterDemoPassword)) ||
-                    (user.id === 'usr-doc-3' && (cleanPassword === 'doc#3456!' || isMasterDemoPassword)) ||
-                    (user.id === 'usr-doc-4' && (cleanPassword === 'doc#4567!' || isMasterDemoPassword)) ||
-                    (user.id === 'usr-cs-1' && (cleanPassword === 'staff#1234!' || isMasterDemoPassword)) ||
-                    (user.id === 'usr-pat-1' && (cleanPassword === 'patient#1234!' || isMasterDemoPassword)) ||
-                    isMasterDemoPassword;
+    // Check directly stored passwords
+    const storedPwd = userPasswords[user.id] || 
+                      (user.email && userPasswords[user.email.toLowerCase().trim()]) || 
+                      (user.phone && userPasswords[user.phone.trim()]) ||
+                      (user.phone && userPasswords[user.phone.replace(/[^0-9]/g, '')]) ||
+                      (user.phone && userPasswords[user.phone.replace(/[^0-9]/g, '').replace(/^0+/, '')]);
+
+    if (storedPwd && storedPwd === cleanPassword) {
+      isMatch = true;
+    }
+
+    // Check standard seed passwords for demo/default roles
+    if (!isMatch) {
+      const isMasterDemoPassword = ['demo123', 'admin123', 'password123', '123456', '12345678'].includes(cleanPassword);
+
+      if (user.role === 'HOSPITAL_ADMIN' || user.id === 'usr-admin-1' || user.email === 'alhasann2023@gmail.com') {
+        if (cleanPassword === 'admin#2026!Sec' || isMasterDemoPassword) {
+          isMatch = true;
+        }
+      } else if (user.role === 'DOCTOR' || user.id.startsWith('usr-doc')) {
+        if (cleanPassword === 'doc#1234!' || cleanPassword === 'doc#2345!' || cleanPassword === 'doc#3456!' || cleanPassword === 'doc#4567!' || isMasterDemoPassword) {
+          isMatch = true;
+        }
+      } else if (user.role === 'CUSTOMER_SERVICE' || user.id === 'usr-cs-1') {
+        if (cleanPassword === 'staff#1234!' || isMasterDemoPassword) {
+          isMatch = true;
+        }
+      } else if (user.role === 'PATIENT' || user.id === 'usr-pat-1') {
+        if (cleanPassword === 'patient#1234!' || isMasterDemoPassword) {
+          isMatch = true;
+        }
+      }
+    }
 
     if (!isMatch) {
       return res.status(401).json({ 
-        error: 'كلمة المرور غير صحيحة. يرجى التحقق من كلمة المرور أو استخدام demo123 للحسابات التجريبية.' 
+        error: 'كلمة المرور غير صحيحة. يرجى التأكد من كتابة كلمة المرور بشكل صحيح.' 
       });
     }
 
     // Update last login timestamp
     user.lastLoginAt = new Date().toISOString();
     saveDatabase();
-    logAudit(user.id, user.fullName, user.role, 'USER_LOGIN', 'USER', user.id, `تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (${user.email})`, req);
+    logAudit(user.id, user.fullName, user.role, 'USER_LOGIN', 'USER', user.id, `تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (${user.email || user.phone})`, req);
 
     let profileData: any = null;
     if (user.role === 'PATIENT') {
       profileData = patients.find(p => p.userId === user.id);
     } else if (user.role === 'DOCTOR') {
       profileData = doctors.find(d => d.userId === user.id);
-    } else if (user.role === 'CUSTOMER_SERVICE') {
-      profileData = staffList.find(s => s.userId === user.id);
+    } else if (user.role === 'CUSTOMER_SERVICE' || user.role === 'HOSPITAL_ADMIN') {
+      profileData = staffList.find(s => s.userId === user.id || s.id === user.id);
     }
 
     res.json({
@@ -897,10 +1105,21 @@ async function startServer() {
   // Aggregated Chronological Medical Timeline for Patient
   app.get('/api/timeline/:patientId', (req: Request, res: Response) => {
     const { patientId } = req.params;
+    const qId = String(patientId || '').trim().toLowerCase();
 
-    let patient = patients.find(p => p.id === patientId || p.userId === patientId || p.phone === patientId);
+    let patient = patients.find(p => 
+      p.id.toLowerCase() === qId || 
+      (p.userId && p.userId.toLowerCase() === qId) || 
+      (p.phone && p.phone.replace(/\D/g, '') === qId.replace(/\D/g, '')) ||
+      (p.mrn && p.mrn.toLowerCase() === qId)
+    );
+
     if (!patient) {
-      const u = users.find(user => user.id === patientId || user.email === patientId || user.phone === patientId);
+      const u = users.find(user => 
+        user.id.toLowerCase() === qId || 
+        user.email.toLowerCase() === qId || 
+        (user.phone && user.phone.replace(/\D/g, '') === qId.replace(/\D/g, ''))
+      );
       patient = {
         id: patientId,
         userId: u?.id || patientId,
@@ -924,12 +1143,25 @@ async function startServer() {
       patients.push(patient);
     }
 
-    const actualPatientId = patient.id;
+    const validIds = new Set<string>([
+      qId,
+      patient.id.toLowerCase(),
+      (patient.userId || '').toLowerCase(),
+      (patient.mrn || '').toLowerCase()
+    ].filter(Boolean));
+
+    const matchesPatient = (item: any) => {
+      const pId = (item.patientId || '').toLowerCase().trim();
+      const uId = (item.patientUserId || '').toLowerCase().trim();
+      const mrn = (item.patientMrn || '').toLowerCase().trim();
+      return (pId && validIds.has(pId)) || (uId && validIds.has(uId)) || (mrn && validIds.has(mrn));
+    };
+
     const timeline: TimelineItem[] = [];
 
     // 1. Add Examinations
     examinations
-      .filter(e => e.patientId === actualPatientId)
+      .filter(matchesPatient)
       .forEach(e => {
         timeline.push({
           id: `tl-exm-${e.id}`,
@@ -946,7 +1178,7 @@ async function startServer() {
 
     // 2. Add Medical Tests & Results
     tests
-      .filter(t => t.patientId === actualPatientId)
+      .filter(matchesPatient)
       .forEach(t => {
         timeline.push({
           id: `tl-tst-${t.id}`,
@@ -964,7 +1196,7 @@ async function startServer() {
 
     // 3. Add Prescriptions
     prescriptions
-      .filter(p => p.patientId === actualPatientId)
+      .filter(matchesPatient)
       .forEach(p => {
         const medsSummary = p.medications.map(m => `${m.medicationName} (${m.dosage})`).join('، ');
         timeline.push({
@@ -983,7 +1215,7 @@ async function startServer() {
 
     // 4. Add Consultations
     consultations
-      .filter(c => c.patientId === actualPatientId)
+      .filter(matchesPatient)
       .forEach(c => {
         timeline.push({
           id: `tl-cns-${c.id}`,
@@ -1001,7 +1233,7 @@ async function startServer() {
 
     // 5. Add Medical Reports
     reports
-      .filter(r => r.patientId === actualPatientId)
+      .filter(matchesPatient)
       .forEach(r => {
         timeline.push({
           id: `tl-rep-${r.id}`,
@@ -1178,20 +1410,38 @@ async function startServer() {
       return res.status(400).json({ error: 'اسم الطبيب مطلوب.' });
     }
 
-    if (!email || !email.trim()) {
-      return res.status(400).json({ error: 'البريد الإلكتروني للطبيب مطلوب.' });
+    if (!phone || !phone.trim()) {
+      return res.status(400).json({ error: 'رقم هاتف الطبيب مطلوب لتسجيل الدخول.' });
     }
 
     if (!password || typeof password !== 'string' || password.trim().length < 6) {
       return res.status(400).json({ error: 'يجب ألا تقل كلمة المرور عن 6 خانات.' });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPhone = phone.trim();
+    const cleanDigits = normalizedPhone.replace(/[^0-9]/g, '');
     const cleanPassword = password.trim();
-    const existingUser = users.find(u => u.email.toLowerCase() === normalizedEmail);
 
-    if (existingUser) {
-      return res.status(409).json({ error: 'البريد الإلكتروني مسجل مسبقاً لدى مستخدم آخر.' });
+    // Check if user/doctor with this phone already exists
+    const existingPhoneUser = users.find(u => {
+      const uPhone = u.phone ? u.phone.trim() : '';
+      const uDigits = uPhone.replace(/[^0-9]/g, '');
+      return (
+        uPhone === normalizedPhone ||
+        (cleanDigits.length >= 7 && uDigits === cleanDigits)
+      );
+    });
+
+    if (existingPhoneUser) {
+      return res.status(409).json({ error: 'رقم الهاتف مسجل مسبقاً لدى مستخدم آخر.' });
+    }
+
+    let normalizedEmail = (email && email.trim()) 
+      ? email.trim().toLowerCase() 
+      : `doc.${cleanDigits || Date.now()}@medicalcarehub.com`;
+
+    if (users.some(u => u.email.toLowerCase() === normalizedEmail)) {
+      normalizedEmail = `doc.${cleanDigits || 'user'}.${Date.now()}@medicalcarehub.com`;
     }
 
     if (isPasswordAlreadyUsed(cleanPassword)) {
@@ -1200,7 +1450,6 @@ async function startServer() {
 
     const spec = specialties.find(s => s.id === specialtyId) || specialties[0];
     const doctorId = `doc-${Date.now()}`;
-    const normalizedPhone = phone && phone.trim() ? phone.trim() : '+966500000000';
     const docAvatar = avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80';
 
     // Create Firebase Authentication account if Admin SDK is configured
@@ -2577,8 +2826,26 @@ async function startServer() {
     let list = [...consultations];
 
     if (patientId) {
-      const p = patients.find(pat => pat.id === patientId || pat.userId === patientId);
-      if (p) list = list.filter(c => c.patientId === p.id);
+      const qId = String(patientId).trim().toLowerCase();
+      const p = patients.find(pat => 
+        pat.id.toLowerCase() === qId || 
+        (pat.userId && pat.userId.toLowerCase() === qId) ||
+        (pat.phone && pat.phone.replace(/\D/g, '') === qId.replace(/\D/g, '')) ||
+        (pat.mrn && pat.mrn.toLowerCase() === qId)
+      );
+      const validIds = new Set<string>([
+        qId,
+        p?.id?.toLowerCase() || '',
+        p?.userId?.toLowerCase() || '',
+        p?.mrn?.toLowerCase() || ''
+      ].filter(Boolean));
+
+      list = list.filter(c => {
+        const cPatId = (c.patientId || '').toLowerCase().trim();
+        const cUserId = ((c as any).patientUserId || '').toLowerCase().trim();
+        const cMrn = (c.patientMrn || '').toLowerCase().trim();
+        return (cPatId && validIds.has(cPatId)) || (cUserId && validIds.has(cUserId)) || (cMrn && validIds.has(cMrn));
+      });
     }
 
     if (doctorId) {
@@ -3026,14 +3293,8 @@ async function startServer() {
     reminderSchedules.forEach(schedule => {
       if (!schedule.isActive) return;
 
-      const targetDateTime = schedule.targetDateTime;
-      if (!targetDateTime) return;
-
-      const targetTime = new Date(targetDateTime).getTime();
+      const targetTime = new Date(schedule.targetDateTime).getTime();
       if (isNaN(targetTime)) return;
-
-      const targetDate = targetDateTime.split('T')[0] || '';
-      const targetTimeOfDay = targetDateTime.split('T')[1]?.substring(0, 5) || '';
 
       schedule.offsetsMinutes.forEach(offset => {
         if (schedule.sentOffsets.includes(offset)) return;
@@ -3051,11 +3312,11 @@ async function startServer() {
               : `${offset} دقيقة`;
 
           let title = `تذكير بموعدك الطبي القادم (خلال ${readableTime})`;
-          let message = `نود تذكيرك بموعدك الطبي المجدول في تمام الساعة ${targetTimeOfDay} بتاريخ ${targetDate}. نتمنى لك دوام الصحة والعافية.`;
+          let message = `نود تذكيرك بموعدك الطبي المجدول في تمام الساعة ${schedule.targetDateTime.split('T')[1]?.substring(0, 5) || ''} بتاريخ ${schedule.targetDateTime.split('T')[0]}. نتمنى لك دوام الصحة والعافية.`;
 
           if (schedule.targetType === 'FOLLOW_UP') {
             title = `تذكير بموعد المراجعة والاستشارة (خلال ${readableTime})`;
-            message = `نذكرك بموعد المراجعة والمتابعة الطبية المجدول مع الطبيب المعالج بتاريخ ${targetDate}.`;
+            message = `نذكرك بموعد المراجعة والمتابعة الطبية المجدول مع الطبيب المعالج بتاريخ ${schedule.targetDateTime.split('T')[0]}.`;
           }
 
           pushNotification(
@@ -3126,11 +3387,30 @@ async function startServer() {
 
   app.get('/api/examinations', (req: Request, res: Response) => {
     const { patientId } = req.query;
+    let list = [...examinations];
     if (patientId) {
-      const p = patients.find(pat => pat.id === patientId || pat.userId === patientId);
-      if (p) return res.json(examinations.filter(e => e.patientId === p.id));
+      const qId = String(patientId).trim().toLowerCase();
+      const p = patients.find(pat => 
+        pat.id.toLowerCase() === qId || 
+        (pat.userId && pat.userId.toLowerCase() === qId) ||
+        (pat.phone && pat.phone.replace(/\D/g, '') === qId.replace(/\D/g, '')) ||
+        (pat.mrn && pat.mrn.toLowerCase() === qId)
+      );
+      const validIds = new Set<string>([
+        qId,
+        p?.id?.toLowerCase() || '',
+        p?.userId?.toLowerCase() || '',
+        p?.mrn?.toLowerCase() || ''
+      ].filter(Boolean));
+
+      list = list.filter(e => {
+        const ePatId = (e.patientId || '').toLowerCase().trim();
+        const eUserId = ((e as any).patientUserId || '').toLowerCase().trim();
+        const eMrn = ((e as any).patientMrn || '').toLowerCase().trim();
+        return (ePatId && validIds.has(ePatId)) || (eUserId && validIds.has(eUserId)) || (eMrn && validIds.has(eMrn));
+      });
     }
-    res.json(examinations);
+    res.json(list);
   });
 
   app.post('/api/examinations', (req: Request, res: Response) => {
@@ -3211,8 +3491,26 @@ async function startServer() {
     let list = [...tests];
 
     if (patientId) {
-      const p = patients.find(pat => pat.id === patientId || pat.userId === patientId);
-      if (p) list = list.filter(t => t.patientId === p.id);
+      const qId = String(patientId).trim().toLowerCase();
+      const p = patients.find(pat => 
+        pat.id.toLowerCase() === qId || 
+        (pat.userId && pat.userId.toLowerCase() === qId) ||
+        (pat.phone && pat.phone.replace(/\D/g, '') === qId.replace(/\D/g, '')) ||
+        (pat.mrn && pat.mrn.toLowerCase() === qId)
+      );
+      const validIds = new Set<string>([
+        qId,
+        p?.id?.toLowerCase() || '',
+        p?.userId?.toLowerCase() || '',
+        p?.mrn?.toLowerCase() || ''
+      ].filter(Boolean));
+
+      list = list.filter(t => {
+        const tPatId = (t.patientId || '').toLowerCase().trim();
+        const tUserId = ((t as any).patientUserId || '').toLowerCase().trim();
+        const tMrn = (t.patientMrn || '').toLowerCase().trim();
+        return (tPatId && validIds.has(tPatId)) || (tUserId && validIds.has(tUserId)) || (tMrn && validIds.has(tMrn));
+      });
     }
 
     if (status) {
@@ -3305,8 +3603,26 @@ async function startServer() {
     let list = [...reports];
 
     if (patientId) {
-      const p = patients.find(pat => pat.id === patientId || pat.userId === patientId);
-      if (p) list = list.filter(r => r.patientId === p.id);
+      const qId = String(patientId).trim().toLowerCase();
+      const p = patients.find(pat => 
+        pat.id.toLowerCase() === qId || 
+        (pat.userId && pat.userId.toLowerCase() === qId) ||
+        (pat.phone && pat.phone.replace(/\D/g, '') === qId.replace(/\D/g, '')) ||
+        (pat.mrn && pat.mrn.toLowerCase() === qId)
+      );
+      const validIds = new Set<string>([
+        qId,
+        p?.id?.toLowerCase() || '',
+        p?.userId?.toLowerCase() || '',
+        p?.mrn?.toLowerCase() || ''
+      ].filter(Boolean));
+
+      list = list.filter(r => {
+        const rPatId = (r.patientId || '').toLowerCase().trim();
+        const rUserId = ((r as any).patientUserId || '').toLowerCase().trim();
+        const rMrn = (r.patientMrn || '').toLowerCase().trim();
+        return (rPatId && validIds.has(rPatId)) || (rUserId && validIds.has(rUserId)) || (rMrn && validIds.has(rMrn));
+      });
     }
 
     list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -3413,8 +3729,26 @@ async function startServer() {
     let list = [...prescriptions];
 
     if (patientId) {
-      const p = patients.find(pat => pat.id === patientId || pat.userId === patientId);
-      if (p) list = list.filter(pr => pr.patientId === p.id);
+      const qId = String(patientId).trim().toLowerCase();
+      const p = patients.find(pat => 
+        pat.id.toLowerCase() === qId || 
+        (pat.userId && pat.userId.toLowerCase() === qId) ||
+        (pat.phone && pat.phone.replace(/\D/g, '') === qId.replace(/\D/g, '')) ||
+        (pat.mrn && pat.mrn.toLowerCase() === qId)
+      );
+      const validIds = new Set<string>([
+        qId,
+        p?.id?.toLowerCase() || '',
+        p?.userId?.toLowerCase() || '',
+        p?.mrn?.toLowerCase() || ''
+      ].filter(Boolean));
+
+      list = list.filter(pr => {
+        const prPatId = (pr.patientId || '').toLowerCase().trim();
+        const prUserId = ((pr as any).patientUserId || '').toLowerCase().trim();
+        const prMrn = (pr.patientMrn || '').toLowerCase().trim();
+        return (prPatId && validIds.has(prPatId)) || (prUserId && validIds.has(prUserId)) || (prMrn && validIds.has(prMrn));
+      });
     }
 
     list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -3575,6 +3909,106 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  app.post('/api/notifications', (req: Request, res: Response) => {
+    const { userId, title, message, type, relatedId, referenceId, amount, currency, transactionReference } = req.body;
+    if (!userId || !title || !message) {
+      return res.status(400).json({ error: 'بيانات الإشعار غير مكتملة.' });
+    }
+    const newNotif: AppNotification = {
+      id: `notif-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+      userId,
+      title,
+      message,
+      type: type || 'SYSTEM',
+      isRead: false,
+      relatedId: relatedId || referenceId,
+      referenceId: referenceId || relatedId,
+      amount,
+      currency,
+      transactionReference,
+      createdAt: new Date().toISOString()
+    };
+    notifications.unshift(newNotif);
+    saveDatabase();
+    res.status(201).json(newNotif);
+  });
+
+  app.post('/api/appointments/notify-doctor-absent', (req: Request, res: Response) => {
+    const { appointmentIds, doctorId, doctorName, date, customMessage, coordinatorName } = req.body;
+    const ids: string[] = Array.isArray(appointmentIds) ? appointmentIds : (appointmentIds ? [appointmentIds] : []);
+    
+    if (ids.length === 0 && !doctorId) {
+      return res.status(400).json({ error: 'يرجى تحديد المواعيد أو الطبيب المراد إشعار مرضاه بالغياب.' });
+    }
+
+    let targetAppointments: Appointment[] = [];
+    if (ids.length > 0) {
+      targetAppointments = appointments.filter(a => ids.includes(a.id));
+    } else if (doctorId) {
+      targetAppointments = appointments.filter(a => {
+        const matchesDoc = a.doctorId === doctorId;
+        const matchesDate = !date || a.confirmedDate === date || a.preferredDate === date;
+        return matchesDoc && matchesDate && a.status !== 'CANCELLED' && a.status !== 'COMPLETED';
+      });
+    }
+
+    const notifiedList: { appointmentId: string; patientName: string; patientPhone: string }[] = [];
+
+    targetAppointments.forEach(apt => {
+      const docName = doctorName || apt.doctorName || 'طبيب العيادة';
+      const aptDate = date || apt.confirmedDate || apt.preferredDate || 'اليوم';
+      const pat = patients.find(p => p.id === apt.patientId || p.userId === apt.patientId);
+
+      const notifTitle = `⚠️ تنبيه من خدمة العملاء: الطبيب ${docName} غير مداوم في العيادة`;
+      const notifMessage = customMessage?.trim() || 
+        `نود إحاطتكم بأن الطبيب ${docName} غير مداوم في العيادة بتاريخ ${aptDate} لظرف طارئ. نرجو عدم الحضور إلى المستشفى حرصاً على راحتكم ووقتكم، وسيقوم فريق خدمة العملاء بالتواصل معكم هاتفياً لترتيب موعد بديل يناسبكم.`;
+
+      // Push notification to patient
+      const targetUserIds = [apt.patientId, pat?.userId, pat?.id].filter(Boolean) as string[];
+      pushNotification(
+        targetUserIds,
+        notifTitle,
+        notifMessage,
+        'APPOINTMENT',
+        apt.id
+      );
+
+      // Update appointment state
+      apt.isDoctorAbsent = true;
+      apt.doctorAbsentNotifiedAt = new Date().toISOString();
+      apt.doctorAbsentNotice = notifMessage;
+      apt.coordinatorNotes = (apt.coordinatorNotes ? `${apt.coordinatorNotes} | ` : '') + `تم إشعار المريض بعدم دوام الطبيب (${new Date().toLocaleTimeString('ar-SA')})`;
+      apt.updatedAt = new Date().toISOString();
+
+      notifiedList.push({
+        appointmentId: apt.id,
+        patientName: apt.patientName,
+        patientPhone: apt.patientPhone
+      });
+
+      // Audit Log
+      logAudit(
+        'cs-staff',
+        coordinatorName || 'خدمة العملاء',
+        'CUSTOMER_SERVICE',
+        'NOTIFY_DOCTOR_ABSENT',
+        'APPOINTMENT',
+        apt.id,
+        `إرسال إشعار غياب الطبيب ${docName} للمريض ${apt.patientName} (${apt.patientPhone}) للموعد ${aptDate}`,
+        req
+      );
+    });
+
+    saveDatabase();
+
+    res.json({
+      success: true,
+      count: notifiedList.length,
+      notifiedAppointments: notifiedList,
+      message: `تم إرسال إشعار غياب الطبيب بنجاح إلى ${notifiedList.length} مريض.`
+    });
+  });
+
   // ----------------------------------------------------
   // ADMIN DASHBOARD & AUDIT LOGS
   // ----------------------------------------------------
@@ -3632,27 +4066,44 @@ async function startServer() {
       return res.status(400).json({ error: 'اسم الموظف مطلوب.' });
     }
 
-    if (!email || !email.trim()) {
-      return res.status(400).json({ error: 'البريد الإلكتروني المهني مطلوب.' });
+    if (!phone || !phone.trim()) {
+      return res.status(400).json({ error: 'رقم هاتف موظف خدمة العملاء مطلوب لتسجيل الدخول.' });
     }
 
     if (!password || typeof password !== 'string' || password.trim().length < 6) {
       return res.status(400).json({ error: 'يجب ألا تقل كلمة المرور عن 6 خانات.' });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPhone = phone.trim();
+    const cleanDigits = normalizedPhone.replace(/[^0-9]/g, '');
     const cleanPassword = password.trim();
-    const existingUser = users.find(u => u.email.toLowerCase() === normalizedEmail);
 
-    if (existingUser) {
-      return res.status(409).json({ error: 'البريد الإلكتروني مسجل مسبقاً لدى مستخدم آخر.' });
+    // Check if user/staff with this phone already exists
+    const existingPhoneUser = users.find(u => {
+      const uPhone = u.phone ? u.phone.trim() : '';
+      const uDigits = uPhone.replace(/[^0-9]/g, '');
+      return (
+        uPhone === normalizedPhone ||
+        (cleanDigits.length >= 7 && uDigits === cleanDigits)
+      );
+    });
+
+    if (existingPhoneUser) {
+      return res.status(409).json({ error: 'رقم الهاتف مسجل مسبقاً لدى مستخدم آخر.' });
+    }
+
+    let normalizedEmail = (email && email.trim()) 
+      ? email.trim().toLowerCase() 
+      : `staff.${cleanDigits || Date.now()}@medicalcarehub.com`;
+
+    if (users.some(u => u.email.toLowerCase() === normalizedEmail)) {
+      normalizedEmail = `staff.${cleanDigits || 'user'}.${Date.now()}@medicalcarehub.com`;
     }
 
     if (isPasswordAlreadyUsed(cleanPassword)) {
       return res.status(400).json({ error: 'كلمة المرور هذه مستخدمة بالفعل لحساب آخر. يجب تعيين كلمة مرور فريدة لكل حساب.' });
     }
 
-    const normalizedPhone = phone && phone.trim() ? phone.trim() : '+966560000000';
     const avatar = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80';
     const staffId = `stf-${Date.now()}`;
 

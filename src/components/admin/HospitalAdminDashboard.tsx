@@ -100,7 +100,7 @@ export const HospitalAdminDashboard: React.FC = () => {
   const [showStaffPassword, setShowStaffPassword] = useState<boolean>(false);
   const [createdStaffCredentials, setCreatedStaffCredentials] = useState<{
     fullName: string;
-    email: string;
+    phone: string;
     password: string;
     roleTitle: string;
     shift: string;
@@ -192,8 +192,8 @@ export const HospitalAdminDashboard: React.FC = () => {
 
   const handleCreateDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!docFullName.trim() || !docEmail.trim()) {
-      showNotification('error', 'يرجى إدخال اسم الطبيب والبريد الإلكتروني.');
+    if (!docFullName.trim() || !docPhone.trim()) {
+      showNotification('error', 'يرجى إدخال اسم الطبيب ورقم الهاتف.');
       return;
     }
 
@@ -205,9 +205,8 @@ export const HospitalAdminDashboard: React.FC = () => {
     try {
       await api.createDoctor({
         fullName: docFullName.trim(),
-        email: docEmail.trim(),
+        phone: docPhone.trim(),
         password: docPassword.trim(),
-        phone: docPhone.trim() || '+966500000000',
         specialtyId: docSpecialtyId,
         title: docTitle,
         consultationFee: Number(docFee),
@@ -217,7 +216,7 @@ export const HospitalAdminDashboard: React.FC = () => {
         qualifications: ['بورد تخصصي معتمد', 'ترخيص الهيئة السعودية للتخصصات الصحية SCFHS']
       });
 
-      showNotification('success', `تم إنشاء حساب الاستشاري ${docFullName} مع بيانات الدخول بنجاح! يستطيع الطبيب تسجيل الدخول الآن.`);
+      showNotification('success', `تم إنشاء حساب الاستشاري ${docFullName} مع بيانات الدخول بنجاح! يستطيع الطبيب تسجيل الدخول الآن برقم الهاتف.`);
       setIsNewDoctorModalOpen(false);
       setDocFullName('');
       setDocEmail('');
@@ -236,7 +235,7 @@ export const HospitalAdminDashboard: React.FC = () => {
     setEditDocEmail(doctor.email || `dr.${doctor.id}@medicalcarehub.com`);
     setEditDocPassword('');
     setShowEditDocPassword(false);
-    setEditDocPhone(doctor.phone || '+966500000000');
+    setEditDocPhone(doctor.phone || '');
     setEditDocSpecialtyId(doctor.specialtyId || 'spec-1');
     setEditDocTitle(doctor.title || 'استشاري أول');
     setEditDocFee(doctor.consultationFee || 300);
@@ -249,15 +248,14 @@ export const HospitalAdminDashboard: React.FC = () => {
   const handleUpdateDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingDoctor) return;
-    if (!editDocFullName.trim() || !editDocEmail.trim()) {
-      showNotification('error', 'الاسم والبريد الإلكتروني مطلوبان.');
+    if (!editDocFullName.trim() || !editDocPhone.trim()) {
+      showNotification('error', 'الاسم ورقم الهاتف مطلوبان.');
       return;
     }
 
     try {
       await api.updateDoctor(editingDoctor.id, {
         fullName: editDocFullName.trim(),
-        email: editDocEmail.trim(),
         password: editDocPassword.trim() ? editDocPassword.trim() : undefined,
         phone: editDocPhone.trim(),
         specialtyId: editDocSpecialtyId,
@@ -302,8 +300,8 @@ export const HospitalAdminDashboard: React.FC = () => {
 
   const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!staffFullName.trim() || !staffEmail.trim()) {
-      showNotification('error', 'يرجى إدخال اسم الموظف والبريد الإلكتروني المهني.');
+    if (!staffFullName.trim() || !staffPhone.trim()) {
+      showNotification('error', 'يرجى إدخال اسم الموظف ورقم الهاتف.');
       return;
     }
 
@@ -316,8 +314,7 @@ export const HospitalAdminDashboard: React.FC = () => {
     try {
       await api.createStaff({
         fullName: staffFullName.trim(),
-        email: staffEmail.trim(),
-        phone: staffPhone.trim() || '+966560000000',
+        phone: staffPhone.trim(),
         roleTitle: staffRoleTitle,
         department: staffDepartment,
         shift: staffShift,
@@ -326,7 +323,7 @@ export const HospitalAdminDashboard: React.FC = () => {
 
       setCreatedStaffCredentials({
         fullName: staffFullName.trim(),
-        email: staffEmail.trim(),
+        phone: staffPhone.trim(),
         password: assignedPassword,
         roleTitle: staffRoleTitle,
         shift: staffShift
@@ -383,16 +380,15 @@ export const HospitalAdminDashboard: React.FC = () => {
     e.preventDefault();
     if (!editingStaff) return;
 
-    if (!editStaffFullName.trim() || !editStaffEmail.trim()) {
-      showNotification('error', 'يرجى إدخال اسم الموظف والبريد الإلكتروني.');
+    if (!editStaffFullName.trim() || !editStaffPhone.trim()) {
+      showNotification('error', 'يرجى إدخال اسم الموظف ورقم الهاتف.');
       return;
     }
 
     try {
       await api.updateStaff(editingStaff.id, {
         fullName: editStaffFullName.trim(),
-        email: editStaffEmail.trim(),
-        phone: editStaffPhone.trim() || '+966560000000',
+        phone: editStaffPhone.trim(),
         roleTitle: editStaffRoleTitle,
         department: editStaffDepartment,
         shift: editStaffShift,
@@ -569,7 +565,7 @@ export const HospitalAdminDashboard: React.FC = () => {
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-300 font-medium">
-              البريد المعتمد للمسؤول: <strong className="text-amber-300 font-mono">alhasann2023@gmail.com</strong>
+              الرقم والهاتف المعتمد للمسؤول: <strong className="text-amber-300 font-mono">776458925</strong>
             </p>
             <p className="text-xs text-slate-400 mt-1">
               الجهة المخولة حصراً بإضافة الاستشاريين وتعيين كلمات المرور وتعديل وحذف الحسابات الطبية.
@@ -732,7 +728,7 @@ export const HospitalAdminDashboard: React.FC = () => {
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between">
                 <div>
                   <strong className="text-amber-950 block">التحكم الكامل بحسابات الاستشاريين</strong>
-                  <span className="text-amber-800">إضافة الطبيب، تعيين البريد وكلمة السر، التعديل والحذف حصرياً للمدير: alhasann2023@gmail.com</span>
+                  <span className="text-amber-800">إضافة الطبيب، تعيين الهاتف وكلمة السر، التعديل والحذف حصرياً للمدير (776458925)</span>
                 </div>
                 <span className="px-2 py-1 rounded bg-amber-200 text-amber-900 font-bold text-[10px]">مطبق</span>
               </div>
@@ -821,7 +817,7 @@ export const HospitalAdminDashboard: React.FC = () => {
               <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
                 <tr>
                   <th className="p-3.5">الطبيب الاستشاري</th>
-                  <th className="p-3.5">بيانات الدخول (البريد والهاتف)</th>
+                  <th className="p-3.5">بيانات الدخول (رقم الهاتف)</th>
                   <th className="p-3.5">التخصص / المسمى</th>
                   <th className="p-3.5">العيادة والرسوم</th>
                   <th className="p-3.5">الحالة والصلاحية</th>
@@ -852,15 +848,9 @@ export const HospitalAdminDashboard: React.FC = () => {
                         </div>
                       </td>
                       <td className="p-3.5 font-mono text-[11px]">
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-1.5 text-slate-800 font-semibold">
-                            <Mail className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span>{d.email || `dr.${d.id}@medicalcarehub.com`}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-slate-500">
-                            <Phone className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span>{d.phone || '+966500000000'}</span>
-                          </div>
+                        <div className="flex items-center gap-1.5 text-slate-900 font-bold">
+                          <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>{d.phone}</span>
                         </div>
                       </td>
                       <td className="p-3.5 font-medium text-slate-700">
@@ -946,7 +936,7 @@ export const HospitalAdminDashboard: React.FC = () => {
               <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
                 <tr>
                   <th className="p-3.5">الموظف / المنسق</th>
-                  <th className="p-3.5">البريد الإلكتروني</th>
+                  <th className="p-3.5">رقم الهاتف (بيانات الدخول)</th>
                   <th className="p-3.5">المسمى الوظيفي والجهة</th>
                   <th className="p-3.5">فترة العمل</th>
                   <th className="p-3.5">الحالة والصلاحية</th>
@@ -959,10 +949,14 @@ export const HospitalAdminDashboard: React.FC = () => {
                     <td className="p-3.5 font-bold text-slate-900">
                       <div>
                         <span>{stf.fullName}</span>
-                        <span className="block text-[10px] text-slate-400 font-mono font-normal">{stf.phone}</span>
                       </div>
                     </td>
-                    <td className="p-3.5 text-slate-600 font-mono text-[11px]">{stf.email}</td>
+                    <td className="p-3.5 font-mono text-[11px]">
+                      <div className="flex items-center gap-1.5 text-slate-900 font-bold">
+                        <Phone className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                        <span>{stf.phone}</span>
+                      </div>
+                    </td>
                     <td className="p-3.5 text-slate-700">
                       <strong>{stf.roleTitle}</strong>
                       <span className="block text-[10px] text-slate-400">{stf.department}</span>
@@ -1192,18 +1186,18 @@ export const HospitalAdminDashboard: React.FC = () => {
               <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-3">
                 <div className="flex items-center gap-1.5 text-emerald-900 font-bold text-xs">
                   <KeyRound className="w-4 h-4 text-emerald-700" />
-                  <span>بيانات اعتماد تسجيل دخول الطبيب (Credentials)</span>
+                  <span>بيانات اعتماد تسجيل دخول الطبيب (رقم الهاتف وكلمة المرور)</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">البريد الإلكتروني المهني *</label>
+                    <label className="block font-bold text-slate-700 mb-1">رقم الهاتف (لتسجيل الدخول) *</label>
                     <input
-                      type="email"
+                      type="tel"
                       required
-                      placeholder="doctor@medicalcarehub.com"
-                      value={docEmail}
-                      onChange={(e) => setDocEmail(e.target.value)}
+                      placeholder="مثال: 0501234567"
+                      value={docPhone}
+                      onChange={(e) => setDocPhone(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white focus:border-emerald-600 outline-none font-mono text-xs"
                     />
                   </div>
@@ -1230,35 +1224,22 @@ export const HospitalAdminDashboard: React.FC = () => {
                   </div>
                 </div>
                 <p className="text-[10px] text-emerald-800">
-                  * سيتمكن الطبيب من استخدام هذا البريد وكلمة المرور لتسجيل الدخول إلى حسابه والاطلاع على جدول العيادة والمواعيد.
+                  * سيتمكن الطبيب من استخدام رقم الهاتف هذا وكلمة المرور لتسجيل الدخول مباشرة إلى حسابه وإدارة جدول العيادة والمواعيد.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">رقم الجوال المهني</label>
-                  <input
-                    type="tel"
-                    placeholder="0501234567"
-                    value={docPhone}
-                    onChange={(e) => setDocPhone(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-emerald-600 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">الرتبة والمسمى الوظيفي</label>
-                  <select
-                    value={docTitle}
-                    onChange={(e) => setDocTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
-                  >
-                    <option value="استشاري أول">استشاري أول</option>
-                    <option value="استشاري">استشاري</option>
-                    <option value="أخصائي أول">أخصائي أول</option>
-                    <option value="أخصائي">أخصائي</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">الرتبة والمسمى الوظيفي</label>
+                <select
+                  value={docTitle}
+                  onChange={(e) => setDocTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
+                >
+                  <option value="استشاري أول">استشاري أول</option>
+                  <option value="استشاري">استشاري</option>
+                  <option value="أخصائي أول">أخصائي أول</option>
+                  <option value="أخصائي">أخصائي</option>
+                </select>
               </div>
 
               <div>
@@ -1378,17 +1359,17 @@ export const HospitalAdminDashboard: React.FC = () => {
               <div className="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-200/80 space-y-3">
                 <div className="flex items-center gap-1.5 text-blue-950 font-bold text-xs">
                   <KeyRound className="w-4 h-4 text-blue-700" />
-                  <span>تعديل بيانات الدخول (البريد وكلمة المرور)</span>
+                  <span>تعديل بيانات الدخول (رقم الهاتف وكلمة المرور)</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">البريد الإلكتروني *</label>
+                    <label className="block font-bold text-slate-700 mb-1">رقم الهاتف (لتسجيل الدخول) *</label>
                     <input
-                      type="email"
+                      type="tel"
                       required
-                      value={editDocEmail}
-                      onChange={(e) => setEditDocEmail(e.target.value)}
+                      value={editDocPhone}
+                      onChange={(e) => setEditDocPhone(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white focus:border-blue-600 outline-none font-mono text-xs"
                     />
                   </div>
@@ -1415,30 +1396,18 @@ export const HospitalAdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">رقم الجوال</label>
-                  <input
-                    type="tel"
-                    value={editDocPhone}
-                    onChange={(e) => setEditDocPhone(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-blue-600 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">الرتبة والمسمى</label>
-                  <select
-                    value={editDocTitle}
-                    onChange={(e) => setEditDocTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
-                  >
-                    <option value="استشاري أول">استشاري أول</option>
-                    <option value="استشاري">استشاري</option>
-                    <option value="أخصائي أول">أخصائي أول</option>
-                    <option value="أخصائي">أخصائي</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">الرتبة والمسمى</label>
+                <select
+                  value={editDocTitle}
+                  onChange={(e) => setEditDocTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
+                >
+                  <option value="استشاري أول">استشاري أول</option>
+                  <option value="استشاري">استشاري</option>
+                  <option value="أخصائي أول">أخصائي أول</option>
+                  <option value="أخصائي">أخصائي</option>
+                </select>
               </div>
 
               <div>
@@ -1574,7 +1543,7 @@ export const HospitalAdminDashboard: React.FC = () => {
                 />
                 <div>
                   <strong className="text-slate-900 block">{deletingDoctor.fullName}</strong>
-                  <span className="text-[11px] text-slate-500 font-mono">{deletingDoctor.email || 'doctor@medicalcarehub.com'}</span>
+                  <span className="text-[11px] text-slate-500 font-mono">{deletingDoctor.phone}</span>
                 </div>
               </div>
 
@@ -1656,13 +1625,13 @@ export const HospitalAdminDashboard: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">البريد الإلكتروني المهني *</label>
+                    <label className="block font-bold text-slate-700 mb-1">رقم الهاتف (لتسجيل الدخول) *</label>
                     <input
-                      type="email"
+                      type="tel"
                       required
-                      placeholder="staff@medicalcarehub.com"
-                      value={staffEmail}
-                      onChange={(e) => setStaffEmail(e.target.value)}
+                      placeholder="مثال: 0561234567"
+                      value={staffPhone}
+                      onChange={(e) => setStaffPhone(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white focus:border-purple-600 outline-none font-mono text-xs"
                     />
                   </div>
@@ -1690,31 +1659,18 @@ export const HospitalAdminDashboard: React.FC = () => {
                   </div>
                 </div>
                 <p className="text-[10px] text-purple-800 leading-relaxed">
-                  * سيتمكن موظف خدمة العملاء من استخدام هذا البريد وكلمة المرور لتسجيل الدخول إلى واجهة خدمة العملاء وتنسيق المواعيد والرد على استفسارات المرضى.
+                  * سيتمكن موظف خدمة العملاء من استخدام رقم الهاتف هذا وكلمة المرور لتسجيل الدخول مباشرة إلى واجهة خدمة العملاء وتنسيق المواعيد والرد على استفسارات المرضى.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">رقم الجوال المهني</label>
-                  <input
-                    type="tel"
-                    placeholder="0561234567"
-                    value={staffPhone}
-                    onChange={(e) => setStaffPhone(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-purple-600 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">المسمى الوظيفي</label>
-                  <input
-                    type="text"
-                    value={staffRoleTitle}
-                    onChange={(e) => setStaffRoleTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
-                  />
-                </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">المسمى الوظيفي</label>
+                <input
+                  type="text"
+                  value={staffRoleTitle}
+                  onChange={(e) => setStaffRoleTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
+                />
               </div>
 
               <div>
@@ -1785,9 +1741,9 @@ export const HospitalAdminDashboard: React.FC = () => {
                 </div>
                 <div className="pt-2 border-t border-purple-200/60 space-y-2">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-500 font-bold">البريد الإلكتروني:</span>
+                    <span className="text-slate-500 font-bold">رقم الهاتف (اسم المستخدم):</span>
                     <span className="font-mono font-bold text-slate-900 bg-white px-2 py-1 rounded-lg border border-purple-100">
-                      {createdStaffCredentials.email}
+                      {createdStaffCredentials.phone}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
@@ -1800,14 +1756,14 @@ export const HospitalAdminDashboard: React.FC = () => {
               </div>
 
               <p className="text-xs text-slate-500 leading-relaxed">
-                يمكن للموظف الآن التوجه إلى شاشة تسجيل الدخول وكتابة هذا البريد وكلمة المرور للدخول المباشر إلى واجهة خدمة العملاء وتنسيق المواعيد.
+                يمكن للموظف الآن التوجه إلى شاشة تسجيل الدخول وكتابة رقم الهاتف هذا وكلمة المرور للدخول المباشر إلى واجهة خدمة العملاء وتنسيق المواعيد.
               </p>
 
               <div className="flex items-center gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => {
-                    const text = `بيانات الدخول إلى منصة خدمة العملاء:\nالاسم: ${createdStaffCredentials.fullName}\nالبريد الإلكتروني: ${createdStaffCredentials.email}\nكلمة المرور: ${createdStaffCredentials.password}`;
+                    const text = `بيانات الدخول إلى منصة خدمة العملاء:\nالاسم: ${createdStaffCredentials.fullName}\nرقم الهاتف: ${createdStaffCredentials.phone}\nكلمة المرور: ${createdStaffCredentials.password}`;
                     navigator.clipboard.writeText(text);
                     setCopiedStaffCreds(true);
                     setTimeout(() => setCopiedStaffCreds(false), 2500);
@@ -1854,7 +1810,7 @@ export const HospitalAdminDashboard: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-sm">تعديل بيانات موظف خدمة العملاء</h3>
-                  <p className="text-[11px] text-indigo-200">{editingStaff.fullName} ({editingStaff.email})</p>
+                  <p className="text-[11px] text-indigo-200">{editingStaff.fullName} ({editingStaff.phone})</p>
                 </div>
               </div>
               <button
@@ -1881,17 +1837,17 @@ export const HospitalAdminDashboard: React.FC = () => {
               <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200/80 space-y-3">
                 <div className="flex items-center gap-1.5 text-indigo-950 font-bold text-xs">
                   <KeyRound className="w-4 h-4 text-indigo-700" />
-                  <span>تعديل بيانات الدخول (البريد وكلمة المرور)</span>
+                  <span>تعديل بيانات الدخول (رقم الهاتف وكلمة المرور)</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">البريد الإلكتروني المهني *</label>
+                    <label className="block font-bold text-slate-700 mb-1">رقم الهاتف (لتسجيل الدخول) *</label>
                     <input
-                      type="email"
+                      type="tel"
                       required
-                      value={editStaffEmail}
-                      onChange={(e) => setEditStaffEmail(e.target.value)}
+                      value={editStaffPhone}
+                      onChange={(e) => setEditStaffPhone(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-600 outline-none font-mono text-xs"
                     />
                   </div>
@@ -1919,26 +1875,14 @@ export const HospitalAdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">رقم الجوال</label>
-                  <input
-                    type="tel"
-                    value={editStaffPhone}
-                    onChange={(e) => setEditStaffPhone(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-indigo-600 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">المسمى الوظيفي</label>
-                  <input
-                    type="text"
-                    value={editStaffRoleTitle}
-                    onChange={(e) => setEditStaffRoleTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
-                  />
-                </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">المسمى الوظيفي</label>
+                <input
+                  type="text"
+                  value={editStaffRoleTitle}
+                  onChange={(e) => setEditStaffRoleTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2013,7 +1957,7 @@ export const HospitalAdminDashboard: React.FC = () => {
 
             <div className="p-6 space-y-4 text-xs text-start">
               <p className="text-slate-700 leading-relaxed">
-                هل أنت متأكد من رغبتك في حذف حساب الموظف <strong>{deletingStaff.fullName}</strong> ({deletingStaff.email}) نهائياً؟
+                هل أنت متأكد من رغبتك في حذف حساب الموظف <strong>{deletingStaff.fullName}</strong> ({deletingStaff.phone}) نهائياً؟
               </p>
               <p className="text-rose-600 bg-rose-50 p-3 rounded-xl border border-rose-100 font-medium">
                 تنبيه: سيتم إلغاء صلاحيات الدخول فوراً ولن يتمكن الموظف من الوصول للوحة التحكم وتنسيق المواعيد.

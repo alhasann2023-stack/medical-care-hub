@@ -20,77 +20,11 @@ import {
 } from '../types/medical';
 
 export const INITIAL_USERS: User[] = [
-  {
-    id: 'usr-admin-1',
-    email: 'alhasann2023@gmail.com',
-    phone: '+966500001122',
-    fullName: 'المدير العام والمسؤول المعتمد',
-    role: 'HOSPITAL_ADMIN',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    isVerified: true,
-    createdAt: new Date().toISOString(),
-    lastLoginAt: new Date().toISOString()
-  },
-  {
-    id: 'usr-doc-1',
-    email: 'dr.faisal@medicalcarehub.com',
-    phone: '+966501234567',
-    fullName: 'د. فيصل العتيبي',
-    role: 'DOCTOR',
-    avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80',
-    isVerified: true,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'usr-doc-2',
-    email: 'dr.mona@medicalcarehub.com',
-    phone: '+966502345678',
-    fullName: 'د. منى الغامدي',
-    role: 'DOCTOR',
-    avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=200&auto=format&fit=crop&q=80',
-    isVerified: true,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'usr-doc-3',
-    email: 'dr.tariq@medicalcarehub.com',
-    phone: '+966503456789',
-    fullName: 'د. طارق الشهري',
-    role: 'DOCTOR',
-    avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=200&auto=format&fit=crop&q=80',
-    isVerified: true,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'usr-doc-4',
-    email: 'dr.reem@medicalcarehub.com',
-    phone: '+966504567890',
-    fullName: 'د. ريم الحربي',
-    role: 'DOCTOR',
-    avatar: 'https://images.unsplash.com/photo-1594824813590-78929e7943d0?w=200&auto=format&fit=crop&q=80',
-    isVerified: true,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'usr-cs-1',
-    email: 'staff@medicalcarehub.com',
-    phone: '+966507778899',
-    fullName: 'نورة السعيد',
-    role: 'CUSTOMER_SERVICE',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
-    isVerified: true,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'usr-pat-1',
-    email: 'sarah.mansoor@example.com',
-    phone: '+966501112233',
-    fullName: 'سارة خالد المنصور',
-    role: 'PATIENT',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    isVerified: true,
-    createdAt: new Date().toISOString()
-  }
+
+
+
+
+  
 ];
 
 export const INITIAL_PATIENTS: Patient[] = [

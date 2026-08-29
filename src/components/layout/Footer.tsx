@@ -10,12 +10,20 @@ export const Footer: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Col 1: About */}
-          <div className="space-y-4">
+          <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white">
-                <Building2 className="w-5 h-5" />
+              <div className="w-11 h-11 rounded-xl bg-white p-1 flex items-center justify-center overflow-hidden shrink-0 border border-slate-700/60 shadow-xs">
+                <img
+                  src="/logo.png"
+                  alt="شعار صحتك في يدك"
+                  className="w-full h-full object-contain"
+                  referrerPolicy="no-referrer"
+                />
               </div>
-              <span className="text-lg font-bold text-white tracking-tight">Medical Care Hub</span>
+              <div className="flex flex-col">
+                <span className="text-base font-bold text-white tracking-tight leading-tight">صحتك في يدك</span>
+                <span className="text-[11px] text-slate-400 font-medium">Sehatak Fe Yadeki</span>
+              </div>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
               منصة طبية متكاملة لربط المرضى بالأطباء الاستشاريين، تنسيق المواعيد المتقدم، وإدارة السجلات والفحوصات الطبية بأعلى معايير الأمان والخصوصية الصحية.
@@ -46,7 +54,7 @@ export const Footer: React.FC = () => {
                 <Clock className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold text-slate-200">العيادات الاستشارية:</p>
-                  <p>السبت - الخميس: 08:00 ص - 10:00 م</p>
+                  <p>الدوام من السبت - الاربعاء: 04:00 عصرا - 8:00 م</p>
                 </div>
               </div>
               <div className="flex items-start gap-2">
@@ -65,7 +73,7 @@ export const Footer: React.FC = () => {
             <div className="space-y-2.5 text-xs text-slate-400">
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-cyan-400 shrink-0" />
-                <span>مركز الاتصال الموحد: 920008899</span>
+                <span>مركز الاتصال الموحد: 770009103</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-cyan-400 shrink-0" />
@@ -73,7 +81,7 @@ export const Footer: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-cyan-400 shrink-0" />
-                <span>المملكة العربية السعودية - الرياض - طريق الملك فهد</span>
+                <span>صنعاء - شارع الزبيري خلف مستشفى المغربي للعيون</span>
               </div>
             </div>
           </div>
@@ -88,6 +96,7 @@ export const Footer: React.FC = () => {
             <span className="hover:text-slate-400 cursor-pointer">شروط الاستخدام</span>
             <span>•</span>
             <span className="hover:text-slate-400 cursor-pointer">ميثاق حقوق المريض</span>
+            <span className="text-emerald-400 hover:text-blue-400 cursor-pointer"> المطور :نشوان الشيباني -00967776458925 </span>
           </div>
         </div>
       </div>

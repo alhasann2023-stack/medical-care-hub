@@ -10,7 +10,9 @@ import {
   Eye,
   Send,
   Search,
-  Activity
+  Activity,
+  Paperclip,
+  Download
 } from 'lucide-react';
 
 import {
@@ -158,6 +160,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       ),
       messages: safeArray(
         consultation.messages
+      ),
+      attachments: safeArray(
+        consultation.attachments
       )
     };
   };
@@ -1033,6 +1038,41 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
                         </div>
 
+                      )}
+
+                      {cns.attachments && Array.isArray(cns.attachments) && cns.attachments.length > 0 && (
+                        <div className="mb-3 p-2.5 rounded-xl bg-cyan-50/70 border border-cyan-100 space-y-1.5">
+                          <span className="text-[11px] font-bold text-cyan-900 flex items-center gap-1">
+                            <Paperclip className="w-3 h-3 text-cyan-600 shrink-0" />
+                            الملفات والمرفقات الطبية ({cns.attachments.length}):
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {cns.attachments.map((att: any, attIdx: number) => {
+                              const hasValidUrl = att && att.url && att.url !== '#' && att.url !== '';
+                              return (
+                                <a
+                                  key={attIdx}
+                                  href={hasValidUrl ? att.url : undefined}
+                                  download={att.name || `file-${attIdx + 1}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => {
+                                    if (!hasValidUrl) {
+                                      e.preventDefault();
+                                    }
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white hover:bg-cyan-100 border border-cyan-200 text-cyan-900 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                                  title={hasValidUrl ? 'انقر لتنزيل أو فتح الملف' : 'ملف مرفق'}
+                                >
+                                  <FileText className="w-3.5 h-3.5 text-cyan-700 shrink-0" />
+                                  <span className="truncate max-w-[150px]">{att.name || 'ملف مرفق'}</span>
+                                  {att.size && <span className="text-[10px] text-cyan-600 font-normal">({att.size})</span>}
+                                  {hasValidUrl && <Download className="w-3 h-3 text-cyan-600 shrink-0" />}
+                                </a>
+                              );
+                            })}
+                          </div>
+                        </div>
                       )}
 
                       {cns.doctorAdvice && (

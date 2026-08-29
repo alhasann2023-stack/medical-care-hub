@@ -52,12 +52,17 @@ export const PrintableReportModal: React.FC<PrintableReportModalProps> = ({
           <div className="border-b-2 border-slate-900 pb-6 mb-6">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-14 h-14 rounded-xl bg-blue-700 text-white flex items-center justify-center font-black text-2xl shadow-sm">
-                  <Building2 className="w-8 h-8" />
+                <div className="w-16 h-16 rounded-xl bg-white border border-slate-300 p-1 flex items-center justify-center shadow-xs overflow-hidden shrink-0">
+                  <img
+                    src="/logo.png"
+                    alt="شعار صحتك في يدك"
+                    className="w-full h-full object-contain"
+                    referrerPolicy="no-referrer"
+                  />
                 </div>
                 <div>
-                  <h1 className="font-black text-xl text-slate-900">مستشفى مركز الرعاية الطبية التخصصي</h1>
-                  <h2 className="text-xs text-slate-600 font-semibold">MEDICAL CARE HUB SPECIALIZED HOSPITAL</h2>
+                  <h1 className="font-black text-xl text-slate-900">مركز صحتك في يدك الطبي التخصصي</h1>
+                  <h2 className="text-xs text-slate-600 font-semibold uppercase tracking-wider">SEHATAK FE YADEKI MEDICAL CENTER</h2>
                   <p className="text-[11px] text-slate-500 font-medium">{report.hospitalDepartment}</p>
                 </div>
               </div>

@@ -51,12 +51,17 @@ export const PrintablePrescriptionModal: React.FC<PrintablePrescriptionModalProp
           {/* Header */}
           <div className="border-b-2 border-slate-900 pb-4 mb-5 flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-black">
-                <Building2 className="w-7 h-7" />
+              <div className="w-14 h-14 rounded-xl bg-white border border-slate-300 p-1 flex items-center justify-center shadow-xs overflow-hidden shrink-0">
+                <img
+                  src="/logo.png"
+                  alt="شعار صحتك في يدك"
+                  className="w-full h-full object-contain"
+                  referrerPolicy="no-referrer"
+                />
               </div>
               <div>
-                <h1 className="font-black text-lg text-slate-900">مستشفى مركز الرعاية الطبية</h1>
-                <p className="text-xs text-slate-500 font-semibold">قسم الصيدلية والوصفات الإلكترونية (E-Prescription)</p>
+                <h1 className="font-black text-lg text-slate-900">مركز صحتك في يدك الطبي التخصصي</h1>
+                <p className="text-xs text-slate-500 font-semibold">قسم الصيدلية والوصفات الإلكترونية المعتمدة (E-Prescription)</p>
               </div>
             </div>
 

@@ -25,7 +25,7 @@ import {
   Layers,
   ClipboardList
 } from 'lucide-react';
-import { Appointment, Patient, AppointmentStatus, MedicalService } from '../../types/medical';
+import { Appointment, Patient, AppointmentStatus, MedicalService, Doctor } from '../../types/medical';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { playSuccessSound } from '../../utils/sound';
@@ -35,11 +35,20 @@ export const CustomerServiceDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'APPOINTMENTS' | 'SERVICES'>('APPOINTMENTS');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [services, setServices] = useState<MedicalService[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchPhoneOrMrn, setSearchPhoneOrMrn] = useState<string>('');
   const [serviceSearchQuery, setServiceSearchQuery] = useState<string>('');
   const [notificationMsg, setNotificationMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Doctor Absence Notification Modal State
+  const [isDoctorAbsentModalOpen, setIsDoctorAbsentModalOpen] = useState<boolean>(false);
+  const [selectedAbsentDoctorId, setSelectedAbsentDoctorId] = useState<string>('');
+  const [absentDate, setAbsentDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedAppointmentIdsForAbsence, setSelectedAppointmentIdsForAbsence] = useState<string[]>([]);
+  const [absentCustomMessage, setAbsentCustomMessage] = useState<string>('');
+  const [isSendingAbsentNotice, setIsSendingAbsentNotice] = useState<boolean>(false);
 
   // Coordination Edit Modal
   const [coordinatingAppointment, setCoordinatingAppointment] = useState<Appointment | null>(null);
@@ -107,18 +116,134 @@ export const CustomerServiceDashboard: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [aptRes, patRes, srvRes] = await Promise.all([
+      const [aptRes, patRes, srvRes, docRes] = await Promise.all([
         api.getAppointments(),
         api.getPatients(),
-        api.getServices()
+        api.getServices(),
+        api.getDoctors()
       ]);
       setAppointments(aptRes);
       setPatients(patRes);
       setServices(srvRes);
+      setDoctors(docRes);
     } catch (err) {
       console.error('CS load error:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleOpenDoctorAbsentModal = (specificApt?: Appointment) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (specificApt) {
+      setSelectedAbsentDoctorId(specificApt.doctorId);
+      const dateStr = specificApt.confirmedDate || specificApt.preferredDate || todayStr;
+      setAbsentDate(dateStr);
+      setSelectedAppointmentIdsForAbsence([specificApt.id]);
+      const docName = specificApt.doctorName || 'طبيب العيادة';
+      setAbsentCustomMessage(
+        `نود إحاطتكم بأن الطبيب ${docName} غير مداوم في العيادة بتاريخ ${dateStr} لظرف طارئ. نرجو عدم الحضور إلى المستشفى حرصاً على راحتكم ووقتكم، وسيقوم فريق خدمة العملاء بالتواصل معكم هاتفياً لترتيب موعد بديل يناسبكم.`
+      );
+    } else {
+      const initialDocId = doctors[0]?.id || appointments[0]?.doctorId || 'doc-1';
+      setSelectedAbsentDoctorId(initialDocId);
+      setAbsentDate(todayStr);
+
+      const matchingApts = appointments.filter(a =>
+        a.doctorId === initialDocId &&
+        (a.confirmedDate === todayStr || a.preferredDate === todayStr) &&
+        a.status !== 'CANCELLED' &&
+        a.status !== 'COMPLETED'
+      );
+      setSelectedAppointmentIdsForAbsence(matchingApts.map(a => a.id));
+
+      const doc = doctors.find(d => d.id === initialDocId || d.userId === initialDocId);
+      const docName = doc?.fullName || appointments.find(a => a.doctorId === initialDocId)?.doctorName || 'طبيب العيادة';
+      setAbsentCustomMessage(
+        `نود إحاطتكم بأن الطبيب ${docName} غير مداوم في العيادة بتاريخ ${todayStr} لظرف طارئ. نرجو عدم الحضور إلى المستشفى حرصاً على راحتكم ووقتكم، وسيقوم فريق خدمة العملاء بالتواصل معكم هاتفياً لترتيب موعد بديل يناسبكم.`
+      );
+    }
+    setIsDoctorAbsentModalOpen(true);
+  };
+
+  const handleDoctorChangeInAbsentModal = (newDocId: string) => {
+    setSelectedAbsentDoctorId(newDocId);
+    const doc = doctors.find(d => d.id === newDocId || d.userId === newDocId);
+    const docName = doc?.fullName || appointments.find(a => a.doctorId === newDocId)?.doctorName || 'طبيب العيادة';
+    const matchingApts = appointments.filter(a =>
+      a.doctorId === newDocId &&
+      (a.confirmedDate === absentDate || a.preferredDate === absentDate) &&
+      a.status !== 'CANCELLED' &&
+      a.status !== 'COMPLETED'
+    );
+    setSelectedAppointmentIdsForAbsence(matchingApts.map(a => a.id));
+    setAbsentCustomMessage(
+      `نود إحاطتكم بأن الطبيب ${docName} غير مداوم في العيادة بتاريخ ${absentDate} لظرف طارئ. نرجو عدم الحضور إلى المستشفى حرصاً على راحتكم ووقتكم، وسيقوم فريق خدمة العملاء بالتواصل معكم هاتفياً لترتيب موعد بديل يناسبكم.`
+    );
+  };
+
+  const handleDateChangeInAbsentModal = (newDate: string) => {
+    setAbsentDate(newDate);
+    const doc = doctors.find(d => d.id === selectedAbsentDoctorId || d.userId === selectedAbsentDoctorId);
+    const docName = doc?.fullName || appointments.find(a => a.doctorId === selectedAbsentDoctorId)?.doctorName || 'طبيب العيادة';
+    const matchingApts = appointments.filter(a =>
+      a.doctorId === selectedAbsentDoctorId &&
+      (a.confirmedDate === newDate || a.preferredDate === newDate) &&
+      a.status !== 'CANCELLED' &&
+      a.status !== 'COMPLETED'
+    );
+    setSelectedAppointmentIdsForAbsence(matchingApts.map(a => a.id));
+    setAbsentCustomMessage(
+      `نود إحاطتكم بأن الطبيب ${docName} غير مداوم في العيادة بتاريخ ${newDate} لظرف طارئ. نرجو عدم الحضور إلى المستشفى حرصاً على راحتكم ووقتكم، وسيقوم فريق خدمة العملاء بالتواصل معكم هاتفياً لترتيب موعد بديل يناسبكم.`
+    );
+  };
+
+  const handleToggleAppointmentSelection = (aptId: string) => {
+    setSelectedAppointmentIdsForAbsence(prev =>
+      prev.includes(aptId) ? prev.filter(id => id !== aptId) : [...prev, aptId]
+    );
+  };
+
+  const handleSelectAllAppointmentsForAbsence = (aptsToToggle: Appointment[]) => {
+    const allIds = aptsToToggle.map(a => a.id);
+    const allSelected = allIds.every(id => selectedAppointmentIdsForAbsence.includes(id));
+    if (allSelected) {
+      setSelectedAppointmentIdsForAbsence(prev => prev.filter(id => !allIds.includes(id)));
+    } else {
+      setSelectedAppointmentIdsForAbsence(prev => Array.from(new Set([...prev, ...allIds])));
+    }
+  };
+
+  const handleSendDoctorAbsentNotice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedAppointmentIdsForAbsence.length === 0) {
+      showNotification('error', 'يرجى اختيار مريض واحد على الأقل لإرسال الإشعار إليه.');
+      return;
+    }
+
+    const doc = doctors.find(d => d.id === selectedAbsentDoctorId || d.userId === selectedAbsentDoctorId);
+    const docName = doc?.fullName || appointments.find(a => a.doctorId === selectedAbsentDoctorId)?.doctorName || 'طبيب العيادة';
+
+    setIsSendingAbsentNotice(true);
+    try {
+      await api.sendDoctorAbsentNotification({
+        appointmentIds: selectedAppointmentIdsForAbsence,
+        doctorId: selectedAbsentDoctorId,
+        doctorName: docName,
+        date: absentDate,
+        customMessage: absentCustomMessage.trim(),
+        coordinatorName: staffProfile?.fullName || user?.fullName || 'خدمة العملاء'
+      });
+
+      playSuccessSound();
+      showNotification('success', `تم بنجاح إرسال إشعار عدم دوام الطبيب (${docName}) إلى ${selectedAppointmentIdsForAbsence.length} مريض.`);
+      setIsDoctorAbsentModalOpen(false);
+      await loadData();
+    } catch (err: any) {
+      console.error(err);
+      showNotification('error', err.message || 'فشل إرسال إشعار غياب الطبيب.');
+    } finally {
+      setIsSendingAbsentNotice(false);
     }
   };
 
@@ -349,6 +474,14 @@ export const CustomerServiceDashboard: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-2.5">
           <button
+            onClick={() => handleOpenDoctorAbsentModal()}
+            className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
+          >
+            <AlertTriangle className="w-4 h-4 text-white" />
+            <span>إشعار غياب طبيب للمرضى</span>
+          </button>
+
+          <button
             onClick={() => setIsNewServiceModalOpen(true)}
             className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm transition-all border border-white/20 flex items-center gap-2 cursor-pointer"
           >
@@ -542,26 +675,44 @@ export const CustomerServiceDashboard: React.FC = () => {
                             )}
                           </td>
                           <td className="p-3.5">
-                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
-                              apt.status === 'CONFIRMED'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : apt.status === 'CONTACTED'
-                                ? 'bg-purple-100 text-purple-800'
-                                : apt.status === 'CANCELLED'
-                                ? 'bg-rose-100 text-rose-800'
-                                : 'bg-amber-100 text-amber-800 animate-pulse'
-                            }`}>
-                              {apt.status === 'CONFIRMED' ? 'مؤكد' : apt.status === 'CONTACTED' ? 'تم الاتصال' : apt.status === 'CANCELLED' ? 'ملغي' : 'طلب جديد'}
-                            </span>
+                            <div className="flex flex-col gap-1 items-start">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
+                                apt.status === 'CONFIRMED'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : apt.status === 'CONTACTED'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : apt.status === 'CANCELLED'
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : 'bg-amber-100 text-amber-800 animate-pulse'
+                              }`}>
+                                {apt.status === 'CONFIRMED' ? 'مؤكد' : apt.status === 'CONTACTED' ? 'تم الاتصال' : apt.status === 'CANCELLED' ? 'ملغي' : 'طلب جديد'}
+                              </span>
+                              {apt.isDoctorAbsent && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+                                  <span>تم إشعار المريض بالغياب</span>
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="p-3.5 text-center">
-                            <button
-                              onClick={() => handleOpenCoordination(apt)}
-                              className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs mx-auto"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                              <span>تنسيق وتأكيد</span>
-                            </button>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => handleOpenCoordination(apt)}
+                                className="px-2.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span>تنسيق</span>
+                              </button>
+                              <button
+                                onClick={() => handleOpenDoctorAbsentModal(apt)}
+                                title="إرسال إشعار للمريض بغياب الطبيب عن العيادة"
+                                className="px-2 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                              >
+                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                                <span>إبلاغ بالغياب</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1163,6 +1314,210 @@ export const CustomerServiceDashboard: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Doctor Absent Notification Modal */}
+      {isDoctorAbsentModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in">
+            <div className="p-5 bg-gradient-to-r from-rose-700 via-rose-800 to-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-white/15 text-rose-100">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base">إرسال إشعار غياب الطبيب للمرضى</h3>
+                  <p className="text-xs text-rose-150">تنبيه المرضى بعدم دوام الطبيب في العيادة لتجنب حضورهم هباءً</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsDoctorAbsentModalOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-rose-200 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendDoctorAbsentNotice} className="p-6 space-y-4 text-start text-xs sm:text-sm">
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  سيتم إرسال إشعار وتنبيه فوري لجميع المرضى المحددين أدناه لتنبيههم بعدم حضورهم إلى العيادة بسبب غياب الطبيب، مع إمكانية التنسيق الهاتفي لموعد بديل.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1.5">
+                    اختر الطبيب الغائب / غير المداوم <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={selectedAbsentDoctorId}
+                    onChange={(e) => handleDoctorChangeInAbsentModal(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 font-bold text-slate-900"
+                    required
+                  >
+                    {doctors.map(doc => (
+                      <option key={doc.id} value={doc.id}>
+                        {doc.fullName} ({doc.specialty})
+                      </option>
+                    ))}
+                    {doctors.length === 0 && (
+                      <option value="doc-1">د. عبدالله الشمري (استشاري جراحة القلب)</option>
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1.5">
+                    تاريخ غياب الطبيب <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={absentDate}
+                    onChange={(e) => handleDateChangeInAbsentModal(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 font-bold text-slate-900"
+                    required
+                  >
+                  </input>
+                </div>
+              </div>
+
+              {/* Target Appointments Selection */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="font-bold text-slate-800">
+                    المرضى المحجوزين مع الطبيب ({selectedAppointmentIdsForAbsence.length} محددين)
+                  </label>
+                  {appointments.filter(a => a.doctorId === selectedAbsentDoctorId && a.status !== 'CANCELLED').length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetApts = appointments.filter(a =>
+                          a.doctorId === selectedAbsentDoctorId &&
+                          (a.confirmedDate === absentDate || a.preferredDate === absentDate || true) &&
+                          a.status !== 'CANCELLED'
+                        );
+                        handleSelectAllAppointmentsForAbsence(targetApts);
+                      }}
+                      className="text-xs font-bold text-rose-700 hover:text-rose-800 cursor-pointer"
+                    >
+                      تحديد / إلغاء تحديد الكل
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/50 p-2 space-y-2">
+                  {(() => {
+                    const matchingForDate = appointments.filter(a =>
+                      a.doctorId === selectedAbsentDoctorId &&
+                      (a.confirmedDate === absentDate || a.preferredDate === absentDate) &&
+                      a.status !== 'CANCELLED' &&
+                      a.status !== 'COMPLETED'
+                    );
+
+                    const allForDoc = appointments.filter(a =>
+                      a.doctorId === selectedAbsentDoctorId &&
+                      a.status !== 'CANCELLED' &&
+                      a.status !== 'COMPLETED'
+                    );
+
+                    const aptsToShow = matchingForDate.length > 0 ? matchingForDate : allForDoc;
+
+                    if (aptsToShow.length === 0) {
+                      return (
+                        <div className="p-4 text-center text-slate-400 text-xs font-medium">
+                          لا توجد حجوزات نشطة مسجلة مع هذا الطبيب حالياً.
+                        </div>
+                      );
+                    }
+
+                    return aptsToShow.map(apt => {
+                      const isSelected = selectedAppointmentIdsForAbsence.includes(apt.id);
+                      return (
+                        <div
+                          key={apt.id}
+                          onClick={() => handleToggleAppointmentSelection(apt.id)}
+                          className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                            isSelected
+                              ? 'bg-rose-50 border-rose-300 shadow-2xs'
+                              : 'bg-white border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleAppointmentSelection(apt.id)}
+                              className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
+                            />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <strong className="font-extrabold text-slate-900 text-xs">{apt.patientName}</strong>
+                                <span className="text-[10px] text-slate-500 font-mono">({apt.patientPhone})</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-[11px] text-slate-600 mt-0.5">
+                                <span>التاريخ: <strong>{apt.confirmedDate || apt.preferredDate}</strong></span>
+                                <span>•</span>
+                                <span>{apt.confirmedTime || (apt.preferredPeriod === 'MORNING' ? 'صباحاً' : 'مساءً')}</span>
+                                <span>•</span>
+                                <span className="text-blue-700 font-medium">{apt.serviceName}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {apt.isDoctorAbsent && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 shrink-0">
+                              تم إرسال إشعار مسبقاً
+                            </span>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+
+              {/* Custom Notification Message */}
+              <div>
+                <label className="block font-bold text-slate-800 mb-1.5">
+                  نص رسالة الإشعار الموجهة للمريض <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={absentCustomMessage}
+                  onChange={(e) => setAbsentCustomMessage(e.target.value)}
+                  placeholder="اكتب نص الإشعار هنا..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-slate-900 text-xs leading-relaxed focus:bg-white focus:ring-2 focus:ring-rose-500"
+                  required
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsDoctorAbsentModalOpen(false)}
+                  disabled={isSendingAbsentNotice}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSendingAbsentNotice || selectedAppointmentIdsForAbsence.length === 0}
+                  className="px-6 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>
+                    {isSendingAbsentNotice
+                      ? 'جاري إرسال الإشعارات...'
+                      : `إرسال الإشعار لـ (${selectedAppointmentIdsForAbsence.length}) مريض`}
+                  </span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -58,6 +58,21 @@ export const ADMIN_EMAILS = [
   'nashwann91@gmail.com'
 ];
 
+export const ADMIN_PHONES = [
+  '776458925'
+];
+
+export const isAdminPhone = (
+  phone?: string | null
+): boolean => {
+  if (!phone) {
+    return false;
+  }
+  const clean = phone.trim();
+  const digits = clean.replace(/[^0-9]/g, '');
+  return digits === '776458925' || digits.endsWith('776458925') || clean.includes('776458925');
+};
+
 export const isAdminEmail = (
   email?: string | null
 ): boolean => {
@@ -66,9 +81,16 @@ export const isAdminEmail = (
     return false;
   }
 
-  return ADMIN_EMAILS.includes(
-    email.trim().toLowerCase()
-  );
+  const clean = email.trim().toLowerCase();
+  if (ADMIN_EMAILS.includes(clean)) {
+    return true;
+  }
+
+  if (isAdminPhone(clean)) {
+    return true;
+  }
+
+  return false;
 };
 
 
@@ -359,6 +381,9 @@ export const AuthProvider: React.FC<{
         ) ||
         isAdminEmail(
           fbUser?.email
+        ) ||
+        isAdminPhone(
+          normalizedUser.phone
         )
       ) {
 
@@ -450,12 +475,27 @@ export const AuthProvider: React.FC<{
       setDoctorProfile(null);
 
 
-      const staff =
+      let staff =
         await firebaseDb.getDocument<Staff>(
           FIRESTORE_COLLECTIONS.STAFF,
           normalizedUser.id
         );
 
+      if (!staff && normalizedUser.role === 'HOSPITAL_ADMIN') {
+        staff = {
+          id: `stf-${normalizedUser.id}`,
+          userId: normalizedUser.id,
+          fullName: normalizedUser.fullName || 'المدير العام والمسؤول المعتمد',
+          department: 'إدارة المستشفى والعمليات العليا',
+          roleTitle: 'المدير العام والمسؤول المعتمد',
+          shift: 'شامل',
+          avatar: normalizedUser.avatar,
+          phone: normalizedUser.phone,
+          email: normalizedUser.email,
+          isActive: true,
+          createdAt: normalizedUser.createdAt || new Date().toISOString()
+        };
+      }
 
       setStaffProfile(
         staff || null
@@ -1177,7 +1217,7 @@ export const AuthProvider: React.FC<{
             case 'auth/user-not-found':
 
               throw new Error(
-                'البريد الإلكتروني أو كلمة المرور غير صحيحة. إذا أنشأت الحساب عبر Google، استخدم "تسجيل الدخول عبر Google" أو قم أولًا بتعيين كلمة مرور للحساب.'
+                'البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى التحقق من صحة البيانات.'
               );
 
 
@@ -1305,6 +1345,34 @@ export const AuthProvider: React.FC<{
       // PHONE / BACKEND
       // ======================================================
 
+      try {
+        const firestoreUser = await getUserByEmailOrPhone(identifier);
+        if (firestoreUser && firestoreUser.email) {
+          try {
+            const credential = await signInWithEmailAndPassword(
+              auth,
+              firestoreUser.email.toLowerCase(),
+              password
+            );
+
+            if (credential?.user) {
+              let normalizedUser = { ...firestoreUser };
+              if (isAdminEmail(firestoreUser.email) || isAdminPhone(firestoreUser.phone)) {
+                normalizedUser.role = 'HOSPITAL_ADMIN';
+              }
+              await firebaseDb.saveUser(normalizedUser);
+              await applyUserSession(normalizedUser, 'firebase', credential.user);
+              saveSession(normalizedUser, 'firebase');
+              return;
+            }
+          } catch (fbErr: any) {
+            console.warn('Firebase phone auth via email lookup:', fbErr?.code, fbErr?.message);
+          }
+        }
+      } catch (lookupErr) {
+        console.warn('Firestore phone user lookup:', lookupErr);
+      }
+
       const apiRes =
         await api.login(
           identifier,
@@ -1331,6 +1399,9 @@ export const AuthProvider: React.FC<{
       if (
         isAdminEmail(
           backendUser.email
+        ) ||
+        isAdminPhone(
+          backendUser.phone
         )
       ) {
 
@@ -1448,14 +1519,30 @@ export const AuthProvider: React.FC<{
       }
 
 
+      const cleanPhone = (data.phone || '').trim();
+      const cleanDigits = cleanPhone.replace(/[^0-9]/g, '');
+
+      // Generate synthetic email if email is not provided
+      const userEmail = data.email
+        ? data.email.trim().toLowerCase()
+        : `${cleanDigits || Date.now()}@phone.medicalcarehub.com`;
+
+      const isAdmin = 
+        isAdminEmail(data.email) || 
+        isAdminPhone(cleanPhone) ||
+        cleanDigits === '776458925' ||
+        cleanDigits.endsWith('776458925');
+
       const payload = {
 
         ...data,
 
+        phone: cleanPhone,
+
+        email: userEmail,
+
         role:
-          isAdminEmail(
-            data.email
-          )
+          isAdmin
             ? 'HOSPITAL_ADMIN'
             : (
                 data.role ||
@@ -1552,7 +1639,9 @@ export const AuthProvider: React.FC<{
             } catch {
 
               throw new Error(
-                'البريد الإلكتروني مستخدم بالفعل، وكلمة المرور لا تطابق الحساب الموجود في Firebase.'
+                data.email
+                  ? 'البريد الإلكتروني مستخدم بالفعل، وكلمة المرور لا تطابق الحساب الموجود.'
+                  : 'رقم الهاتف مستخدم بالفعل، وكلمة المرور غير صحيحة.'
               );
             }
 
@@ -1560,7 +1649,7 @@ export const AuthProvider: React.FC<{
 
             throw new Error(
               fbError?.message ||
-              'فشل إنشاء حساب Firebase.'
+              'فشل إنشاء حساب المستخدم.'
             );
           }
         }
@@ -1577,8 +1666,12 @@ export const AuthProvider: React.FC<{
 
 
       if (
+        isAdmin ||
         isAdminEmail(
           registeredUser.email
+        ) ||
+        isAdminPhone(
+          registeredUser.phone
         )
       ) {
 

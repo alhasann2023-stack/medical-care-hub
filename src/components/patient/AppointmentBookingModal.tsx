@@ -183,7 +183,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="p-6 space-y-5 text-start text-xs sm:text-sm">
+            <form onSubmit={handleSubmit} className="p-3 space-y-3 text-start text-xs sm:text-sm">
               {error && (
                 <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 flex items-center gap-2 text-xs font-semibold">
                   <AlertCircle className="w-4 h-4 shrink-0" />
@@ -199,7 +199,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                 <select
                   value={selectedDoctorId}
                   onChange={(e) => setSelectedDoctorId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500  transition-all"
                   required
                 >
                   {doctors.map(d => (
@@ -238,7 +238,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                 <select
                   value={selectedServiceId}
                   onChange={(e) => setSelectedServiceId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500  transition-all"
                 >
                   {services.map(s => (
                     <option key={s.id} value={s.id}>
@@ -259,7 +259,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                     value={preferredDate}
                     min={new Date().toISOString().split('T')[0]}
                     onChange={(e) => setPreferredDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500  transition-all"
                     required
                   />
                 </div>
@@ -280,8 +280,8 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                         onClick={() => setPreferredPeriod(p.id as PreferredPeriod)}
                         className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
                           preferredPeriod === p.id
-                            ? 'bg-blue-600 text-white border-blue-600 font-bold shadow-xs'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                            ? 'bg-blue-600 text-slate-500 border-blue-600 font-bold shadow-xs'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                         }`}
                       >
                         <span className="block text-xs">{p.label}</span>
@@ -302,7 +302,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   placeholder="مثال: فحص دوري لضغط الدم، ألم مستمر في الصدر عند المشي، تجديد وصفة دواء..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 font-medium focus:ring-2 focus:ring-blue-500  transition-all resize-none"
                   required
                 />
               </div>

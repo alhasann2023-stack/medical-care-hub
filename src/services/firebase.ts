@@ -189,11 +189,23 @@ export async function getUserByEmailOrPhone(identifier: string): Promise<User | 
     }
 
     // Check phone
-    const phoneQuery = query(colRef, where('phone', '==', identifier.trim()));
+    const trimmedPhone = identifier.trim();
+    const phoneQuery = query(colRef, where('phone', '==', trimmedPhone));
     const phoneSnap = await getDocs(phoneQuery);
     if (!phoneSnap.empty) {
       const d = phoneSnap.docs[0];
       return { id: d.id, ...d.data() } as unknown as User;
+    }
+
+    // Check phone digits variation
+    const digits = trimmedPhone.replace(/[^0-9]/g, '');
+    if (digits && digits !== trimmedPhone) {
+      const digitQuery = query(colRef, where('phone', '==', digits));
+      const digitSnap = await getDocs(digitQuery);
+      if (!digitSnap.empty) {
+        const d = digitSnap.docs[0];
+        return { id: d.id, ...d.data() } as unknown as User;
+      }
     }
 
     return null;

@@ -98,10 +98,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-4 text-xs text-slate-300">
             <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px]">
               <Database className="w-3 h-3 text-emerald-400" />
-              <span>قاعدة بيانات فايربيس السحابية (Firestore)</span>
+          
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
             </div>
-            <span className="hidden md:inline">الرقم الموحد: 920008899</span>
+           
             <button
               onClick={toggleLanguage}
               className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer"
@@ -123,13 +123,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setCurrentView('landing')}
               className="flex items-center gap-3 group text-start cursor-pointer focus:outline-none"
             >
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-700 to-cyan-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
-                <Building2 className="w-6 h-6" />
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-50 to-cyan-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+                              <img
+                src="/logo.png"
+                alt="شعار صحتك في يدك"
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+              />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-lg text-slate-900 tracking-tight">Medical Care Hub</span>
-                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-100 text-blue-800">SaaS</span>
+                  <span className="font-extrabold text-lg text-slate-900 tracking-tight">صحتك في يدك Sehatak Fe Yadeki</span>
+                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-100 text-blue-800"></span>
                 </div>
                 <p className="text-xs text-slate-500 font-medium">مركز الرعاية الصحية والعيادات التخصصية</p>
               </div>

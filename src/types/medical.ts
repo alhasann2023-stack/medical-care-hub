@@ -9,7 +9,8 @@ export type AppointmentStatus =
   | 'COMPLETED'
   | 'CANCELLED'
   | 'NO_SHOW'
-  | 'RESCHEDULE_REQUESTED';
+  | 'RESCHEDULE_REQUESTED'
+  | 'DOCTOR_ABSENT';
 
 export type ConsultationStatus = 
   | 'PAYMENT_REQUIRED'
@@ -365,6 +366,11 @@ export interface Appointment {
   rescheduleRequestedDate?: string;
   rescheduleRequestedPeriod?: PreferredPeriod;
   rescheduleReason?: string;
+  
+  // Doctor Absence Notification Fields
+  isDoctorAbsent?: boolean;
+  doctorAbsentNotifiedAt?: string;
+  doctorAbsentNotice?: string;
   
   coordinatorNotes?: string;
   patientNotes?: string;
