@@ -368,11 +368,11 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
 
         {/* Content */}
         {!completedPayment ? (
-          <div className="p-6 space-y-6">
+          <div className="p-2 space-y-2">
             
             {/* Step 1: Currency Tabs & Live Exchange Equality Banner */}
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-black text-slate-800 dark:text-slate-200">
                   اختر عملة السداد (Currency)
                 </label>
@@ -399,7 +399,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                       className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
                         isSelected
                           ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 ring-2 ring-emerald-500/20 shadow-xs'
-                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                          : 'border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 hover:border-slate-300'
                       }`}
                     >
                       <div className="flex items-center justify-center gap-1.5 mb-1">
@@ -418,9 +418,9 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
               </div>
 
               {/* Automatic Live Rates Equivalence Indicator */}
-              <div className="mt-2.5 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400">
+              <div className="mt-2 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-400/80 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
                   <span className="font-mono text-[10px]">
                     1 ر.س = {liveRates.SAR_TO_YER} ر.ي | 1 $ = {liveRates.USD_TO_SAR} ر.س | 1 $ = {liveRates.USD_TO_YER.toLocaleString()} ر.ي
                   </span>
@@ -465,7 +465,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
 
             {/* OTP Step View for Kuraimi */}
             {isOtpStep ? (
-              <form onSubmit={handleVerifyKuraimiOtp} className="space-y-4 bg-amber-50/70 dark:bg-amber-950/20 p-5 rounded-2xl border border-amber-200 dark:border-amber-800/50">
+              <form onSubmit={handleVerifyKuraimiOtp} className="space-y-2 bg-amber-50/70 dark:bg-amber-950/20 p-3 rounded-2xl border border-amber-200 dark:border-amber-800/50">
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-amber-100 dark:bg-amber-900/60 rounded-xl text-amber-800 dark:text-amber-200">
                     <KeyRound className="w-6 h-6" />
@@ -491,7 +491,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                     value={kuraimiOtp}
                     onChange={(e) => setKuraimiOtp(e.target.value.replace(/\D/g, ''))}
                     placeholder="مثال: 889123"
-                    className="w-full px-4 py-3 text-center text-xl font-mono tracking-widest font-black rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                    className="w-full px-3 py-2 text-center text-xl font-mono tracking-widest font-black rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
                   />
                   <span className="text-[11px] text-amber-700 dark:text-amber-300 mt-1 block">
                     * للبيئة التجريبية، يمكنك إدخال أي رمز مكون من 6 خانات (مثال: 889123)
@@ -609,9 +609,9 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                 </div>
 
                 {/* Form Fields according to method */}
-                <form onSubmit={handlePaySubmit} className="space-y-4">
+                <form onSubmit={handlePaySubmit} className="space-y-2">
                   {selectedMethod === 'KURAIMI_EXPRESS' || selectedMethod === 'KURAIMI_HASEB' || selectedMethod === 'KURAIMI_PAY' ? (
-                    <div className="space-y-3 bg-emerald-50/70 dark:bg-emerald-950/20 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/40">
+                    <div className="space-y-2 bg-emerald-50/70 dark:bg-emerald-950/20 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/40">
                       <div className="flex items-center justify-between pb-2 border-b border-emerald-200/60 dark:border-emerald-800/40">
                         <span className="text-xs font-black text-emerald-950 dark:text-emerald-100 flex items-center gap-1.5">
                           <Landmark className="w-4 h-4 text-emerald-700" />

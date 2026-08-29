@@ -231,22 +231,34 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
               </div>
 
               {/* Step 2: Select Medical Service */}
-              <div>
-                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-2">
-                  2. نوع الخدمة الطبية المطلوبة
-                </label>
-                <select
-                  value={selectedServiceId}
-                  onChange={(e) => setSelectedServiceId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500  transition-all"
-                >
-                  {services.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.nameAr} — {s.price} ر.س ({s.durationMinutes} دقيقة)
-                    </option>
-                  ))}
-                </select>
-              </div>
+```tsx
+<div>
+  <label className="block font-bold text-slate-800 dark:text-slate-200 mb-2">
+    2. نوع الخدمة الطبية المطلوبة
+  </label>
+
+  <input
+    type="text"
+    list="medical-services"
+    value={selectedServiceId}
+    onChange={(e) => setSelectedServiceId(e.target.value)}
+    placeholder="اكتب اسم الخدمة الطبية..."
+    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+  />
+
+  <datalist id="medical-services">
+    {services.map((s) => (
+      <option
+        key={s.id}
+        value={s.id}
+      >
+        {s.nameAr} — {s.price} ر.س ({s.durationMinutes} دقيقة)
+      </option>
+    ))}
+  </datalist>
+</div>
+```
+
 
               {/* Step 3: Preferred Date & Shift */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

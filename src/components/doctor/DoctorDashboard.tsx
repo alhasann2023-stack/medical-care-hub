@@ -625,47 +625,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
         <div className="flex flex-wrap items-center gap-2.5">
 
-          {allDoctors.length > 1 && (
-            <div className="bg-emerald-950/60 border border-emerald-400/30 rounded-xl px-3 py-1.5 flex items-center gap-2">
-
-              <Stethoscope className="w-4 h-4 text-emerald-300" />
-
-              <label
-                htmlFor="doctor-select"
-                className="text-xs text-emerald-200 font-bold whitespace-nowrap"
-              >
-                عرض عيادة:
-              </label>
-
-              <select
-                id="doctor-select"
-                value={selectedDoctorId}
-                onChange={(e) =>
-                  setSelectedDoctorId(
-                    e.target.value
-                  )
-                }
-                className="bg-emerald-900/90 text-white text-xs font-bold rounded-lg px-2.5 py-1 border border-emerald-400/40 focus:outline-none focus:ring-1 focus:ring-emerald-300 cursor-pointer"
-              >
-                {allDoctors.map(
-                  (doctor) => (
-                    <option
-                      key={doctor.id}
-                      value={doctor.id}
-                      className="bg-slate-900 text-white"
-                    >
-                      {doctor.fullName} (
-                      {
-                        doctor.specialtyNameAr
-                      }
-                      )
-                    </option>
-                  )
-                )}
-              </select>
-
-            </div>
-          )}
+        
 
           <button
             onClick={() => {

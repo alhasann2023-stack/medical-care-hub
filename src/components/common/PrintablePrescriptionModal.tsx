@@ -60,7 +60,7 @@ export const PrintablePrescriptionModal: React.FC<PrintablePrescriptionModalProp
                 />
               </div>
               <div>
-                <h1 className="font-black text-lg text-slate-900">مركز صحتك في يدك الطبي التخصصي</h1>
+                <h1 className="font-black text-lg text-slate-900">عيادة الدكتور وهاج المقطري</h1>
                 <p className="text-xs text-slate-500 font-semibold">قسم الصيدلية والوصفات الإلكترونية المعتمدة (E-Prescription)</p>
               </div>
             </div>

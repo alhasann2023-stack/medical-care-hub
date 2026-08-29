@@ -137,7 +137,7 @@ export const ScheduleFollowUpModal: React.FC<ScheduleFollowUpModalProps> = ({
                 required
                 value={scheduledDate}
                 onChange={(e) => setScheduledDate(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs outline-none focus:ring-2 focus:ring-indigo-600"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-300 font-mono text-xs outline-none focus:ring-2 focus:ring-indigo-600"
               />
             </div>
 
@@ -148,7 +148,7 @@ export const ScheduleFollowUpModal: React.FC<ScheduleFollowUpModalProps> = ({
               <select
                 value={scheduledTime}
                 onChange={(e) => setScheduledTime(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-300 text-xs font-bold outline-none"
               >
                 <option value="09:00 ص">09:00 ص (الفترة الصباحية)</option>
                 <option value="10:30 ص">10:30 ص (الفترة الصباحية)</option>
@@ -170,7 +170,7 @@ export const ScheduleFollowUpModal: React.FC<ScheduleFollowUpModalProps> = ({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="مثال: إعادة فحص الضغط، تقييم نتائج المختبر..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-indigo-600"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-300 text-xs outline-none focus:ring-2 focus:ring-indigo-600"
             />
           </div>
 

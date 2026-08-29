@@ -98,7 +98,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
       {/* Features Overview */}
       <section className="bg-slate-50 rounded-3xl p-4 sm:p-6 border border-slate-200/80">
         <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
-          <h2 className="text-2xl font-black text-slate-900">مميزات منصة Medical Care Hub</h2>
+          <h2 className="text-2xl font-black text-slate-900">مميزات منصة صحتك في يدك </h2>
           <p className="text-xs sm:text-sm text-slate-500">
             مصممة بمعايير هندسية وطبية تلبي كافة متطلبات التحول الرقمي الصحي
           </p>

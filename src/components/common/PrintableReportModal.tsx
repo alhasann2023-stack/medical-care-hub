@@ -61,8 +61,8 @@ export const PrintableReportModal: React.FC<PrintableReportModalProps> = ({
                   />
                 </div>
                 <div>
-                  <h1 className="font-black text-xl text-slate-900">مركز صحتك في يدك الطبي التخصصي</h1>
-                  <h2 className="text-xs text-slate-600 font-semibold uppercase tracking-wider">SEHATAK FE YADEKI MEDICAL CENTER</h2>
+                  <h1 className="font-black text-xl text-slate-900">عيادة الدكتور وهاج المقطري</h1>
+                  <h2 className="text-xs text-slate-600 font-semibold uppercase tracking-wider">منصة صحتك في يدك </h2>
                   <p className="text-[11px] text-slate-500 font-medium">{report.hospitalDepartment}</p>
                 </div>
               </div>
