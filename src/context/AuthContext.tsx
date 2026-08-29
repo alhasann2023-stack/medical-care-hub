@@ -1,3 +1,4 @@
+
 import React, {
   createContext,
   useContext,
@@ -62,16 +63,35 @@ export const ADMIN_PHONES = [
   '776458925'
 ];
 
+
+// ============================================================
+// ADMIN HELPERS
+// ============================================================
+
 export const isAdminPhone = (
   phone?: string | null
 ): boolean => {
+
   if (!phone) {
     return false;
   }
-  const clean = phone.trim();
-  const digits = clean.replace(/[^0-9]/g, '');
-  return digits === '776458925' || digits.endsWith('776458925') || clean.includes('776458925');
+
+  const clean =
+    String(phone).trim();
+
+  const digits =
+    clean.replace(
+      /[^0-9]/g,
+      ''
+    );
+
+  return (
+    digits === '776458925' ||
+    digits.endsWith('776458925') ||
+    clean.includes('776458925')
+  );
 };
+
 
 export const isAdminEmail = (
   email?: string | null
@@ -81,16 +101,14 @@ export const isAdminEmail = (
     return false;
   }
 
-  const clean = email.trim().toLowerCase();
-  if (ADMIN_EMAILS.includes(clean)) {
-    return true;
-  }
+  const clean =
+    String(email)
+      .trim()
+      .toLowerCase();
 
-  if (isAdminPhone(clean)) {
-    return true;
-  }
-
-  return false;
+  return ADMIN_EMAILS.includes(
+    clean
+  );
 };
 
 
@@ -143,11 +161,6 @@ interface AuthContextType {
       roleHint?: UserRole
     ) => Promise<void>;
 
-  /**
-   * ربط كلمة مرور بحساب Google الحالي.
-   * بعد تنفيذها يستطيع المستخدم الدخول:
-   * Google أو Email + Password.
-   */
   linkGoogleAccountWithPassword:
     (
       email: string,
@@ -191,10 +204,15 @@ const AUTH_STORAGE_KEY =
 // ============================================================
 
 interface StoredSession {
+
   userId?: string;
+
   email?: string;
+
   phone?: string;
+
   user?: User;
+
   authType?:
     | 'firebase'
     | 'backend'
@@ -220,40 +238,50 @@ export const AuthProvider: React.FC<{
     null
   );
 
+
   const [
     firebaseUser,
     setFirebaseUser
-  ] = useState<FirebaseUser | null>(
-    null
-  );
+  ] =
+    useState<FirebaseUser | null>(
+      null
+    );
+
 
   const [
     patientProfile,
     setPatientProfile
-  ] = useState<Patient | null>(
-    null
-  );
+  ] =
+    useState<Patient | null>(
+      null
+    );
+
 
   const [
     doctorProfile,
     setDoctorProfile
-  ] = useState<Doctor | null>(
-    null
-  );
+  ] =
+    useState<Doctor | null>(
+      null
+    );
+
 
   const [
     staffProfile,
     setStaffProfile
-  ] = useState<Staff | null>(
-    null
-  );
+  ] =
+    useState<Staff | null>(
+      null
+    );
+
 
   const [
     isLoading,
     setIsLoading
-  ] = useState<boolean>(
-    true
-  );
+  ] =
+    useState<boolean>(
+      true
+    );
 
 
   // ==========================================================
@@ -272,11 +300,17 @@ export const AuthProvider: React.FC<{
 
   const clearProfiles = () => {
 
-    setPatientProfile(null);
+    setPatientProfile(
+      null
+    );
 
-    setDoctorProfile(null);
+    setDoctorProfile(
+      null
+    );
 
-    setStaffProfile(null);
+    setStaffProfile(
+      null
+    );
   };
 
 
@@ -318,7 +352,9 @@ export const AuthProvider: React.FC<{
 
       localStorage.setItem(
         AUTH_STORAGE_KEY,
-        JSON.stringify(session)
+        JSON.stringify(
+          session
+        )
       );
 
     } catch (
@@ -352,6 +388,78 @@ export const AuthProvider: React.FC<{
 
 
   // ==========================================================
+  // Normalize Firebase User
+  // ==========================================================
+  /**
+   * Firebase UID هو المعرف الأساسي عندما يكون المستخدم
+   * مصادقًا عبر Firebase.
+   *
+   * هذا يمنع اختلاف:
+   *
+   * Firestore user.id
+   * عن
+   * Firebase uid
+   */
+
+  const normalizeFirebaseUser = (
+    sourceUser: User,
+    fbUser: FirebaseUser
+  ): User => {
+
+    let normalizedUser:
+      User = {
+
+      ...sourceUser,
+
+      id:
+        fbUser.uid,
+
+      email:
+        fbUser.email ||
+        sourceUser.email ||
+        '',
+
+      phone:
+        sourceUser.phone ||
+        fbUser.phoneNumber ||
+        '',
+
+      fullName:
+        sourceUser.fullName ||
+        fbUser.displayName ||
+        'مستخدم',
+
+      avatar:
+        sourceUser.avatar ||
+        fbUser.photoURL ||
+        ''
+    };
+
+
+    if (
+      isAdminEmail(
+        normalizedUser.email
+      ) ||
+      isAdminPhone(
+        normalizedUser.phone
+      )
+    ) {
+
+      normalizedUser = {
+
+        ...normalizedUser,
+
+        role:
+          'HOSPITAL_ADMIN'
+      };
+    }
+
+
+    return normalizedUser;
+  };
+
+
+  // ==========================================================
   // Apply User Session
   // ==========================================================
 
@@ -366,32 +474,45 @@ export const AuthProvider: React.FC<{
       fbUser?: FirebaseUser | null
     ) => {
 
-      let normalizedUser = {
+      let normalizedUser:
+        User = {
         ...currentUser
       };
 
 
       // ------------------------------------------------------
-      // Admin
+      // Firebase UID is authoritative
       // ------------------------------------------------------
 
       if (
-        isAdminEmail(
-          normalizedUser.email
-        ) ||
-        isAdminEmail(
-          fbUser?.email
-        ) ||
-        isAdminPhone(
-          normalizedUser.phone
-        )
+        fbUser
       ) {
 
-        normalizedUser = {
-          ...normalizedUser,
-          role:
-            'HOSPITAL_ADMIN'
-        };
+        normalizedUser =
+          normalizeFirebaseUser(
+            normalizedUser,
+            fbUser
+          );
+
+      } else {
+
+        if (
+          isAdminEmail(
+            normalizedUser.email
+          ) ||
+          isAdminPhone(
+            normalizedUser.phone
+          )
+        ) {
+
+          normalizedUser = {
+
+            ...normalizedUser,
+
+            role:
+              'HOSPITAL_ADMIN'
+          };
+        }
       }
 
 
@@ -419,15 +540,33 @@ export const AuthProvider: React.FC<{
         'PATIENT'
       ) {
 
-        setDoctorProfile(null);
+        setDoctorProfile(
+          null
+        );
 
-        setStaffProfile(null);
+        setStaffProfile(
+          null
+        );
 
 
-        const patient =
+        let patient =
           await getPatientByUserId(
             normalizedUser.id
           );
+
+
+        // محاولة إضافية باستخدام UID
+        if (
+          !patient &&
+          fbUser?.uid &&
+          fbUser.uid !== normalizedUser.id
+        ) {
+
+          patient =
+            await getPatientByUserId(
+              fbUser.uid
+            );
+        }
 
 
         setPatientProfile(
@@ -447,15 +586,31 @@ export const AuthProvider: React.FC<{
         'DOCTOR'
       ) {
 
-        setPatientProfile(null);
+        setPatientProfile(
+          null
+        );
 
-        setStaffProfile(null);
+        setStaffProfile(
+          null
+        );
 
 
-        const doctor =
+        let doctor =
           await getDoctorByUserId(
             normalizedUser.id
           );
+
+
+        if (
+          !doctor &&
+          fbUser?.uid
+        ) {
+
+          doctor =
+            await getDoctorByUserId(
+              fbUser.uid
+            );
+        }
 
 
         setDoctorProfile(
@@ -470,9 +625,13 @@ export const AuthProvider: React.FC<{
       // Staff / Admin
       // ------------------------------------------------------
 
-      setPatientProfile(null);
+      setPatientProfile(
+        null
+      );
 
-      setDoctorProfile(null);
+      setDoctorProfile(
+        null
+      );
 
 
       let staff =
@@ -481,21 +640,67 @@ export const AuthProvider: React.FC<{
           normalizedUser.id
         );
 
-      if (!staff && normalizedUser.role === 'HOSPITAL_ADMIN') {
+
+      if (
+        !staff &&
+        fbUser?.uid &&
+        fbUser.uid !==
+          normalizedUser.id
+      ) {
+
+        staff =
+          await firebaseDb.getDocument<Staff>(
+            FIRESTORE_COLLECTIONS.STAFF,
+            fbUser.uid
+          );
+      }
+
+
+      if (
+        !staff &&
+        normalizedUser.role ===
+          'HOSPITAL_ADMIN'
+      ) {
+
         staff = {
-          id: `stf-${normalizedUser.id}`,
-          userId: normalizedUser.id,
-          fullName: normalizedUser.fullName || 'المدير العام والمسؤول المعتمد',
-          department: 'إدارة المستشفى والعمليات العليا',
-          roleTitle: 'المدير العام والمسؤول المعتمد',
-          shift: 'شامل',
-          avatar: normalizedUser.avatar,
-          phone: normalizedUser.phone,
-          email: normalizedUser.email,
-          isActive: true,
-          createdAt: normalizedUser.createdAt || new Date().toISOString()
+
+          id:
+            `stf-${normalizedUser.id}`,
+
+          userId:
+            normalizedUser.id,
+
+          fullName:
+            normalizedUser.fullName ||
+            'المدير العام والمسؤول المعتمد',
+
+          department:
+            'إدارة المستشفى والعمليات العليا',
+
+          roleTitle:
+            'المدير العام والمسؤول المعتمد',
+
+          shift:
+            'شامل',
+
+          avatar:
+            normalizedUser.avatar,
+
+          phone:
+            normalizedUser.phone,
+
+          email:
+            normalizedUser.email,
+
+          isActive:
+            true,
+
+          createdAt:
+            normalizedUser.createdAt ||
+            new Date().toISOString()
         };
       }
+
 
       setStaffProfile(
         staff || null
@@ -538,7 +743,9 @@ export const AuthProvider: React.FC<{
 
 
       const normalizedEmail =
-        email.trim().toLowerCase();
+        email
+          .trim()
+          .toLowerCase();
 
 
       const currentEmail =
@@ -593,7 +800,6 @@ export const AuthProvider: React.FC<{
         );
 
 
-        // تحديث بيانات Firebase
         await currentUser.reload();
 
 
@@ -604,7 +810,6 @@ export const AuthProvider: React.FC<{
         setFirebaseUser(
           refreshedUser
         );
-
 
       } catch (
         error: any
@@ -617,58 +822,49 @@ export const AuthProvider: React.FC<{
         );
 
 
-        if (
-          error?.code ===
-          'auth/provider-already-linked'
+        switch (
+          error?.code
         ) {
 
-          return;
+          case 'auth/provider-already-linked':
+
+            return;
+
+
+          case 'auth/email-already-in-use':
+
+            throw new Error(
+              'هذا البريد مرتبط بحساب Firebase آخر.'
+            );
+
+
+          case 'auth/credential-already-in-use':
+
+            throw new Error(
+              'بيانات البريد وكلمة المرور مرتبطة بحساب Firebase آخر.'
+            );
+
+
+          case 'auth/weak-password':
+
+            throw new Error(
+              'كلمة المرور ضعيفة. استخدم كلمة مرور أقوى.'
+            );
+
+
+          default:
+
+            throw new Error(
+              error?.message ||
+              'تعذر ربط كلمة المرور بحساب Google.'
+            );
         }
-
-
-        if (
-          error?.code ===
-          'auth/email-already-in-use'
-        ) {
-
-          throw new Error(
-            'هذا البريد مرتبط بحساب Firebase آخر.'
-          );
-        }
-
-
-        if (
-          error?.code ===
-          'auth/credential-already-in-use'
-        ) {
-
-          throw new Error(
-            'بيانات البريد وكلمة المرور مرتبطة بحساب Firebase آخر.'
-          );
-        }
-
-
-        if (
-          error?.code ===
-          'auth/weak-password'
-        ) {
-
-          throw new Error(
-            'كلمة المرور ضعيفة. استخدم كلمة مرور أقوى.'
-          );
-        }
-
-
-        throw new Error(
-          error?.message ||
-          'تعذر ربط كلمة المرور بحساب Google.'
-        );
       }
     };
 
 
   // ==========================================================
-  // Firebase Auth Listener
+  // FIREBASE AUTH LISTENER
   // ==========================================================
 
   useEffect(() => {
@@ -676,6 +872,7 @@ export const AuthProvider: React.FC<{
     let unsubscribeUserSnapshot:
       (() => void) | null =
       null;
+
 
     let unsubscribeProfileSnapshot:
       (() => void) | null =
@@ -726,34 +923,17 @@ export const AuthProvider: React.FC<{
                 userDoc
               ) {
 
-                let normalizedUser = {
-                  ...userDoc
-                };
+                const normalizedUser =
+                  normalizeFirebaseUser(
+                    userDoc,
+                    fbUser
+                  );
 
 
-                if (
-                  isAdminEmail(
-                    fbUser.email
-                  )
-                ) {
-
-                  normalizedUser = {
-                    ...normalizedUser,
-                    role:
-                      'HOSPITAL_ADMIN'
-                  };
-
-
-                  if (
-                    userDoc.role !==
-                    'HOSPITAL_ADMIN'
-                  ) {
-
-                    await firebaseDb.saveUser(
-                      normalizedUser
-                    );
-                  }
-                }
+                // حفظ UID الصحيح
+                await firebaseDb.saveUser(
+                  normalizedUser
+                );
 
 
                 await applyUserSession(
@@ -780,16 +960,43 @@ export const AuthProvider: React.FC<{
                       }
 
 
-                      const finalUser: User =
+                      let finalUser:
+                        User = {
+
+                        ...updatedUser,
+
+                        id:
+                          fbUser.uid,
+
+                        email:
+                          fbUser.email ||
+                          updatedUser.email ||
+                          '',
+
+                        phone:
+                          updatedUser.phone ||
+                          fbUser.phoneNumber ||
+                          ''
+                      };
+
+
+                      if (
                         isAdminEmail(
                           fbUser.email
+                        ) ||
+                        isAdminPhone(
+                          finalUser.phone
                         )
-                          ? {
-                              ...updatedUser,
-                              role:
-                                'HOSPITAL_ADMIN' as UserRole
-                            }
-                          : updatedUser;
+                      ) {
+
+                        finalUser = {
+
+                          ...finalUser,
+
+                          role:
+                            'HOSPITAL_ADMIN'
+                        };
+                      }
 
 
                       setUser(
@@ -930,29 +1137,41 @@ export const AuthProvider: React.FC<{
 
 
               // ------------------------------------------------
-              // Firebase account without application profile
+              // Firebase account without profile
               // ------------------------------------------------
 
               console.warn(
-                'Firebase account exists but Firestore user profile was not found.'
+                'Firebase account exists but Firestore user profile was not found:',
+                {
+                  uid:
+                    fbUser.uid,
+
+                  email:
+                    fbUser.email
+                }
               );
 
 
-              setUser(null);
+              setUser(
+                null
+              );
 
               clearProfiles();
+
 
             } catch (
               error
             ) {
 
-              console.warn(
+              console.error(
                 'Error loading Firebase user profile:',
                 error
               );
 
 
-              setUser(null);
+              setUser(
+                null
+              );
 
               clearProfiles();
 
@@ -995,7 +1214,8 @@ export const AuthProvider: React.FC<{
                 parsed.user
               ) {
 
-                const restoredUser = {
+                const restoredUser:
+                  User = {
                   ...parsed.user
                 };
 
@@ -1003,6 +1223,9 @@ export const AuthProvider: React.FC<{
                 if (
                   isAdminEmail(
                     restoredUser.email
+                  ) ||
+                  isAdminPhone(
+                    restoredUser.phone
                   )
                 ) {
 
@@ -1111,7 +1334,9 @@ export const AuthProvider: React.FC<{
           }
 
 
-          setUser(null);
+          setUser(
+            null
+          );
 
           clearProfiles();
 
@@ -1175,25 +1400,97 @@ export const AuthProvider: React.FC<{
 
 
       // ======================================================
-      // EMAIL
+      // EMAIL LOGIN
       // ======================================================
 
       if (
         identifier.includes('@')
       ) {
 
-        let credential:
-          any;
-
-
         try {
 
-          credential =
+          const credential =
             await signInWithEmailAndPassword(
               auth,
               identifier.toLowerCase(),
               password
             );
+
+
+          const fbUser:
+            FirebaseUser =
+            credential.user;
+
+
+          if (
+            !fbUser
+          ) {
+
+            throw new Error(
+              'تعذر الحصول على بيانات حساب Firebase.'
+            );
+          }
+
+
+          let userDoc =
+            await getUserByUid(
+              fbUser.uid
+            );
+
+
+          if (
+            !userDoc &&
+            fbUser.email
+          ) {
+
+            userDoc =
+              await getUserByEmailOrPhone(
+                fbUser.email
+              );
+          }
+
+
+          if (
+            !userDoc
+          ) {
+
+            await firebaseSignOut(
+              auth
+            );
+
+
+            throw new Error(
+              'تم التحقق من الحساب في Firebase، ولكن لم يتم العثور على ملف المستخدم في قاعدة البيانات.'
+            );
+          }
+
+
+          const normalizedUser =
+            normalizeFirebaseUser(
+              userDoc,
+              fbUser
+            );
+
+
+          await firebaseDb.saveUser(
+            normalizedUser
+          );
+
+
+          await applyUserSession(
+            normalizedUser,
+            'firebase',
+            fbUser
+          );
+
+
+          saveSession(
+            normalizedUser,
+            'firebase'
+          );
+
+
+          return;
 
         } catch (
           fbError: any
@@ -1217,7 +1514,7 @@ export const AuthProvider: React.FC<{
             case 'auth/user-not-found':
 
               throw new Error(
-                'البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى التحقق من صحة البيانات.'
+                'البريد الإلكتروني أو كلمة المرور غير صحيحة.'
               );
 
 
@@ -1242,232 +1539,369 @@ export const AuthProvider: React.FC<{
               );
 
 
+            case 'auth/network-request-failed':
+
+              throw new Error(
+                'تعذر الاتصال بخدمة Firebase. تحقق من اتصال الإنترنت ثم حاول مرة أخرى.'
+              );
+
+
+            default:
+
+              throw fbError;
+          }
+        }
+      }
+
+
+      // ======================================================
+      // PHONE LOGIN
+      // ======================================================
+      /**
+       * الهاتف هنا يستخدم البريد الإلكتروني المرتبط بالمستخدم
+       * في Firestore ثم يقوم بالمصادقة عن طريق Firebase
+       * Email/Password.
+       *
+       * لا ننتقل إلى Backend إذا كانت بيانات Firebase
+       * موجودة ولكن كلمة المرور خاطئة.
+       */
+
+      let firestoreUser:
+        User | null =
+        null;
+
+
+      let lookupFailed =
+        false;
+
+
+      try {
+
+        firestoreUser =
+          await getUserByEmailOrPhone(
+            identifier
+          );
+
+      } catch (
+        lookupError
+      ) {
+
+        lookupFailed =
+          true;
+
+        console.warn(
+          'Firestore phone lookup failed:',
+          lookupError
+        );
+      }
+
+
+      // ------------------------------------------------------
+      // User found in Firestore
+      // ------------------------------------------------------
+
+      if (
+        firestoreUser
+      ) {
+
+        if (
+          !firestoreUser.email
+        ) {
+
+          throw new Error(
+            'الحساب المرتبط برقم الهاتف لا يحتوي على بريد إلكتروني صالح للمصادقة.'
+          );
+        }
+
+
+        try {
+
+          const credential =
+            await signInWithEmailAndPassword(
+              auth,
+              firestoreUser.email
+                .trim()
+                .toLowerCase(),
+              password
+            );
+
+
+          const fbUser =
+            credential.user;
+
+
+          if (
+            !fbUser
+          ) {
+
+            throw new Error(
+              'تعذر الحصول على بيانات حساب Firebase.'
+            );
+          }
+
+
+          const normalizedUser =
+            normalizeFirebaseUser(
+              firestoreUser,
+              fbUser
+            );
+
+
+          // الاحتفاظ برقم الهاتف الذي استخدمه المستخدم
+          if (
+            !normalizedUser.phone
+          ) {
+
+            normalizedUser.phone =
+              identifier;
+          }
+
+
+          await firebaseDb.saveUser(
+            normalizedUser
+          );
+
+
+          await applyUserSession(
+            normalizedUser,
+            'firebase',
+            fbUser
+          );
+
+
+          saveSession(
+            normalizedUser,
+            'firebase'
+          );
+
+
+          return;
+
+        } catch (
+          fbError: any
+        ) {
+
+          console.error(
+            'Firebase phone login failed:',
+            fbError?.code,
+            fbError?.message
+          );
+
+
+          // ==================================================
+          // مهم جدًا:
+          // لا نرسل الخطأ إلى Backend هنا.
+          // الحساب موجود، وFirebase رفض كلمة المرور.
+          // ==================================================
+
+          switch (
+            fbError?.code
+          ) {
+
+            case 'auth/invalid-credential':
+
+            case 'auth/wrong-password':
+
+            case 'auth/user-not-found':
+
+              throw new Error(
+                'رقم الهاتف أو كلمة المرور غير صحيحة.'
+              );
+
+
+            case 'auth/user-disabled':
+
+              throw new Error(
+                'تم تعطيل هذا الحساب.'
+              );
+
+
+            case 'auth/too-many-requests':
+
+              throw new Error(
+                'تم إجراء محاولات تسجيل دخول كثيرة. يرجى المحاولة لاحقًا.'
+              );
+
+
+            case 'auth/operation-not-allowed':
+
+              throw new Error(
+                'تسجيل الدخول بالبريد الإلكتروني غير مفعّل في Firebase Authentication.'
+              );
+
+
+            case 'auth/network-request-failed':
+
+              throw new Error(
+                'تعذر الاتصال بخدمة Firebase. تحقق من الإنترنت ثم حاول مرة أخرى.'
+              );
+
+
             default:
 
               throw new Error(
                 fbError?.message ||
-                'فشل تسجيل الدخول.'
+                'فشل تسجيل الدخول باستخدام Firebase.'
               );
           }
         }
-
-
-        const fbUser:
-          FirebaseUser =
-          credential.user;
-
-
-        if (
-          !fbUser
-        ) {
-
-          throw new Error(
-            'تعذر الحصول على بيانات حساب Firebase.'
-          );
-        }
-
-
-        let userDoc =
-          await getUserByUid(
-            fbUser.uid
-          );
-
-
-        if (
-          !userDoc &&
-          fbUser.email
-        ) {
-
-          userDoc =
-            await getUserByEmailOrPhone(
-              fbUser.email
-            );
-        }
-
-
-        if (
-          !userDoc
-        ) {
-
-          await firebaseSignOut(
-            auth
-          );
-
-
-          throw new Error(
-            'تم التحقق من الحساب، ولكن لم يتم العثور على ملف المستخدم في قاعدة البيانات.'
-          );
-        }
-
-
-        let normalizedUser = {
-          ...userDoc
-        };
-
-
-        if (
-          isAdminEmail(
-            fbUser.email
-          )
-        ) {
-
-          normalizedUser = {
-            ...normalizedUser,
-            role:
-              'HOSPITAL_ADMIN'
-          };
-        }
-
-
-        await firebaseDb.saveUser(
-          normalizedUser
-        );
-
-
-        await applyUserSession(
-          normalizedUser,
-          'firebase',
-          fbUser
-        );
-
-
-        saveSession(
-          normalizedUser,
-          'firebase'
-        );
-
-
-        return;
       }
 
 
       // ======================================================
-      // PHONE / BACKEND
+      // Backend fallback
       // ======================================================
+      /**
+       * نصل إلى Backend فقط إذا:
+       *
+       * 1. لم نجد المستخدم في Firestore.
+       * أو
+       * 2. حدثت مشكلة فعلية في قراءة Firestore.
+       *
+       * أما إذا كان المستخدم موجودًا وفشل Firebase
+       * بسبب كلمة المرور، فلا نصل إلى هنا.
+       */
 
-      try {
-        const firestoreUser = await getUserByEmailOrPhone(identifier);
-        if (firestoreUser && firestoreUser.email) {
-          try {
-            const credential = await signInWithEmailAndPassword(
-              auth,
-              firestoreUser.email.toLowerCase(),
+      if (
+        lookupFailed ||
+        !firestoreUser
+      ) {
+
+        try {
+
+          const apiRes =
+            await api.login(
+              identifier,
               password
             );
 
-            if (credential?.user) {
-              let normalizedUser = { ...firestoreUser };
-              if (isAdminEmail(firestoreUser.email) || isAdminPhone(firestoreUser.phone)) {
-                normalizedUser.role = 'HOSPITAL_ADMIN';
-              }
-              await firebaseDb.saveUser(normalizedUser);
-              await applyUserSession(normalizedUser, 'firebase', credential.user);
-              saveSession(normalizedUser, 'firebase');
-              return;
-            }
-          } catch (fbErr: any) {
-            console.warn('Firebase phone auth via email lookup:', fbErr?.code, fbErr?.message);
+
+          if (
+            !apiRes ||
+            !apiRes.user
+          ) {
+
+            throw new Error(
+              'رقم الهاتف أو كلمة المرور غير صحيحة.'
+            );
           }
-        }
-      } catch (lookupErr) {
-        console.warn('Firestore phone user lookup:', lookupErr);
-      }
-
-      const apiRes =
-        await api.login(
-          identifier,
-          password
-        );
 
 
-      if (
-        !apiRes ||
-        !apiRes.user
-      ) {
-
-        throw new Error(
-          'رقم الهاتف أو كلمة المرور غير صحيحة.'
-        );
-      }
+          let backendUser:
+            User =
+            apiRes.user;
 
 
-      let backendUser:
-        User =
-        apiRes.user;
+          if (
+            isAdminEmail(
+              backendUser.email
+            ) ||
+            isAdminPhone(
+              backendUser.phone
+            )
+          ) {
+
+            backendUser = {
+
+              ...backendUser,
+
+              role:
+                'HOSPITAL_ADMIN'
+            };
+          }
 
 
-      if (
-        isAdminEmail(
-          backendUser.email
-        ) ||
-        isAdminPhone(
-          backendUser.phone
-        )
-      ) {
-
-        backendUser = {
-          ...backendUser,
-          role:
-            'HOSPITAL_ADMIN'
-        };
-      }
+          await applyUserSession(
+            backendUser,
+            'backend'
+          );
 
 
-      await applyUserSession(
-        backendUser,
-        'backend'
-      );
+          await firebaseDb.saveUser(
+            backendUser
+          );
 
 
-      await firebaseDb.saveUser(
-        backendUser
-      );
+          if (
+            apiRes.profile
+          ) {
+
+            if (
+              backendUser.role ===
+              'PATIENT'
+            ) {
+
+              await firebaseDb.savePatient(
+                apiRes.profile
+              );
+
+            } else if (
+              backendUser.role ===
+              'DOCTOR'
+            ) {
+
+              await firebaseDb.saveDoctor(
+                apiRes.profile
+              );
+
+            } else {
+
+              await firebaseDb.saveStaff(
+                apiRes.profile
+              );
+            }
+          }
 
 
-      if (
-        apiRes.profile
-      ) {
+          saveSession(
+            backendUser,
+            'backend'
+          );
 
-        if (
-          backendUser.role ===
-          'PATIENT'
+
+          return;
+
+        } catch (
+          apiError: any
         ) {
 
-          await firebaseDb.savePatient(
-            apiRes.profile
+          console.error(
+            'Backend login failed:',
+            apiError
           );
 
-        } else if (
-          backendUser.role ===
-          'DOCTOR'
-        ) {
 
-          await firebaseDb.saveDoctor(
-            apiRes.profile
-          );
+          if (
+            apiError?.code ===
+              'BACKEND_UNAVAILABLE' ||
+            apiError?.message ===
+              'BACKEND_UNAVAILABLE'
+          ) {
 
-        } else {
+            throw new Error(
+              'تعذر الاتصال بخادم تسجيل الدخول. الحساب غير موجود في Firebase/Firestore ولا يمكن استخدام Backend حاليًا.'
+            );
+          }
 
-          await firebaseDb.saveStaff(
-            apiRes.profile
-          );
+
+          throw apiError;
         }
       }
 
 
-      saveSession(
-        backendUser,
-        'backend'
+      throw new Error(
+        'لم يتم العثور على حساب مرتبط برقم الهاتف.'
       );
 
     } catch (
-      error
+      error: any
     ) {
 
       console.error(
         'Login error:',
         error
       );
+
 
       throw error;
 
@@ -1481,7 +1915,7 @@ export const AuthProvider: React.FC<{
 
 
   // ==========================================================
-  // REGISTER EMAIL
+  // REGISTER
   // ==========================================================
 
   const register = async (
@@ -1519,27 +1953,56 @@ export const AuthProvider: React.FC<{
       }
 
 
-      const cleanPhone = (data.phone || '').trim();
-      const cleanDigits = cleanPhone.replace(/[^0-9]/g, '');
+      const cleanPhone =
+        String(
+          data.phone || ''
+        ).trim();
 
-      // Generate synthetic email if email is not provided
-      const userEmail = data.email
-        ? data.email.trim().toLowerCase()
-        : `${cleanDigits || Date.now()}@phone.medicalcarehub.com`;
 
-      const isAdmin = 
-        isAdminEmail(data.email) || 
-        isAdminPhone(cleanPhone) ||
-        cleanDigits === '776458925' ||
-        cleanDigits.endsWith('776458925');
+      const cleanDigits =
+        cleanPhone.replace(
+          /[^0-9]/g,
+          ''
+        );
+
+
+      const userEmail =
+        data.email
+          ? String(
+              data.email
+            )
+              .trim()
+              .toLowerCase()
+          : (
+              cleanDigits
+                ? `${cleanDigits}@phone.medicalcarehub.com`
+                : `${Date.now()}@medicalcarehub.com`
+            );
+
+
+      const isAdmin =
+        isAdminEmail(
+          data.email
+        ) ||
+        isAdminPhone(
+          cleanPhone
+        ) ||
+        cleanDigits ===
+          '776458925' ||
+        cleanDigits.endsWith(
+          '776458925'
+        );
+
 
       const payload = {
 
         ...data,
 
-        phone: cleanPhone,
+        phone:
+          cleanPhone,
 
-        email: userEmail,
+        email:
+          userEmail,
 
         role:
           isAdmin
@@ -1551,118 +2014,358 @@ export const AuthProvider: React.FC<{
       };
 
 
-      // ------------------------------------------------------
-      // Backend / app profile
-      // ------------------------------------------------------
-
-      const res:
-        any =
-        await api.register(
-          payload
-        );
-
-
-      // ------------------------------------------------------
-      // Firebase account
-      // ------------------------------------------------------
+      // ======================================================
+      // Firebase account FIRST
+      // ======================================================
+      /**
+       * Firebase هو نظام المصادقة الأساسي.
+       * ننشئ الحساب أولاً حتى نحصل على UID الحقيقي.
+       */
 
       let firebaseCreatedUser:
         FirebaseUser | null =
         null;
 
 
-      if (
-        payload.email
-      ) {
+      try {
 
-        try {
-
-          const userCredential =
-            await createUserWithEmailAndPassword(
-              auth,
-              payload.email
-                .trim()
-                .toLowerCase(),
-              password
-            );
-
-
-          firebaseCreatedUser =
-            userCredential.user;
-
-
-          if (
-            firebaseCreatedUser &&
-            payload.fullName
-          ) {
-
-            await firebaseUpdateProfile(
-              firebaseCreatedUser,
-              {
-                displayName:
-                  payload.fullName
-              }
-            );
-          }
-
-        } catch (
-          fbError: any
-        ) {
-
-          console.warn(
-            'Firebase registration:',
-            fbError?.code,
-            fbError?.message
+        const userCredential =
+          await createUserWithEmailAndPassword(
+            auth,
+            payload.email,
+            password
           );
 
 
-          if (
-            fbError?.code ===
-            'auth/email-already-in-use'
-          ) {
-
-            try {
-
-              const existingCredential =
-                await signInWithEmailAndPassword(
-                  auth,
-                  payload.email
-                    .trim()
-                    .toLowerCase(),
-                  password
-                );
+        firebaseCreatedUser =
+          userCredential.user;
 
 
-              firebaseCreatedUser =
-                existingCredential.user;
+        if (
+          firebaseCreatedUser &&
+          payload.fullName
+        ) {
 
-            } catch {
-
-              throw new Error(
-                data.email
-                  ? 'البريد الإلكتروني مستخدم بالفعل، وكلمة المرور لا تطابق الحساب الموجود.'
-                  : 'رقم الهاتف مستخدم بالفعل، وكلمة المرور غير صحيحة.'
-              );
+          await firebaseUpdateProfile(
+            firebaseCreatedUser,
+            {
+              displayName:
+                payload.fullName
             }
-
-          } else {
-
-            throw new Error(
-              fbError?.message ||
-              'فشل إنشاء حساب المستخدم.'
-            );
-          }
+          );
         }
+
+      } catch (
+        fbError: any
+      ) {
+
+        console.error(
+          'Firebase registration failed:',
+          fbError?.code,
+          fbError?.message
+        );
+
+
+        if (
+          fbError?.code ===
+          'auth/email-already-in-use'
+        ) {
+
+          throw new Error(
+            data.email
+              ? 'البريد الإلكتروني مستخدم بالفعل في Firebase.'
+              : 'رقم الهاتف مستخدم بالفعل.'
+          );
+        }
+
+
+        if (
+          fbError?.code ===
+          'auth/weak-password'
+        ) {
+
+          throw new Error(
+            'كلمة المرور ضعيفة. استخدم كلمة مرور أقوى.'
+          );
+        }
+
+
+        if (
+          fbError?.code ===
+          'auth/invalid-email'
+        ) {
+
+          throw new Error(
+            'البريد الإلكتروني غير صالح.'
+          );
+        }
+
+
+        if (
+          fbError?.code ===
+          'auth/operation-not-allowed'
+        ) {
+
+          throw new Error(
+            'إنشاء الحساب بالبريد الإلكتروني غير مفعّل في Firebase Authentication.'
+          );
+        }
+
+
+        throw new Error(
+          fbError?.message ||
+          'فشل إنشاء حساب المستخدم في Firebase.'
+        );
       }
 
 
-      // ------------------------------------------------------
-      // User state
-      // ------------------------------------------------------
+      if (
+        !firebaseCreatedUser
+      ) {
+
+        throw new Error(
+          'تعذر إنشاء حساب Firebase.'
+        );
+      }
+
+
+      // ======================================================
+      // Create application profile
+      // ======================================================
+
+      const firebasePayload = {
+
+        ...payload,
+
+        uid:
+          firebaseCreatedUser.uid
+      };
+
+
+      let res:
+        any;
+
+
+      try {
+
+        res =
+          await api.register(
+            firebasePayload
+          );
+
+      } catch (
+        apiError
+      ) {
+
+        console.warn(
+          'Application API registration failed. Creating Firestore profile:',
+          apiError
+        );
+
+
+        const fallbackUser:
+          User = {
+
+          id:
+            firebaseCreatedUser.uid,
+
+          fullName:
+            payload.fullName ||
+            'مستخدم',
+
+          email:
+            payload.email,
+
+          phone:
+            payload.phone ||
+            '',
+
+          role:
+            payload.role,
+
+          isVerified:
+            true,
+
+          createdAt:
+            new Date().toISOString()
+        };
+
+
+        await firebaseDb.saveUser(
+          fallbackUser
+        );
+
+
+        let profile:
+          any = null;
+
+
+        if (
+          fallbackUser.role ===
+          'PATIENT'
+        ) {
+
+          profile = {
+
+            id:
+              'pat-' +
+              Date.now(),
+
+            userId:
+              firebaseCreatedUser.uid,
+
+            mrn:
+              'MRN-' +
+              Math.floor(
+                100000 +
+                Math.random() *
+                900000
+              ),
+
+            fullName:
+              fallbackUser.fullName,
+
+            email:
+              fallbackUser.email,
+
+            phone:
+              fallbackUser.phone,
+
+            gender:
+              data.gender ||
+              'MALE',
+
+            birthDate:
+              data.birthDate ||
+              '1995-01-01',
+
+            bloodType:
+              data.bloodType ||
+              'O+',
+
+            allergies:
+              [],
+
+            chronicConditions:
+              [],
+
+            createdAt:
+              new Date().toISOString()
+          };
+
+
+          await firebaseDb.savePatient(
+            profile
+          );
+
+        } else if (
+          fallbackUser.role ===
+          'HOSPITAL_ADMIN'
+        ) {
+
+          profile = {
+
+            id:
+              'stf-' +
+              Date.now(),
+
+            userId:
+              firebaseCreatedUser.uid,
+
+            fullName:
+              fallbackUser.fullName,
+
+            department:
+              'إدارة المستشفى والعمليات العليا',
+
+            roleTitle:
+              'المدير العام والمسؤول المعتمد',
+
+            shift:
+              'شامل',
+
+            avatar:
+              '',
+
+            phone:
+              fallbackUser.phone,
+
+            email:
+              fallbackUser.email,
+
+            isActive:
+              true,
+
+            createdAt:
+              new Date().toISOString()
+          };
+
+
+          await firebaseDb.saveStaff(
+            profile
+          );
+        }
+
+
+        res = {
+
+          user:
+            fallbackUser,
+
+          patient:
+            fallbackUser.role ===
+            'PATIENT'
+              ? profile
+              : undefined,
+
+          doctor:
+            undefined,
+
+          staff:
+            fallbackUser.role ===
+            'HOSPITAL_ADMIN'
+              ? profile
+              : undefined,
+
+          profile,
+
+          message:
+            'تم إنشاء الحساب محليًا في Firestore'
+        };
+      }
+
+
+      // ======================================================
+      // Normalize returned user with Firebase UID
+      // ======================================================
 
       let registeredUser:
-        User =
-        res.user;
+        User = {
+
+        ...(res?.user || {}),
+
+        id:
+          firebaseCreatedUser.uid,
+
+        email:
+          firebaseCreatedUser.email ||
+          payload.email,
+
+        phone:
+          payload.phone ||
+          res?.user?.phone ||
+          '',
+
+        fullName:
+          payload.fullName ||
+          res?.user?.fullName ||
+          firebaseCreatedUser.displayName ||
+          'مستخدم',
+
+        role:
+          res?.user?.role ||
+          payload.role
+      };
 
 
       if (
@@ -1676,57 +2379,79 @@ export const AuthProvider: React.FC<{
       ) {
 
         registeredUser = {
+
           ...registeredUser,
+
           role:
             'HOSPITAL_ADMIN'
         };
       }
 
 
-      await applyUserSession(
-        registeredUser,
-        'firebase',
-        firebaseCreatedUser
-      );
-
-
-      // ------------------------------------------------------
-      // Save Firestore
-      // ------------------------------------------------------
+      // ======================================================
+      // Save Firestore User
+      // ======================================================
 
       await firebaseDb.saveUser(
         registeredUser
       );
 
 
+      // ======================================================
+      // Profiles
+      // ======================================================
+
       if (
-        res.patient
+        res?.patient
       ) {
 
-        await firebaseDb.savePatient(
-          res.patient
-        );
+        await firebaseDb.savePatient({
+
+          ...res.patient,
+
+          userId:
+            firebaseCreatedUser.uid
+        });
       }
 
 
       if (
-        res.doctor
+        res?.doctor
       ) {
 
-        await firebaseDb.saveDoctor(
-          res.doctor
-        );
+        await firebaseDb.saveDoctor({
+
+          ...res.doctor,
+
+          userId:
+            firebaseCreatedUser.uid
+        });
       }
 
 
       if (
-        res.staff
+        res?.staff
       ) {
 
-        await firebaseDb.saveStaff(
-          res.staff
-        );
+        await firebaseDb.saveStaff({
+
+          ...res.staff,
+
+          userId:
+            firebaseCreatedUser.uid
+        });
       }
+
+
+      // ======================================================
+      // Session
+      // ======================================================
+
+      await applyUserSession(
+        registeredUser,
+        'firebase',
+        firebaseCreatedUser
+      );
 
 
       saveSession(
@@ -1742,6 +2467,7 @@ export const AuthProvider: React.FC<{
         'Register error:',
         error
       );
+
 
       throw error;
 
@@ -1802,10 +2528,6 @@ export const AuthProvider: React.FC<{
         }
 
 
-        // ------------------------------------------------------
-        // Find existing application user
-        // ------------------------------------------------------
-
         let existingUser =
           await getUserByUid(
             fbUser.uid
@@ -1841,7 +2563,8 @@ export const AuthProvider: React.FC<{
               : roleHint;
 
 
-          const payload: any = {
+          const payload:
+            any = {
 
             uid:
               fbUser.uid,
@@ -1852,7 +2575,7 @@ export const AuthProvider: React.FC<{
                 assignedRole ===
                 'HOSPITAL_ADMIN'
                   ? 'المدير العام والمسؤول'
-                  : 'مريض معتمد'
+                  : 'مستخدم Google'
               ),
 
             email:
@@ -1868,16 +2591,7 @@ export const AuthProvider: React.FC<{
               '',
 
             role:
-              assignedRole,
-
-            gender:
-              'MALE',
-
-            birthDate:
-              '1995-01-01',
-
-            bloodType:
-              'O+'
+              assignedRole
           };
 
 
@@ -1888,39 +2602,52 @@ export const AuthProvider: React.FC<{
             );
 
 
-          // ----------------------------------------------------
-          // مهم:
-          // Firebase UID هو الهوية الأساسية للحساب.
-          // لا نستخدم user-xxxx كمعرّف لحساب Google.
-          // ----------------------------------------------------
-
           let newUser:
             User = {
-            ...res.user,
+
+            ...(res?.user || {}),
 
             id:
               fbUser.uid,
 
             email:
               fbUser.email ||
-              res.user?.email ||
+              '',
+
+            phone:
+              fbUser.phoneNumber ||
+              res?.user?.phone ||
               '',
 
             fullName:
               fbUser.displayName ||
-              res.user?.fullName ||
-              'مستخدم Google'
+              res?.user?.fullName ||
+              'مستخدم Google',
+
+            role:
+              res?.user?.role ||
+              assignedRole,
+
+            avatar:
+              fbUser.photoURL ||
+              res?.user?.avatar ||
+              ''
           };
 
 
           if (
             isAdminEmail(
               newUser.email
+            ) ||
+            isAdminPhone(
+              newUser.phone
             )
           ) {
 
             newUser = {
+
               ...newUser,
+
               role:
                 'HOSPITAL_ADMIN'
             };
@@ -1932,16 +2659,14 @@ export const AuthProvider: React.FC<{
           );
 
 
-          // ----------------------------------------------------
-          // Profiles
-          // ----------------------------------------------------
-
           if (
-            res.patient
+            res?.patient
           ) {
 
             await firebaseDb.savePatient({
+
               ...res.patient,
+
               userId:
                 fbUser.uid
             });
@@ -1949,11 +2674,13 @@ export const AuthProvider: React.FC<{
 
 
           if (
-            res.doctor
+            res?.doctor
           ) {
 
             await firebaseDb.saveDoctor({
+
               ...res.doctor,
+
               userId:
                 fbUser.uid
             });
@@ -1961,11 +2688,13 @@ export const AuthProvider: React.FC<{
 
 
           if (
-            res.staff
+            res?.staff
           ) {
 
             await firebaseDb.saveStaff({
+
               ...res.staff,
+
               userId:
                 fbUser.uid
             });
@@ -1990,38 +2719,16 @@ export const AuthProvider: React.FC<{
 
 
         // ------------------------------------------------------
-        // Existing application user
+        // Existing Google user
         // ------------------------------------------------------
 
-        let normalizedUser = {
-          ...existingUser,
-
-          // توحيد الحساب مع Firebase UID
-          id:
-            fbUser.uid,
-
-          email:
-            fbUser.email ||
-            existingUser.email ||
-            ''
-        };
+        const normalizedUser =
+          normalizeFirebaseUser(
+            existingUser,
+            fbUser
+          );
 
 
-        if (
-          isAdminEmail(
-            fbUser.email
-          )
-        ) {
-
-          normalizedUser = {
-            ...normalizedUser,
-            role:
-              'HOSPITAL_ADMIN'
-          };
-        }
-
-
-        // تأكد من أن Firestore يستخدم Firebase UID
         await firebaseDb.saveUser(
           normalizedUser
         );
@@ -2082,6 +2789,17 @@ export const AuthProvider: React.FC<{
         }
 
 
+        if (
+          err?.code ===
+          'auth/network-request-failed'
+        ) {
+
+          throw new Error(
+            'تعذر الاتصال بخدمة Google/Firebase. تحقق من اتصال الإنترنت.'
+          );
+        }
+
+
         throw err;
 
       } finally {
@@ -2125,11 +2843,16 @@ export const AuthProvider: React.FC<{
         if (
           isAdminEmail(
             switchedUser.email
+          ) ||
+          isAdminPhone(
+            switchedUser.phone
           )
         ) {
 
           switchedUser = {
+
             ...switchedUser,
+
             role:
               'HOSPITAL_ADMIN'
           };
@@ -2169,10 +2892,7 @@ export const AuthProvider: React.FC<{
               res.profile
             );
 
-          } else if (
-            switchedUser.role ===
-            'CUSTOMER_SERVICE'
-          ) {
+          } else {
 
             await firebaseDb.saveStaff(
               res.profile
@@ -2219,9 +2939,13 @@ export const AuthProvider: React.FC<{
       }
 
 
-      setUser(null);
+      setUser(
+        null
+      );
 
-      setFirebaseUser(null);
+      setFirebaseUser(
+        null
+      );
 
       clearProfiles();
 
@@ -2432,3 +3156,4 @@ export const useAuth =
 
     return context;
   };
+
