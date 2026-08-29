@@ -1,4 +1,4 @@
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, deleteApp, FirebaseApp } from 'firebase/app';
 import { 
   initializeFirestore,
   getFirestore, 
@@ -17,7 +17,7 @@ import {
   QueryConstraint,
   limit as limitTo
 } from 'firebase/firestore';
-import { getAuth, Auth } from 'firebase/auth';
+import { getAuth, Auth, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { 
   User, 
@@ -571,6 +571,55 @@ export function subscribeToNotifications(
   return subscribeToCollection<AppNotification>(FIRESTORE_COLLECTIONS.NOTIFICATIONS, callback, constraints);
 }
 
+/**
+ * Creates a Firebase Authentication user on the client side
+ * using an isolated secondary app instance so the currently logged-in admin session is NOT signed out.
+ */
+export async function createFirebaseAuthAccount(params: {
+  email: string;
+  password: string;
+  displayName: string;
+}): Promise<{ uid: string; email: string }> {
+  const normalizedEmail = params.email.trim().toLowerCase();
+  const tempAppName = `temp_creator_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  let tempApp: FirebaseApp | null = null;
+  
+  try {
+    tempApp = initializeApp(firebaseConfig, tempAppName);
+    const tempAuth = getAuth(tempApp);
+    const credential = await createUserWithEmailAndPassword(
+      tempAuth,
+      normalizedEmail,
+      params.password.trim()
+    );
+    
+    if (credential.user && params.displayName) {
+      try {
+        await updateProfile(credential.user, {
+          displayName: params.displayName.trim()
+        });
+      } catch (profileErr) {
+        console.warn('Could not update displayName in Firebase Auth:', profileErr);
+      }
+    }
+    
+    const uid = credential.user.uid;
+    const email = credential.user.email || normalizedEmail;
+    return { uid, email };
+  } catch (error: any) {
+    console.error('Firebase createFirebaseAuthAccount failed:', error?.code, error?.message);
+    throw error;
+  } finally {
+    if (tempApp) {
+      try {
+        await deleteApp(tempApp);
+      } catch (delErr) {
+        console.warn('Could not delete temporary secondary Firebase app:', delErr);
+      }
+    }
+  }
+}
+
 export { firebaseConfig };
 export default { 
   app, 
@@ -578,6 +627,7 @@ export default {
   auth, 
   firebaseConfig, 
   testFirestoreConnection,
+  createFirebaseAuthAccount,
   fetchDocById,
   fetchDocsWithFilter,
   getUserByUid,

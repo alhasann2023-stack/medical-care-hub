@@ -205,6 +205,7 @@ export const HospitalAdminDashboard: React.FC = () => {
     try {
       await api.createDoctor({
         fullName: docFullName.trim(),
+        email: docEmail.trim() || undefined,
         phone: docPhone.trim(),
         password: docPassword.trim(),
         specialtyId: docSpecialtyId,
@@ -314,6 +315,7 @@ export const HospitalAdminDashboard: React.FC = () => {
     try {
       await api.createStaff({
         fullName: staffFullName.trim(),
+        email: staffEmail.trim() || undefined,
         phone: staffPhone.trim(),
         roleTitle: staffRoleTitle,
         department: staffDepartment,

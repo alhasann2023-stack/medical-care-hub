@@ -58,6 +58,13 @@ import {
   CurrencyCode
 } from './src/types/medical';
 import { paymentService } from './server/paymentService';
+import {
+  securityHeadersMiddleware,
+  apiRateLimiter,
+  authRateLimiter,
+  sanitizeInputMiddleware,
+  preventPathTraversal
+} from './server/securityMiddleware';
 
 // ============================================================
 // FIREBASE ADMIN AUTHENTICATION
@@ -116,29 +123,113 @@ async function createFirebaseAuthUser(params: {
   displayName: string;
   phoneNumber?: string;
   photoURL?: string;
-}): Promise<UserRecord | null> {
+}): Promise<{ uid: string; email?: string } | null> {
   const adminAuth = getFirebaseAuth();
-  if (!adminAuth) {
-    console.warn('[Firebase Admin] Credentials not configured. Proceeding with local UID.');
-    return null;
+  if (adminAuth) {
+    const { email, password, displayName, phoneNumber, photoURL } = params;
+    try {
+      return await adminAuth.createUser({
+        email,
+        password,
+        displayName,
+        phoneNumber: phoneNumber?.startsWith('+') ? phoneNumber : undefined,
+        photoURL,
+        emailVerified: false,
+        disabled: false
+      });
+    } catch (error: any) {
+      console.error('[Firebase Admin] createUser failed:', error);
+      throw error;
+    }
   }
 
-  const { email, password, displayName, phoneNumber, photoURL } = params;
-
+  // REST API Fallback for environments where Admin SDK Service Account JSON is not loaded
   try {
-    return await adminAuth.createUser({
-      email,
-      password,
-      displayName,
-      phoneNumber: phoneNumber?.startsWith('+') ? phoneNumber : undefined,
-      photoURL,
-      emailVerified: false,
-      disabled: false
-    });
+    const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+    let apiKey = process.env.FIREBASE_API_KEY || '';
+    if (!apiKey && fs.existsSync(configPath)) {
+      try {
+        const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        apiKey = cfg.apiKey || '';
+      } catch {}
+    }
+
+    if (apiKey) {
+      const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: params.email,
+          password: params.password,
+          returnSecureToken: true
+        })
+      });
+      const data = await response.json();
+      if (data.error) {
+        if (data.error.message === 'EMAIL_EXISTS') {
+          const err: any = new Error('البريد الإلكتروني موجود بالفعل في Firebase Authentication.');
+          err.code = 'auth/email-already-exists';
+          throw err;
+        }
+        console.warn('[Firebase Auth REST] Sign up notice:', data.error.message);
+      } else if (data.localId) {
+        if (params.displayName && data.idToken) {
+          try {
+            await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:update?key=${apiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                idToken: data.idToken,
+                displayName: params.displayName,
+                returnSecureToken: false
+              })
+            });
+          } catch {}
+        }
+        return { uid: data.localId, email: data.email };
+      }
+    }
   } catch (error: any) {
-    console.error('[Firebase Admin] createUser failed:', error);
-    throw error;
+    if (error?.code === 'auth/email-already-exists') throw error;
+    console.warn('[Firebase Auth REST] Fallback notice:', error?.message);
   }
+
+  return null;
+}
+
+async function signInFirebaseAuthUser(params: {
+  email: string;
+  password: string;
+}): Promise<{ uid: string; email?: string; idToken?: string } | null> {
+  try {
+    const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+    let apiKey = process.env.FIREBASE_API_KEY || '';
+    if (!apiKey && fs.existsSync(configPath)) {
+      try {
+        const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        apiKey = cfg.apiKey || '';
+      } catch {}
+    }
+
+    if (apiKey) {
+      const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: params.email,
+          password: params.password,
+          returnSecureToken: true
+        })
+      });
+      const data = await response.json();
+      if (data && data.localId) {
+        return { uid: data.localId, email: data.email, idToken: data.idToken };
+      }
+    }
+  } catch (error: any) {
+    console.warn('[Firebase Auth REST] Sign in notice:', error?.message);
+  }
+  return null;
 }
 
 async function updateFirebaseAuthUser(uid: string, data: {
@@ -334,7 +425,15 @@ function getGeminiAI(): GoogleGenAI | null {
 
 async function startServer() {
   const app = express();
-  const PORT = 3024;
+  const PORT = 3024
+  ;
+
+  // Security Hardening: Disable Express signature header
+  app.disable('x-powered-by');
+
+  // Security Hardening: Apply protective HTTP headers & anti-path-traversal
+  app.use(securityHeadersMiddleware);
+  app.use(preventPathTraversal);
 
   // Enable CORS for the Netlify frontend, Android WebViews, hybrid apps, and local development.
   // In production, set ALLOWED_ORIGIN in the backend environment if you want to restrict access.
@@ -353,12 +452,18 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+  // Security Hardening: Deep input sanitization against Prototype Pollution & dangerous script injections
+  app.use(sanitizeInputMiddleware);
+
+  // Security Hardening: Global API rate limiter (DDoS / Scraping defense)
+  app.use(apiRateLimiter);
+
   // ----------------------------------------------------
   // AUTHENTICATION & DEMO SWITCHER ROUTES
   // ----------------------------------------------------
 
   // Register New User (Patient, Doctor, or Staff)
-  app.post('/api/auth/register', (req: Request, res: Response) => {
+  app.post('/api/auth/register', authRateLimiter, async (req: Request, res: Response) => {
     const { 
       fullName, 
       email, 
@@ -459,7 +564,22 @@ async function startServer() {
     }
 
     const targetRole: UserRole = isAdminUser ? 'HOSPITAL_ADMIN' : (role || 'PATIENT');
-    const newUserId = `usr-${targetRole.toLowerCase()}-${Date.now()}`;
+    let firebaseUid = `usr-${targetRole.toLowerCase()}-${Date.now()}`;
+    try {
+      const fbUser = await createFirebaseAuthUser({
+        email: normalizedEmail,
+        password: cleanPassword,
+        displayName: fullName.trim() || (isAdminUser ? 'المدير العام والمسؤول' : 'مستخدم'),
+        phoneNumber: normalizedPhone
+      });
+      if (fbUser && fbUser.uid) {
+        firebaseUid = fbUser.uid;
+      }
+    } catch (fbErr: any) {
+      console.warn('[Firebase Auth Register Notice]:', fbErr?.message);
+    }
+
+    const newUserId = firebaseUid;
 
     const newUser: User = {
       id: newUserId,
@@ -655,7 +775,7 @@ async function startServer() {
   });
 
   // Login via Email or Phone with Mandatory Password & Database Verification
-  app.post('/api/auth/login', (req: Request, res: Response) => {
+  app.post('/api/auth/login', authRateLimiter, async (req: Request, res: Response) => {
     const { identifier, password } = req.body; // Email, phone, or MRN
 
     // 1. Mandatory Identifier validation
@@ -833,6 +953,22 @@ async function startServer() {
         if (cleanPassword === 'patient#1234!' || isMasterDemoPassword) {
           isMatch = true;
         }
+      }
+    }
+
+    // Check directly with Firebase Authentication if not already matched
+    if (!isMatch && user.email) {
+      try {
+        const fbRes = await signInFirebaseAuthUser({
+          email: user.email,
+          password: cleanPassword
+        });
+        if (fbRes && fbRes.uid) {
+          isMatch = true;
+          userPasswords[user.id] = cleanPassword;
+        }
+      } catch (fbErr: any) {
+        console.warn('[Firebase Auth Login Check Notice]:', fbErr?.message);
       }
     }
 
@@ -1403,7 +1539,8 @@ async function startServer() {
       roomNumber,
       availableDays,
       availableHours,
-      avatar
+      avatar,
+      firebaseUid: clientProvidedUid
     } = req.body;
 
     if (!fullName || !fullName.trim()) {
@@ -1452,24 +1589,26 @@ async function startServer() {
     const doctorId = `doc-${Date.now()}`;
     const docAvatar = avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80';
 
-    // Create Firebase Authentication account if Admin SDK is configured
-    let firebaseUid = `usr-doc-${Date.now()}`;
-    try {
-      const fbUser = await createFirebaseAuthUser({
-        email: normalizedEmail,
-        password: cleanPassword,
-        displayName: fullName.trim(),
-        phoneNumber: normalizedPhone,
-        photoURL: docAvatar
-      });
-      if (fbUser) {
-        firebaseUid = fbUser.uid;
+    // Create Firebase Authentication account if Admin SDK or REST is configured
+    let firebaseUid = clientProvidedUid || `usr-doc-${Date.now()}`;
+    if (!clientProvidedUid) {
+      try {
+        const fbUser = await createFirebaseAuthUser({
+          email: normalizedEmail,
+          password: cleanPassword,
+          displayName: fullName.trim(),
+          phoneNumber: normalizedPhone,
+          photoURL: docAvatar
+        });
+        if (fbUser) {
+          firebaseUid = fbUser.uid;
+        }
+      } catch (error: any) {
+        if (error?.code === 'auth/email-already-exists') {
+          return res.status(409).json({ error: 'البريد الإلكتروني موجود بالفعل في Firebase Authentication.' });
+        }
+        console.warn('[Firebase Auth] Notice on doctor creation:', error?.message);
       }
-    } catch (error: any) {
-      if (error?.code === 'auth/email-already-exists') {
-        return res.status(409).json({ error: 'البريد الإلكتروني موجود بالفعل في Firebase Authentication.' });
-      }
-      console.warn('[Firebase Admin] Notice on doctor creation:', error?.message);
     }
 
     const userId = firebaseUid;
@@ -4060,7 +4199,7 @@ async function startServer() {
   });
 
   app.post('/api/admin/staff', async (req: Request, res: Response) => {
-    const { fullName, email, phone, department, roleTitle, shift, password } = req.body;
+    const { fullName, email, phone, department, roleTitle, shift, password, firebaseUid: clientProvidedUid } = req.body;
 
     if (!fullName || !fullName.trim()) {
       return res.status(400).json({ error: 'اسم الموظف مطلوب.' });
@@ -4107,24 +4246,26 @@ async function startServer() {
     const avatar = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80';
     const staffId = `stf-${Date.now()}`;
 
-    // Create Firebase Authentication account if Admin SDK is configured
-    let firebaseUid = `usr-staff-${Date.now()}`;
-    try {
-      const fbUser = await createFirebaseAuthUser({
-        email: normalizedEmail,
-        password: cleanPassword,
-        displayName: fullName.trim(),
-        phoneNumber: normalizedPhone,
-        photoURL: avatar
-      });
-      if (fbUser) {
-        firebaseUid = fbUser.uid;
+    // Create Firebase Authentication account if Admin SDK or REST is configured
+    let firebaseUid = clientProvidedUid || `usr-staff-${Date.now()}`;
+    if (!clientProvidedUid) {
+      try {
+        const fbUser = await createFirebaseAuthUser({
+          email: normalizedEmail,
+          password: cleanPassword,
+          displayName: fullName.trim(),
+          phoneNumber: normalizedPhone,
+          photoURL: avatar
+        });
+        if (fbUser) {
+          firebaseUid = fbUser.uid;
+        }
+      } catch (error: any) {
+        if (error?.code === 'auth/email-already-exists') {
+          return res.status(409).json({ error: 'البريد الإلكتروني موجود بالفعل في Firebase Authentication.' });
+        }
+        console.warn('[Firebase Auth] Notice on staff creation:', error?.message);
       }
-    } catch (error: any) {
-      if (error?.code === 'auth/email-already-exists') {
-        return res.status(409).json({ error: 'البريد الإلكتروني موجود بالفعل في Firebase Authentication.' });
-      }
-      console.warn('[Firebase Admin] Notice on staff creation:', error?.message);
     }
 
     const userId = firebaseUid;

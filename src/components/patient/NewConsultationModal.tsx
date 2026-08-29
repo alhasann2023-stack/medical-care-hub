@@ -168,7 +168,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
       <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4" dir="rtl">
         <div className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           {/* Header */}
-          <div className="p-4 bg-gradient-to-r from-cyan-700 via-teal-700 to-emerald-700 text-white flex items-center justify-between">
+          <div className="p-5 bg-gradient-to-r from-cyan-700 via-teal-700 to-emerald-700 text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-white/10 backdrop-blur-md">
                 <Sparkles className="w-6 h-6 text-cyan-200" />
@@ -196,7 +196,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
 
           {/* Submission Confirmation Screen */}
           {isSubmitted ? (
-            <div className="p-4 text-center space-y-2">
+            <div className="p-8 text-center space-y-4">
               <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto animate-bounce">
                 <CheckCircle2 className="w-10 h-10" />
               </div>
@@ -210,7 +210,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="p-6 space-y-2 text-start text-xs sm:text-sm">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 text-start text-xs sm:text-sm">
               {error && (
                 <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 flex items-center gap-2 text-xs font-semibold">
                   <AlertCircle className="w-4 h-4 shrink-0" />
@@ -220,13 +220,13 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
 
               {/* Select Doctor */}
               <div>
-                <label className="block font-bold text-slate-800 dark:text-slate-900 mb-1.5">
+                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1.5">
                   الطبيب المعالج المطلوب استشارته <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={selectedDoctorId}
                   onChange={(e) => setSelectedDoctorId(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-300 dark:bg-slate-800 text-slate-900 dark:text-slate-500 font-medium focus:ring-2 focus:ring-cyan-500  transition-all"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-400 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-cyan-500  transition-all"
                   required
                 >
                   {doctors.map(d => (
