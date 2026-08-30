@@ -17,7 +17,7 @@ import {
   QueryConstraint,
   limit as limitTo
 } from 'firebase/firestore';
-import { getAuth, Auth, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { getAuth, Auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { 
   User, 
@@ -587,27 +587,55 @@ export async function createFirebaseAuthAccount(params: {
   try {
     tempApp = initializeApp(firebaseConfig, tempAppName);
     const tempAuth = getAuth(tempApp);
-    const credential = await createUserWithEmailAndPassword(
-      tempAuth,
-      normalizedEmail,
-      params.password.trim()
-    );
-    
-    if (credential.user && params.displayName) {
-      try {
-        await updateProfile(credential.user, {
-          displayName: params.displayName.trim()
-        });
-      } catch (profileErr) {
-        console.warn('Could not update displayName in Firebase Auth:', profileErr);
+    let uid = '';
+    let email = normalizedEmail;
+
+    try {
+      const credential = await createUserWithEmailAndPassword(
+        tempAuth,
+        normalizedEmail,
+        params.password.trim()
+      );
+      
+      if (credential.user && params.displayName) {
+        try {
+          await updateProfile(credential.user, {
+            displayName: params.displayName.trim()
+          });
+        } catch (profileErr) {
+          console.warn('Could not update displayName in Firebase Auth:', profileErr);
+        }
+      }
+      
+      uid = credential.user.uid;
+      email = credential.user.email || normalizedEmail;
+    } catch (createErr: any) {
+      if (createErr?.code === 'auth/email-already-in-use') {
+        try {
+          const signInCred = await signInWithEmailAndPassword(
+            tempAuth,
+            normalizedEmail,
+            params.password.trim()
+          );
+          uid = signInCred.user.uid;
+          email = signInCred.user.email || normalizedEmail;
+        } catch (signInErr) {
+          // If password differed, check Firestore for this email
+          const existingUserDoc = await getUserByEmailOrPhone(normalizedEmail);
+          if (existingUserDoc && existingUserDoc.id) {
+            uid = existingUserDoc.id;
+          } else {
+            throw createErr;
+          }
+        }
+      } else {
+        throw createErr;
       }
     }
-    
-    const uid = credential.user.uid;
-    const email = credential.user.email || normalizedEmail;
+
     return { uid, email };
   } catch (error: any) {
-    console.error('Firebase createFirebaseAuthAccount failed:', error?.code, error?.message);
+    console.error('Firebase createFirebaseAuthAccount notice:', error?.code, error?.message);
     throw error;
   } finally {
     if (tempApp) {
