@@ -243,7 +243,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
     value={selectedServiceId}
     onChange={(e) => setSelectedServiceId(e.target.value)}
     placeholder="اكتب اسم الخدمة الطبية..."
-    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500  transition-all"
   />
 
   <datalist id="medical-services">

@@ -64,7 +64,7 @@ export const HospitalAdminDashboard: React.FC = () => {
   const [docPhone, setDocPhone] = useState<string>('');
   const [docSpecialtyId, setDocSpecialtyId] = useState<string>('spec-1');
   const [docTitle, setDocTitle] = useState<string>('استشاري أول');
-  const [docFee, setDocFee] = useState<number>(300);
+  const [docFee, setDocFee] = useState<number | ''>(300);
   const [docRoom, setDocRoom] = useState<string>('عيادة 105');
   const [docExperience, setDocExperience] = useState<number>(10);
   const [docBio, setDocBio] = useState<string>('استشاري معتمد ذو خبرة إكلينيكية واسعة.');
@@ -78,7 +78,7 @@ export const HospitalAdminDashboard: React.FC = () => {
   const [editDocPhone, setEditDocPhone] = useState<string>('');
   const [editDocSpecialtyId, setEditDocSpecialtyId] = useState<string>('spec-1');
   const [editDocTitle, setEditDocTitle] = useState<string>('استشاري أول');
-  const [editDocFee, setEditDocFee] = useState<number>(300);
+  const [editDocFee, setEditDocFee] = useState<number | ''>(300);
   const [editDocRoom, setEditDocRoom] = useState<string>('عيادة 105');
   const [editDocExperience, setEditDocExperience] = useState<number>(10);
   const [editDocBio, setEditDocBio] = useState<string>('');
@@ -210,7 +210,7 @@ export const HospitalAdminDashboard: React.FC = () => {
         password: docPassword.trim(),
         specialtyId: docSpecialtyId,
         title: docTitle,
-        consultationFee: Number(docFee),
+        consultationFee: docFee === '' ? 0 : docFee,
         roomNumber: docRoom,
         experienceYears: Number(docExperience),
         bioAr: docBio,
@@ -261,7 +261,7 @@ export const HospitalAdminDashboard: React.FC = () => {
         phone: editDocPhone.trim(),
         specialtyId: editDocSpecialtyId,
         title: editDocTitle,
-        consultationFee: Number(editDocFee),
+        consultationFee: editDocFee === '' ? 0 : editDocFee,
         roomNumber: editDocRoom,
         experienceYears: Number(editDocExperience),
         bioAr: editDocBio,
@@ -1263,12 +1263,17 @@ export const HospitalAdminDashboard: React.FC = () => {
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">رسوم الكشف (ر.س)</label>
-                  <input
-                    type="number"
-                    value={docFee}
-                    onChange={(e) => setDocFee(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
-                  />
+<input
+  type="number"
+  inputMode="decimal"
+  value={docFee}
+  onChange={(e) => {
+    const value = e.target.value;
+    setDocFee(value === '' ? '' : Number(value));
+  }}
+  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
+  placeholder="0"
+/>
                 </div>
 
                 <div>
@@ -1433,8 +1438,12 @@ export const HospitalAdminDashboard: React.FC = () => {
                   <label className="block font-bold text-slate-700 mb-1">رسوم الكشف</label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     value={editDocFee}
-                    onChange={(e) => setEditDocFee(Number(e.target.value))}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setEditDocFee(value === '' ? '' : Number(value));
+                    }}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
                   />
                 </div>
