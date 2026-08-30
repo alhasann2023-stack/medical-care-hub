@@ -65,8 +65,9 @@ export const HospitalAdminDashboard: React.FC = () => {
   const [docSpecialtyId, setDocSpecialtyId] = useState<string>('spec-1');
   const [docTitle, setDocTitle] = useState<string>('استشاري أول');
   const [docFee, setDocFee] = useState<number | ''>(300);
+  const [editDocExperienceInput, setEditDocExperienceInput] = useState("");
   const [docRoom, setDocRoom] = useState<string>('عيادة 105');
-  const [docExperience, setDocExperience] = useState<number>(10);
+  const [docExperience, setDocExperience] = useState<number | ''>(10);
   const [docBio, setDocBio] = useState<string>('استشاري معتمد ذو خبرة إكلينيكية واسعة.');
 
   // Edit Doctor Modal State
@@ -214,7 +215,7 @@ export const HospitalAdminDashboard: React.FC = () => {
         roomNumber: docRoom,
         experienceYears: Number(docExperience),
         bioAr: docBio,
-        qualifications: ['بورد تخصصي معتمد', 'ترخيص الهيئة السعودية للتخصصات الصحية SCFHS']
+        qualifications: ['بورد تخصصي معتمد', 'ترخيص الهيئة اليمنية للتخصصات الصحية SCFHS']
       });
 
       showNotification('success', `تم إنشاء حساب الاستشاري ${docFullName} مع بيانات الدخول بنجاح! يستطيع الطبيب تسجيل الدخول الآن برقم الهاتف.`);
@@ -1288,12 +1289,13 @@ export const HospitalAdminDashboard: React.FC = () => {
 
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">سنوات الخبرة</label>
-                  <input
-                    type="number"
-                    value={docExperience}
-                    onChange={(e) => setDocExperience(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
-                  />
+<input
+  type="number"
+  inputMode="numeric"
+  value={docExperience ?? ""}
+  onChange={(e) => setDocExperience(e.target.value === "" ? 0 : Number(e.target.value))}
+  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
+/>
                 </div>
               </div>
 
