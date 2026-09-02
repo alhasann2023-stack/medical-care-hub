@@ -425,7 +425,7 @@ function getGeminiAI(): GoogleGenAI | null {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000
+  const PORT = 3024
   ;
 
   // Security Hardening: Disable Express signature header

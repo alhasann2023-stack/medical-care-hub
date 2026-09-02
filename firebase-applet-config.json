@@ -1,12 +1,12 @@
 {
-  "projectId": "com-example-nashwan-db427",
-  "appId": "1:932335827011:web:04076f97da766e56277cf6",
-  "apiKey": "AIzaSyDMi3ZsB-QEp2zS2nOD2rL4RyZTRqOsenE",
-  "authDomain": "com-example-nashwan-db427.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-medicalcarehub-70f1ad81-d962-491b-bba2-8a636493e1df",
-  "storageBucket": "com-example-nashwan-db427.firebasestorage.app",
-  "messagingSenderId": "932335827011",
-  "measurementId": "",
-  "oAuthClientId": "932335827011-sb9c6jvlh002b6jpbtrirgqlmqvhc4vj.apps.googleusercontent.com",
+  "projectId": "sehatc-fe-yadk",
+  "appId": "1:796497562612:web:09399122e79a27362387a1",
+  "apiKey": "AIzaSyC1aIVTe60stAFqmwEe-WCF2uWKG9AED0o",
+  "authDomain": "sehatc-fe-yadk.firebaseapp.com",
+  "firestoreDatabaseId": "",
+  "storageBucket": "sehatc-fe-yadk.firebasestorage.app",
+  "messagingSenderId": "796497562612",
+  "measurementId": "G-B6G014YGN9",
+  "oAuthClientId": "",
   "recaptchaSiteKey": ""
 }

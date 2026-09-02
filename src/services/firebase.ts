@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp, deleteApp, FirebaseApp } from 'firebase/app';
+import { getAnalytics, isSupported } from 'firebase/analytics';
 import { 
   initializeFirestore,
   getFirestore, 
@@ -45,6 +46,20 @@ export const app: FirebaseApp = getApps().length === 0
   ? initializeApp(firebaseConfig)
   : getApp();
 
+// Initialize Firebase Analytics (conditionally in browser environment)
+export let analytics: any = null;
+if (typeof window !== 'undefined') {
+  isSupported().then(supported => {
+    if (supported) {
+      try {
+        analytics = getAnalytics(app);
+      } catch (err) {
+        console.warn('Firebase Analytics initialization notice:', err);
+      }
+    }
+  }).catch(() => {});
+}
+
 // Initialize Firestore with custom database ID from config and resilient WebChannel polling
 export const db: Firestore = (() => {
   try {
@@ -83,7 +98,8 @@ export const FIRESTORE_COLLECTIONS = {
   REPORTS: 'reports',
   PRESCRIPTIONS: 'prescriptions',
   NOTIFICATIONS: 'notifications',
-  AUDIT_LOGS: 'auditLogs'
+  AUDIT_LOGS: 'auditLogs',
+  USER_CREDENTIALS: 'userCredentials'
 } as const;
 
 // Test Firestore Connection Helper
@@ -262,6 +278,97 @@ export async function getDoctorByUserId(userId: string): Promise<Doctor | null> 
 }
 
 /**
+ * Retrieve staff profile by user ID or staff ID
+ */
+export async function getStaffByUserId(userId: string): Promise<Staff | null> {
+  if (!userId) return null;
+  try {
+    const directDoc = await fetchDocById<Staff>(FIRESTORE_COLLECTIONS.STAFF, userId);
+    if (directDoc) return directDoc;
+
+    const colRef = collection(db, FIRESTORE_COLLECTIONS.STAFF);
+    const q = query(colRef, where('userId', '==', userId));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      const d = snap.docs[0];
+      return { id: d.id, ...d.data() } as unknown as Staff;
+    }
+    return null;
+  } catch (err) {
+    console.warn('[Firestore] getStaffByUserId error:', err);
+    return null;
+  }
+}
+
+/**
+ * Retrieve user credential record by userId, email, or phone
+ */
+export async function getUserCredentialDoc(userIdOrIdentifier: string): Promise<{ userId: string; password?: string; email?: string; phone?: string } | null> {
+  if (!userIdOrIdentifier) return null;
+  const clean = userIdOrIdentifier.trim();
+  try {
+    // 1. Direct doc lookup by userId
+    const direct = await fetchDocById<{ userId: string; password?: string; email?: string; phone?: string }>(FIRESTORE_COLLECTIONS.USER_CREDENTIALS, clean);
+    if (direct && direct.password) return direct;
+
+    const colRef = collection(db, FIRESTORE_COLLECTIONS.USER_CREDENTIALS);
+    // 2. Query by userId
+    const qUser = query(colRef, where('userId', '==', clean));
+    const snapUser = await getDocs(qUser);
+    if (!snapUser.empty) {
+      return snapUser.docs[0].data() as any;
+    }
+
+    // 3. Query by email
+    const qEmail = query(colRef, where('email', '==', clean.toLowerCase()));
+    const snapEmail = await getDocs(qEmail);
+    if (!snapEmail.empty) {
+      return snapEmail.docs[0].data() as any;
+    }
+
+    // 4. Query by phone
+    const qPhone = query(colRef, where('phone', '==', clean));
+    const snapPhone = await getDocs(qPhone);
+    if (!snapPhone.empty) {
+      return snapPhone.docs[0].data() as any;
+    }
+
+    // 5. Query by digits
+    const digits = clean.replace(/[^0-9]/g, '');
+    if (digits && digits !== clean) {
+      const qDigits = query(colRef, where('phone', '==', digits));
+      const snapDigits = await getDocs(qDigits);
+      if (!snapDigits.empty) {
+        return snapDigits.docs[0].data() as any;
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.warn('[Firestore] getUserCredentialDoc error:', err);
+    return null;
+  }
+}
+
+/**
+ * Persist user credential to Firestore
+ */
+export async function saveUserCredentialDoc(cred: { userId: string; password?: string; email?: string; phone?: string }): Promise<boolean> {
+  if (!cred || !cred.userId) return false;
+  try {
+    const docRef = doc(db, FIRESTORE_COLLECTIONS.USER_CREDENTIALS, cred.userId.trim());
+    await setDoc(docRef, {
+      ...cred,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+    return true;
+  } catch (err) {
+    console.warn('[Firestore] saveUserCredentialDoc error:', err);
+    return false;
+  }
+}
+
+/**
  * Retrieve all doctors with optional filters
  */
 export async function getDoctorsWithFilter(options?: { specialtyId?: string; activeOnly?: boolean }): Promise<Doctor[]> {
@@ -288,10 +395,19 @@ export async function getAppointmentsWithFilter(filter?: { patientId?: string; d
     const all = await fetchDocsWithFilter<Appointment>(FIRESTORE_COLLECTIONS.APPOINTMENTS);
     let list = all;
     if (filter?.patientId) {
-      list = list.filter(a => a.patientId === filter.patientId || (a as any).patientUserId === filter.patientId || a.patientPhone === filter.patientId);
+      const qPat = filter.patientId.toLowerCase().trim();
+      list = list.filter(a => 
+        (a.patientId && a.patientId.toLowerCase().trim() === qPat) || 
+        ((a as any).patientUserId && (a as any).patientUserId.toLowerCase().trim() === qPat) || 
+        (a.patientPhone && a.patientPhone.replace(/\D/g, '') === qPat.replace(/\D/g, ''))
+      );
     }
     if (filter?.doctorId) {
-      list = list.filter(a => a.doctorId === filter.doctorId || (a as any).doctorUserId === filter.doctorId);
+      const qDoc = filter.doctorId.toLowerCase().trim();
+      list = list.filter(a => 
+        (a.doctorId && a.doctorId.toLowerCase().trim() === qDoc) || 
+        ((a as any).doctorUserId && (a as any).doctorUserId.toLowerCase().trim() === qDoc)
+      );
     }
     if (filter?.status) {
       list = list.filter(a => a.status === filter.status);
@@ -442,10 +558,19 @@ export function subscribeToAppointments(
     (allItems) => {
       let list = allItems;
       if (filter.patientId) {
-        list = list.filter(a => a.patientId === filter.patientId || (a as any).patientUserId === filter.patientId || a.patientPhone === filter.patientId);
+        const qPat = filter.patientId.toLowerCase().trim();
+        list = list.filter(a => 
+          (a.patientId && a.patientId.toLowerCase().trim() === qPat) || 
+          ((a as any).patientUserId && (a as any).patientUserId.toLowerCase().trim() === qPat) || 
+          (a.patientPhone && a.patientPhone.replace(/\D/g, '') === qPat.replace(/\D/g, ''))
+        );
       }
       if (filter.doctorId) {
-        list = list.filter(a => a.doctorId === filter.doctorId || (a as any).doctorUserId === filter.doctorId);
+        const qDoc = filter.doctorId.toLowerCase().trim();
+        list = list.filter(a => 
+          (a.doctorId && a.doctorId.toLowerCase().trim() === qDoc) || 
+          ((a as any).doctorUserId && (a as any).doctorUserId.toLowerCase().trim() === qDoc)
+        );
       }
       if (filter.status) {
         list = list.filter(a => a.status === filter.status);
@@ -651,6 +776,7 @@ export async function createFirebaseAuthAccount(params: {
 export { firebaseConfig };
 export default { 
   app, 
+  analytics,
   db, 
   auth, 
   firebaseConfig, 
