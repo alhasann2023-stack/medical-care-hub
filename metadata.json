@@ -1,0 +1,6 @@
+{
+  "name": "Medical Care Hub",
+  "description": "منصة طبية احترافية متكاملة لإدارة المرضى والمواعيد والاستشارات الطبية والفحوصات والتقارير الطبية مع بوابات مخصصة للمرضى والأطباء وخدمة العملاء والإدارة.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

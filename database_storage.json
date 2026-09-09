@@ -1,0 +1,823 @@
+{
+  "users": [
+    {
+      "id": "usr-admin-1",
+      "email": "alhasann2023@gmail.com",
+      "phone": "+966500001122",
+      "fullName": "المدير العام والمسؤول المعتمد",
+      "role": "HOSPITAL_ADMIN",
+      "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+      "isVerified": true,
+      "createdAt": "2026-08-25T20:02:55.394Z",
+      "lastLoginAt": "2026-08-25T20:02:55.395Z"
+    },
+    {
+      "id": "usr-doc-1",
+      "email": "dr.faisal@medicalcarehub.com",
+      "phone": "+966501234567",
+      "fullName": "د. فيصل العتيبي",
+      "role": "DOCTOR",
+      "avatar": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80",
+      "isVerified": true,
+      "createdAt": "2026-08-25T20:02:55.395Z"
+    },
+    {
+      "id": "usr-doc-2",
+      "email": "dr.mona@medicalcarehub.com",
+      "phone": "+966502345678",
+      "fullName": "د. منى الغامدي",
+      "role": "DOCTOR",
+      "avatar": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=200&auto=format&fit=crop&q=80",
+      "isVerified": true,
+      "createdAt": "2026-08-25T20:02:55.395Z"
+    },
+    {
+      "id": "usr-doc-3",
+      "email": "dr.tariq@medicalcarehub.com",
+      "phone": "+966503456789",
+      "fullName": "د. طارق الشهري",
+      "role": "DOCTOR",
+      "avatar": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=200&auto=format&fit=crop&q=80",
+      "isVerified": true,
+      "createdAt": "2026-08-25T20:02:55.395Z"
+    },
+    {
+      "id": "usr-doc-4",
+      "email": "dr.reem@medicalcarehub.com",
+      "phone": "+966504567890",
+      "fullName": "د. ريم الحربي",
+      "role": "DOCTOR",
+      "avatar": "https://images.unsplash.com/photo-1594824813590-78929e7943d0?w=200&auto=format&fit=crop&q=80",
+      "isVerified": true,
+      "createdAt": "2026-08-25T20:02:55.395Z"
+    },
+    {
+      "id": "usr-cs-1",
+      "email": "staff@medicalcarehub.com",
+      "phone": "+966507778899",
+      "fullName": "نورة السعيد",
+      "role": "CUSTOMER_SERVICE",
+      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80",
+      "isVerified": true,
+      "createdAt": "2026-08-25T20:02:55.395Z"
+    },
+    {
+      "id": "usr-pat-1",
+      "email": "sarah.mansoor@example.com",
+      "phone": "+966501112233",
+      "fullName": "سارة خالد المنصور",
+      "role": "PATIENT",
+      "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+      "isVerified": true,
+      "createdAt": "2026-08-25T20:02:55.395Z"
+    },
+    {
+      "id": "usr-patient-1787669819214",
+      "isVerified": true,
+      "email": "nashwann1991@gmail.com",
+      "lastLoginAt": "2026-08-25T20:31:08.033Z",
+      "updatedAt": "2026-08-25T20:03:42.502Z",
+      "createdAt": "2026-08-25T14:56:59.214Z",
+      "fullName": "nashwan waheeb",
+      "role": "PATIENT",
+      "phone": "00967776458925",
+      "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=nashwan%20waheeb"
+    },
+    {
+      "id": "usr-patient-1787690191273",
+      "email": "rawan@gmail.com",
+      "phone": "776174855",
+      "fullName": "روان المعمري",
+      "role": "PATIENT",
+      "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=%D8%B1%D9%88%D8%A7%D9%86%20%D8%A7%D9%84%D9%85%D8%B9%D9%85%D8%B1%D9%8A",
+      "isVerified": true,
+      "createdAt": "2026-08-25T20:36:31.273Z",
+      "lastLoginAt": "2026-08-25T21:26:19.150Z"
+    }
+  ],
+  "patients": [
+    {
+      "id": "pat-1",
+      "userId": "usr-pat-1",
+      "mrn": "MRN-2026-8801",
+      "fullName": "سارة خالد المنصور",
+      "phone": "+966501112233",
+      "email": "sarah.mansoor@example.com",
+      "nationalId": "1088776655",
+      "birthDate": "1992-05-14",
+      "gender": "FEMALE",
+      "bloodType": "A+",
+      "allergies": [
+        "البنسلين"
+      ],
+      "chronicDiseases": [
+        "حساسية موسمية"
+      ],
+      "address": "الرياض، حي النخيل",
+      "emergencyContact": {
+        "name": "خالد المنصور",
+        "phone": "+966509998877",
+        "relation": "والد"
+      },
+      "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+      "createdAt": "2026-08-25T20:02:55.395Z"
+    },
+    {
+      "id": "pat-1787669819214",
+      "email": "nashwann1991@gmail.com",
+      "updatedAt": "2026-08-25T20:03:43.670Z",
+      "userId": "usr-patient-1787669819214",
+      "createdAt": "2026-08-25T14:56:59.214Z",
+      "bloodType": "O+",
+      "nationalId": "",
+      "phone": "00967776458925",
+      "address": "المملكة العربية السعودية",
+      "chronicDiseases": [],
+      "gender": "MALE",
+      "fullName": "nashwan waheeb",
+      "allergies": [],
+      "mrn": "MRN-2026-2776",
+      "emergencyContact": {
+        "relation": "قريب",
+        "phone": "",
+        "name": "جهة اتصال الطوارئ"
+      },
+      "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=nashwan%20waheeb",
+      "birthDate": "1995-05-15"
+    },
+    {
+      "id": "pat-1787690191273",
+      "userId": "usr-patient-1787690191273",
+      "fullName": "روان المعمري",
+      "phone": "776174855",
+      "nationalId": "",
+      "mrn": "MRN-2026-8468",
+      "email": "rawan@gmail.com",
+      "birthDate": "1995-05-15",
+      "gender": "MALE",
+      "bloodType": "O+",
+      "emergencyContact": {
+        "name": "جهة اتصال الطوارئ",
+        "relation": "قريب",
+        "phone": ""
+      },
+      "address": "المملكة العربية السعودية",
+      "allergies": [],
+      "chronicDiseases": [],
+      "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=%D8%B1%D9%88%D8%A7%D9%86%20%D8%A7%D9%84%D9%85%D8%B9%D9%85%D8%B1%D9%8A",
+      "createdAt": "2026-08-25T20:36:31.274Z"
+    }
+  ],
+  "doctors": [
+    {
+      "id": "doc-1",
+      "userId": "usr-doc-1",
+      "fullName": "د. فيصل العتيبي",
+      "email": "dr.faisal@medicalcarehub.com",
+      "phone": "+966501234567",
+      "specialtyId": "spec-cardio",
+      "specialtyNameAr": "أمراض القلب والأوعية الدموية",
+      "specialtyNameEn": "Cardiology & Vascular Medicine",
+      "title": "استشاري أول أمراض وقسطرة القلب",
+      "qualifications": [
+        "البورد الأمريكي في أمراض القلب",
+        "زمالة الكلية الملكية للأطباء"
+      ],
+      "experienceYears": 16,
+      "bioAr": "استشاري أول لأمراض القلب، خبير في فحوصات القلب الدقيقة وقسطرة وتخطيط صمامات القلب.",
+      "bioEn": "Senior Consultant Cardiologist with over 16 years of expertise in clinical cardiology.",
+      "consultationFee": 350,
+      "avatar": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80",
+      "roomNumber": "عيادة 201 - جناح القلب",
+      "rating": 4.9,
+      "reviewsCount": 142,
+      "availableDays": [
+        "الأحد",
+        "الإثنين",
+        "الثلاثاء",
+        "الأربعاء"
+      ],
+      "availableHours": "09:00 ص - 03:30 م",
+      "isActive": true
+    },
+    {
+      "id": "doc-2",
+      "userId": "usr-doc-2",
+      "fullName": "د. منى الغامدي",
+      "email": "dr.mona@medicalcarehub.com",
+      "phone": "+966502345678",
+      "specialtyId": "spec-internal",
+      "specialtyNameAr": "الطب الباطني والغدد الصماء",
+      "specialtyNameEn": "Internal Medicine & Endocrinology",
+      "title": "استشارية الباطنية والسكري والغدد الصماء",
+      "qualifications": [
+        "البورد السعودي في الطب الباطني",
+        "زمالة جامعة تورنتو في الغدد والسكري"
+      ],
+      "experienceYears": 13,
+      "bioAr": "متخصصة في علاج وضبط داء السكري واعتلالات الغدة الدرقية وضغط الدم المزمن.",
+      "bioEn": "Specialist in metabolic health, diabetes management, and chronic endocrine conditions.",
+      "consultationFee": 300,
+      "avatar": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=200&auto=format&fit=crop&q=80",
+      "roomNumber": "عيادة 104 - العيادات الباطنية",
+      "rating": 4.8,
+      "reviewsCount": 98,
+      "availableDays": [
+        "الإثنين",
+        "الثلاثاء",
+        "الخميس"
+      ],
+      "availableHours": "10:00 ص - 04:00 م",
+      "isActive": true
+    },
+    {
+      "id": "doc-3",
+      "userId": "usr-doc-3",
+      "fullName": "د. طارق الشهري",
+      "email": "dr.tariq@medicalcarehub.com",
+      "phone": "+966503456789",
+      "specialtyId": "spec-ortho",
+      "specialtyNameAr": "جراحة العظام والمفاصل والعمود الفقري",
+      "specialtyNameEn": "Orthopedics & Joint Surgery",
+      "title": "استشاري جراحة العظام والمفاصل والطب الرياضي",
+      "qualifications": [
+        "الزمالة البريطانية لجراحة العظام FRCS",
+        "دبلوم الطب الرياضي وإصابات الملاعب"
+      ],
+      "experienceYears": 15,
+      "bioAr": "خبير في جراحات استبدال المفاصل، علاج خشونة الركبة، والإصابات الرياضية الحركية.",
+      "bioEn": "Leading orthopedic surgeon specializing in joint replacement and sports trauma.",
+      "consultationFee": 320,
+      "avatar": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=200&auto=format&fit=crop&q=80",
+      "roomNumber": "عيادة 302 - قسم العظام",
+      "rating": 4.9,
+      "reviewsCount": 167,
+      "availableDays": [
+        "الأحد",
+        "الثلاثاء",
+        "الأربعاء"
+      ],
+      "availableHours": "09:30 ص - 03:00 م",
+      "isActive": true
+    },
+    {
+      "id": "doc-4",
+      "userId": "usr-doc-4",
+      "fullName": "د. ريم الحربي",
+      "email": "dr.reem@medicalcarehub.com",
+      "phone": "+966504567890",
+      "specialtyId": "spec-peds",
+      "specialtyNameAr": "طب الأطفال والنمو وحديثي الولادة",
+      "specialtyNameEn": "Pediatrics & Neonatology",
+      "title": "استشارية طب الأطفال والتغذية العلاجية",
+      "qualifications": [
+        "البورد العربي في طب الأطفال",
+        "شهادة الرعاية الحرجة لحديثي الولادة"
+      ],
+      "experienceYears": 11,
+      "bioAr": "رعاية صحة ونمو الطفل، علاج الحساسية التنفسية، وجداول التطعيمات المتكاملة.",
+      "bioEn": "Compassionate pediatric care focusing on growth milestones and respiratory health.",
+      "consultationFee": 250,
+      "avatar": "https://images.unsplash.com/photo-1594824813590-78929e7943d0?w=200&auto=format&fit=crop&q=80",
+      "roomNumber": "عيادة 101 - عيادة الأطفال",
+      "rating": 5,
+      "reviewsCount": 210,
+      "availableDays": [
+        "الأحد",
+        "الإثنين",
+        "الأربعاء",
+        "الخميس"
+      ],
+      "availableHours": "08:30 ص - 02:30 م",
+      "isActive": true
+    }
+  ],
+  "staffList": [
+    {
+      "id": "stf-1",
+      "userId": "usr-cs-1",
+      "fullName": "نورة السعيد",
+      "phone": "+966507778899",
+      "email": "staff@medicalcarehub.com",
+      "department": "مركز تنسيق المواعيد وخدمة العملاء",
+      "roleTitle": "منسق خدمة عملاء أول",
+      "shift": "MORNING",
+      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80",
+      "isActive": true,
+      "createdAt": "2026-08-25T20:02:55.395Z"
+    }
+  ],
+  "specialties": [
+    {
+      "id": "spec-cardio",
+      "nameAr": "أمراض القلب والأوعية الدموية",
+      "nameEn": "Cardiology & Vascular Medicine",
+      "descriptionAr": "تشخيص وعلاج اضطرابات القلب، ضغط الدم، تخطيط القلب وقسطرة الشرايين.",
+      "descriptionEn": "Diagnosis and management of cardiac disorders, hypertension, ECG and catheterization.",
+      "iconName": "HeartPulse",
+      "code": "CARD"
+    },
+    {
+      "id": "spec-internal",
+      "nameAr": "الطب الباطني والغدد الصماء",
+      "nameEn": "Internal Medicine & Endocrinology",
+      "descriptionAr": "رعاية شاملة للأمراض المزمنة، داء السكري، اضطرابات الغدة والتمثيل الغذائي.",
+      "descriptionEn": "Comprehensive care for chronic diseases, diabetes, thyroid and metabolic disorders.",
+      "iconName": "Activity",
+      "code": "INTM"
+    },
+    {
+      "id": "spec-ortho",
+      "nameAr": "جراحة العظام والمفاصل والعمود الفقري",
+      "nameEn": "Orthopedics & Joint Surgery",
+      "descriptionAr": "علاج آلام المفاصل، خشونة الركبة، الإصابات الرياضية، وعلاج العمود الفقري.",
+      "descriptionEn": "Treatment of joint pain, sports injuries, knee arthrosis, and spine disorders.",
+      "iconName": "Bone",
+      "code": "ORTH"
+    },
+    {
+      "id": "spec-peds",
+      "nameAr": "طب الأطفال والنمو وحديثي الولادة",
+      "nameEn": "Pediatrics & Neonatology",
+      "descriptionAr": "رعاية صحة الطفل، متابعة مراحل النمو والتطعيمات، والأمراض التنفسية عند الأطفال.",
+      "descriptionEn": "Child wellness, growth milestones, vaccinations, and pediatric care.",
+      "iconName": "Baby",
+      "code": "PEDS"
+    },
+    {
+      "id": "spec-derma",
+      "nameAr": "الجلدية والليزر والتجميل الطبي",
+      "nameEn": "Dermatology & Medical Cosmetology",
+      "descriptionAr": "علاج الأمراض الجلدية المزمنة، حب الشباب، الأكزيما، والتقنيات العلاجية الحديثة.",
+      "descriptionEn": "Management of skin conditions, acne, eczema, and advanced dermatological laser.",
+      "iconName": "Sparkles",
+      "code": "DERM"
+    },
+    {
+      "id": "spec-neuro",
+      "nameAr": "المخ والأعصاب والاضطرابات الحركية",
+      "nameEn": "Neurology & Motor Disorders",
+      "descriptionAr": "تشخيص الصداع النصفي، اضطرابات النوم، التصلب المتعدد، واعتلالات الأعصاب.",
+      "descriptionEn": "Diagnosis of migraine, sleep disorders, multiple sclerosis, and neuropathies.",
+      "iconName": "Brain",
+      "code": "NEUR"
+    }
+  ],
+  "services": [
+    {
+      "id": "srv-1",
+      "specialtyId": "spec-cardio",
+      "nameAr": "كشف استشاري قلب مع تخطيط قلب كهربائي (ECG)",
+      "nameEn": "Cardiology Consultation + Resting ECG",
+      "descriptionAr": "فحص سريري شامل لعضلة القلب والشرايين مع فحص تخطيط القلب المباشر.",
+      "descriptionEn": "Comprehensive clinical examination with a resting 12-lead ECG.",
+      "price": 350,
+      "durationMinutes": 30,
+      "isActive": true
+    },
+    {
+      "id": "srv-2",
+      "specialtyId": "spec-cardio",
+      "nameAr": "فحص إيكو للقلب بالموجات الصوتية (Echocardiogram)",
+      "nameEn": "Echocardiogram Diagnostic Imaging",
+      "descriptionAr": "تصوير دقيق لصمامات القلب وعضلة القلب وقياس كفاءة الضخ.",
+      "descriptionEn": "High-resolution ultrasound imaging of heart valves and cardiac ejection fraction.",
+      "price": 600,
+      "durationMinutes": 45,
+      "isActive": true
+    },
+    {
+      "id": "srv-3",
+      "specialtyId": "spec-internal",
+      "nameAr": "كشف باطني شامل مع متابعة السكري وضغط الدم",
+      "nameEn": "Internal Medicine Comprehensive Follow-up",
+      "descriptionAr": "معاينة متخصصة لضبط مستويات السكر في الدم وضبط أدوية الضغط.",
+      "descriptionEn": "Detailed metabolic and glycemic balance review and therapy adjustment.",
+      "price": 250,
+      "durationMinutes": 25,
+      "isActive": true
+    },
+    {
+      "id": "srv-4",
+      "specialtyId": "spec-ortho",
+      "nameAr": "استشارة عظام ومفاصل وفحص الإصابات الحركية",
+      "nameEn": "Orthopedic & Joint Consultation",
+      "descriptionAr": "فحص سريري متكامل للمفاصل والأربطة مع تقييم درجات الحركة والألم.",
+      "descriptionEn": "Full musculoskeletal and joint evaluation with mobility assessment.",
+      "price": 300,
+      "durationMinutes": 30,
+      "isActive": true
+    },
+    {
+      "id": "srv-5",
+      "specialtyId": "spec-peds",
+      "nameAr": "فحص نمو وصحة الطفل واستشارة طب الأطفال",
+      "nameEn": "Pediatric Health & Growth Examination",
+      "descriptionAr": "تقييم معايير النمو والوزن والتطور الحركي للأطفال مع فحص العلامات الحيوية.",
+      "descriptionEn": "Comprehensive developmental growth milestones check and physical exam.",
+      "price": 220,
+      "durationMinutes": 25,
+      "isActive": true
+    },
+    {
+      "id": "srv-6",
+      "specialtyId": "spec-derma",
+      "nameAr": "كشف جلدية وفحص البشرة المتقدم",
+      "nameEn": "Dermatological Consultation & Skin Scan",
+      "descriptionAr": "تشخيص دقيق لمشاكل البشرة والشعر والحساسية الجلدية بأجهزة فحص الجلد.",
+      "descriptionEn": "Skin, hair and dermatosis clinical evaluation with dermoscopy.",
+      "price": 280,
+      "durationMinutes": 20,
+      "isActive": true
+    },
+    {
+      "id": "srv-7",
+      "specialtyId": "spec-neuro",
+      "nameAr": "كشف مخ وأعصاب واستشارة متخصصة",
+      "nameEn": "Neurology Consultation",
+      "descriptionAr": "تقييم المنعكسات العصبية، التوازن، الصداع النصفي والاضطرابات العصبية.",
+      "descriptionEn": "Assessment of neurological reflexes, motor pathways, headache and neuropathy.",
+      "price": 380,
+      "durationMinutes": 35,
+      "isActive": true
+    }
+  ],
+  "appointments": [],
+  "consultations": [
+    {
+      "id": "cns-2026-514",
+      "patientId": "pat-1",
+      "patientName": "المريض",
+      "patientPhone": "+966501112233",
+      "patientMrn": "MRN-2026-8801",
+      "patientAge": 34,
+      "patientGender": "FEMALE",
+      "doctorId": "doc-4",
+      "doctorName": "د. ريم الحربي",
+      "doctorSpecialty": "طب الأطفال والنمو وحديثي الولادة",
+      "title": "منتال",
+      "problemDescription": "خهعغف",
+      "symptoms": [
+        "خفقان",
+        "إجهاد خفيف"
+      ],
+      "duration": "منذ 4 أيام",
+      "status": "PENDING",
+      "attachments": [],
+      "messages": [
+        {
+          "id": "msg-1787690454611",
+          "consultationId": "cns-2026-514",
+          "senderId": "pat-1",
+          "senderName": "سارة خالد المنصور",
+          "senderRole": "PATIENT",
+          "message": "خهعغف",
+          "attachments": [],
+          "createdAt": "2026-08-25T20:40:54.611Z"
+        }
+      ],
+      "createdAt": "2026-08-25T20:40:54.611Z"
+    }
+  ],
+  "examinations": [],
+  "tests": [],
+  "reports": [],
+  "prescriptions": [],
+  "notifications": [
+    {
+      "id": "notif-1787690454614-118",
+      "userId": "stf-1",
+      "title": "استشارة طبية جديدة مقدمة",
+      "message": "استشارة جديدة مقدمة من المريض سارة خالد المنصور موجهة إلى د. ريم الحربي بخصوص \"منتال\".",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-514",
+      "createdAt": "2026-08-25T20:40:54.614Z"
+    },
+    {
+      "id": "notif-1787690454614-443",
+      "userId": "usr-cs-1",
+      "title": "استشارة طبية جديدة مقدمة",
+      "message": "استشارة جديدة مقدمة من المريض سارة خالد المنصور موجهة إلى د. ريم الحربي بخصوص \"منتال\".",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-514",
+      "createdAt": "2026-08-25T20:40:54.614Z"
+    },
+    {
+      "id": "notif-1787690454613-955",
+      "userId": "pat-1",
+      "title": "تم إرسال استشارتك الطبية بنجاح",
+      "message": "تم إرسال استشارتك إلى د. ريم الحربي. ستصلك إشعار وتنبيه فوري عند قيام الطبيب بالرد.",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-514",
+      "createdAt": "2026-08-25T20:40:54.613Z"
+    },
+    {
+      "id": "notif-1787690454613-106",
+      "userId": "usr-pat-1",
+      "title": "تم إرسال استشارتك الطبية بنجاح",
+      "message": "تم إرسال استشارتك إلى د. ريم الحربي. ستصلك إشعار وتنبيه فوري عند قيام الطبيب بالرد.",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-514",
+      "createdAt": "2026-08-25T20:40:54.613Z"
+    },
+    {
+      "id": "notif-1787690454613-834",
+      "userId": "doc-4",
+      "title": "استشارة طبية جديدة بانتظار الرد",
+      "message": "وصلتك استشارة جديدة من المريض سارة خالد المنصور بخصوص \"منتال\". يرجى مراجعة الحالة وتقديم التوجيه الطبي.",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-514",
+      "createdAt": "2026-08-25T20:40:54.613Z"
+    },
+    {
+      "id": "notif-1787690454613-179",
+      "userId": "usr-doc-4",
+      "title": "استشارة طبية جديدة بانتظار الرد",
+      "message": "وصلتك استشارة جديدة من المريض سارة خالد المنصور بخصوص \"منتال\". يرجى مراجعة الحالة وتقديم التوجيه الطبي.",
+      "type": "CONSULTATION",
+      "isRead": false,
+      "relatedId": "cns-2026-514",
+      "createdAt": "2026-08-25T20:40:54.613Z"
+    },
+    {
+      "id": "notif-1787690191275-957",
+      "userId": "usr-patient-1787690191273",
+      "title": "مرحباً بك في منصة الرعاية الطبية",
+      "message": "تم إنشاء حسابك وملفك الطبي بنجاح برقم الملف: MRN-2026-8468. يمكنك الآن الاستفادة من كافة الخدمات الطبية.",
+      "type": "SYSTEM",
+      "isRead": false,
+      "createdAt": "2026-08-25T20:36:31.275Z"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "log-1787693131349-270",
+      "userId": "usr-patient-1787690191273",
+      "userName": "روان المعمري",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787690191273",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (rawan@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T21:25:31.351Z"
+    },
+    {
+      "id": "log-1787690650281-707",
+      "userId": "usr-patient-1787690191273",
+      "userName": "روان المعمري",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787690191273",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (rawan@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:44:10.281Z"
+    },
+    {
+      "id": "log-1787690640811-540",
+      "userId": "usr-patient-1787690191273",
+      "userName": "روان المعمري",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787690191273",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (rawan@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:44:00.811Z"
+    },
+    {
+      "id": "log-1787690454612-274",
+      "userId": "usr-pat-1",
+      "userName": "سارة خالد المنصور",
+      "userRole": "PATIENT",
+      "action": "CREATE_CONSULTATION",
+      "entityType": "CONSULTATION",
+      "entityId": "cns-2026-514",
+      "details": "إرسال استشارة طبية إلى د. ريم الحربي: منتال",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:40:54.612Z"
+    },
+    {
+      "id": "log-1787690367292-810",
+      "userId": "usr-patient-1787690191273",
+      "userName": "روان المعمري",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787690191273",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (rawan@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:39:27.293Z"
+    },
+    {
+      "id": "log-1787690347093-751",
+      "userId": "usr-patient-1787690191273",
+      "userName": "روان المعمري",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787690191273",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (rawan@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:39:07.095Z"
+    },
+    {
+      "id": "log-1787690202038-125",
+      "userId": "usr-patient-1787690191273",
+      "userName": "روان المعمري",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787690191273",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (rawan@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:36:42.038Z"
+    },
+    {
+      "id": "log-1787690191274-25",
+      "userId": "usr-patient-1787690191273",
+      "userName": "روان المعمري",
+      "userRole": "PATIENT",
+      "action": "REGISTER_PATIENT",
+      "entityType": "PATIENT",
+      "entityId": "pat-1787690191273",
+      "details": "تسجيل مريض جديد عبر البريد rawan@gmail.com برقم ملف MRN-2026-8468",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:36:31.274Z"
+    },
+    {
+      "id": "log-1787689868036-786",
+      "userId": "usr-patient-1787669819214",
+      "userName": "nashwan waheeb",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787669819214",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (nashwann1991@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:31:08.036Z"
+    },
+    {
+      "id": "log-1787689723802-819",
+      "userId": "usr-patient-1787669819214",
+      "userName": "nashwan waheeb",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787669819214",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (nashwann1991@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:28:43.803Z"
+    },
+    {
+      "id": "log-1787689629196-415",
+      "userId": "usr-patient-1787669819214",
+      "userName": "nashwan waheeb",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787669819214",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (nashwann1991@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:27:09.198Z"
+    },
+    {
+      "id": "log-1787689475107-442",
+      "userId": "usr-patient-1787669819214",
+      "userName": "nashwan waheeb",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787669819214",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (nashwann1991@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:24:35.107Z"
+    },
+    {
+      "id": "log-1787689468729-492",
+      "userId": "usr-patient-1787669819214",
+      "userName": "nashwan waheeb",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787669819214",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (nashwann1991@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:24:28.730Z"
+    },
+    {
+      "id": "log-1787689396160-174",
+      "userId": "usr-patient-1787669819214",
+      "userName": "nashwan waheeb",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787669819214",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (nashwann1991@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:23:16.160Z"
+    },
+    {
+      "id": "log-1787689312262-690",
+      "userId": "usr-patient-1787669819214",
+      "userName": "nashwan waheeb",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787669819214",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (nashwann1991@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:21:52.263Z"
+    },
+    {
+      "id": "log-1787689300725-25",
+      "userId": "usr-patient-1787669819214",
+      "userName": "nashwan waheeb",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787669819214",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (nashwann1991@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:21:40.726Z"
+    },
+    {
+      "id": "log-1787689191136-730",
+      "userId": "usr-patient-1787669819214",
+      "userName": "nashwan waheeb",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787669819214",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (nashwann1991@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:19:51.136Z"
+    },
+    {
+      "id": "log-1787688801278-197",
+      "userId": "usr-patient-1787669819214",
+      "userName": "nashwan waheeb",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787669819214",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (nashwann1991@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:13:21.278Z"
+    },
+    {
+      "id": "log-1787688786591-515",
+      "userId": "usr-patient-1787669819214",
+      "userName": "nashwan waheeb",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787669819214",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (nashwann1991@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:13:06.591Z"
+    },
+    {
+      "id": "log-1787688778169-408",
+      "userId": "usr-patient-1787669819214",
+      "userName": "nashwan waheeb",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787669819214",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (nashwann1991@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:12:58.170Z"
+    },
+    {
+      "id": "log-1787688389984-238",
+      "userId": "usr-patient-1787669819214",
+      "userName": "nashwan waheeb",
+      "userRole": "PATIENT",
+      "action": "USER_LOGIN",
+      "entityType": "USER",
+      "entityId": "usr-patient-1787669819214",
+      "details": "تسجيل دخول معتمد ومطابق لقاعدة البيانات عبر (nashwann1991@gmail.com)",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-08-25T20:06:29.989Z"
+    }
+  ],
+  "userPasswords": {
+    "usr-admin-1": "admin#2026!Sec",
+    "usr-doc-1": "doc#1234!",
+    "usr-doc-2": "doc#2345!",
+    "usr-doc-3": "doc#3456!",
+    "usr-doc-4": "doc#4567!",
+    "usr-cs-1": "staff#1234!",
+    "usr-pat-1": "patient#1234!",
+    "usr-admin-2": "admin#2026!Sec",
+    "usr-patient-1787669819214": "*1991*2001*",
+    "usr-patient-1787690191273": "776174855"
+  }
+}

@@ -1,0 +1,1 @@
+{"functions":[{"bundler":"esbuild","buildData":{"runtimeAPIVersion":1},"mainFile":"D:\\doctor\\netlify\\functions\\api.ts","name":"api","priority":10,"runtimeVersion":"nodejs20.x","path":"D:\\doctor\\.netlify\\functions\\api.zip","runtime":"js"}],"system":{"arch":"x64","platform":"win32"},"timestamp":1788299638175,"version":1}

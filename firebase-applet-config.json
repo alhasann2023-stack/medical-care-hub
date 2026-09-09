@@ -1,0 +1,18 @@
+{
+  "projectId": "sehatc-fe-yadk",
+  "appId": "1:796497562612:web:09399122e79a27362387a1",
+  "apiKey": "AIzaSyC1aIVTe60stAFqmwEe-WCF2uWKG9AED0o",
+  "authDomain": "sehatc-fe-yadk.firebaseapp.com",
+<<<<<<< HEAD
+  "firestoreDatabaseId": "",
+  "storageBucket": "sehatc-fe-yadk.firebasestorage.app",
+  "messagingSenderId": "796497562612",
+  "measurementId": "G-B6G014YGN9",
+  "oAuthClientId": "",
+  "recaptchaSiteKey": ""
+=======
+  "storageBucket": "sehatc-fe-yadk.firebasestorage.app",
+  "messagingSenderId": "796497562612",
+  "measurementId": "G-B6G014YGN9"
+>>>>>>> 7a37a2c (update)
+}

@@ -1,0 +1,21 @@
+{
+	"siteId": "ec7dcc8a-440d-44de-a067-0ed44b78c9b0",
+	"geolocation": {
+		"data": {
+			"city": "Sanaa",
+			"country": {
+				"code": "YE",
+				"name": "Yemen"
+			},
+			"subdivision": {
+				"code": "SA",
+				"name": "Amanat Alasimah"
+			},
+			"timezone": "Asia/Aden",
+			"latitude": 15.3522,
+			"longitude": 44.2095
+		},
+		"timestamp": 1788302580188
+	},
+	"dbConnectionString": "postgres://localhost:60689/postgres"
+}
