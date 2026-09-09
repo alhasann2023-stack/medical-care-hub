@@ -1,6 +1,4 @@
-// The project currently lacks React's JSX runtime type declarations.
-// Suppress that external typing error for this component until dependencies are fixed.
-// @ts-nocheck
+import React from 'react';
 import { 
   Building2, 
   Stethoscope, 
@@ -30,17 +28,14 @@ interface LandingHeroProps {
   onOpenAuth: (mode?: 'login' | 'register') => void;
 }
 
-export const LandingHero = ({
+export const LandingHero: React.FC<LandingHeroProps> = ({
   onOpenBooking,
   onOpenConsultation,
   onSelectRole,
   onOpenAuth
-}: LandingHeroProps) => {
+}) => {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const badgeText = t('landing.hero.badge', 'المنصة الطبية الذكية والمتكاملة لإدارة الرعاية الصحية');
-  const primaryActionText = user ? 'إدارة حجوزاتي' : 'ابدأ الآن';
-  const secondaryActionText = user ? 'استشارة طبية' : 'تسجيل الدخول';
 
   return (
     <div className="space-y-6 py-2">

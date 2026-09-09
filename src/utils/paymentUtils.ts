@@ -1,39 +1,11 @@
-import {
-  CurrencyCode,
-  CurrencyConfig,
-  PaymentSettings,
-  MultiCurrencyPrice,
-  PaymentProviderType,
-  ManualPaymentAccounts
-} from '../types/medical';
-
-/**
- * ============================================================
- * الحسابات الافتراضية للدفع اليدوي
- * ============================================================
- *
- * تستخدم هذه القيم عندما لا تكون هناك إعدادات دفع يدوية
- * محفوظة في النظام أو عندما يتعذر تحميل إعدادات الدفع.
- *
- * يجب أن تتطابق أسماء الحقول مع ManualPaymentAccounts
- * ومع ManualPaymentInstructionModal.tsx.
- */
-export const DEFAULT_MANUAL_ACCOUNTS: ManualPaymentAccounts = {
-  kuraimiAccount: '3055489211',
-  jawwaliAccount: '778901234',
-  oneCashAccount: '733456789',
-  jeebAccount: '711234567',
-  floosakAccount: '770123456',
-  beneficiaryName: '',
-  adminWhatsapp: '967770000000'
-};
+import { CurrencyCode, CurrencyConfig, PaymentSettings, MultiCurrencyPrice, PaymentProviderType } from '../types/medical';
 
 /**
  * Standard anchor rates:
  * 1 USD = 3.75 SAR
  * 1 SAR = 420 YER (Standard balanced market rate)
  * 1 USD = 3.75 * 420 = 1,575 YER
- *
+ * 
  * This creates a mathematically closed, 100% transitive and equivalent triangular matrix:
  * Rate(A->B) * Rate(B->C) = Rate(A->C)
  * Rate(B->A) = 1 / Rate(A->B)
@@ -68,24 +40,19 @@ export function getLiveExchangeRates(): LiveExchangeRates {
   // Update timestamp if more than 30 seconds have passed to reflect real-time live sync
   const now = Date.now();
   const lastTime = new Date(currentExchangeRates.lastUpdatedAt).getTime();
-
   if (now - lastTime > 30000) {
     currentExchangeRates = {
       ...currentExchangeRates,
       lastUpdatedAt: new Date().toISOString()
     };
   }
-
   return currentExchangeRates;
 }
 
 /**
- * Update the base SAR to YER exchange rate dynamically if needed,
- * keeping all other pairs strictly equal.
+ * Update the base SAR to YER exchange rate dynamically if needed, keeping all other pairs strictly equal
  */
-export function updateLiveExchangeRates(
-  newSarToYerRate: number = 420
-): LiveExchangeRates {
+export function updateLiveExchangeRates(newSarToYerRate: number = 420): LiveExchangeRates {
   const sarToYer = Math.max(1, newSarToYerRate);
   const usdToSar = 3.75;
   const usdToYer = usdToSar * sarToYer;
@@ -104,10 +71,7 @@ export function updateLiveExchangeRates(
   return currentExchangeRates;
 }
 
-export const SUPPORTED_CURRENCIES: Record<
-  CurrencyCode,
-  CurrencyConfig
-> = {
+export const SUPPORTED_CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
   YER: {
     code: 'YER',
     nameAr: 'الريال اليمني',
@@ -116,22 +80,12 @@ export const SUPPORTED_CURRENCIES: Record<
     symbolEn: 'YER',
     isDefault: true,
     isActive: true,
-    exchangeRateToSAR: 1 / 420,
-    exchangeRateToUSD: 1 / 1575,
+    exchangeRateToSAR: 1 / 420, // 1 YER = 0.00238095 SAR (1 SAR = 420 YER)
+    exchangeRateToUSD: 1 / 1575, // 1 YER = 0.00063492 USD (1 USD = 1575 YER)
     decimals: 0,
     flagIcon: '🇾🇪',
-    supportedProviders: [
-      'ONE_CASH',
-      'JEEB',
-      'FLOOSAK',
-      'JAWALI',
-      'KURAIMI',
-      'VISA_MASTERCARD',
-      'CASH',
-      'WAIVED'
-    ]
+    supportedProviders: ['ONE_CASH', 'JEEB', 'FLOOSAK', 'JAWALI', 'KURAIMI', 'VISA_MASTERCARD', 'CASH', 'WAIVED']
   },
-
   USD: {
     code: 'USD',
     nameAr: 'الدولار الأمريكي',
@@ -140,18 +94,12 @@ export const SUPPORTED_CURRENCIES: Record<
     symbolEn: 'USD',
     isDefault: false,
     isActive: true,
-    exchangeRateToSAR: 3.75,
+    exchangeRateToSAR: 3.75, // 1 USD = 3.75 SAR
     exchangeRateToUSD: 1.0,
     decimals: 2,
     flagIcon: '🇺🇸',
-    supportedProviders: [
-      'VISA_MASTERCARD',
-      'KURAIMI',
-      'CASH',
-      'WAIVED'
-    ]
+    supportedProviders: ['VISA_MASTERCARD', 'KURAIMI', 'CASH', 'WAIVED']
   },
-
   SAR: {
     code: 'SAR',
     nameAr: 'الريال السعودي',
@@ -161,41 +109,38 @@ export const SUPPORTED_CURRENCIES: Record<
     isDefault: false,
     isActive: true,
     exchangeRateToSAR: 1.0,
-    exchangeRateToUSD: 1 / 3.75,
+    exchangeRateToUSD: 1 / 3.75, // 1 SAR = 0.2666667 USD
     decimals: 2,
     flagIcon: '🇸🇦',
-    supportedProviders: [
-      'MADA',
-      'VISA_MASTERCARD',
-      'KURAIMI',
-      'APPLE_PAY',
-      'STC_PAY',
-      'CASH',
-      'WAIVED'
-    ]
+    supportedProviders: ['MADA', 'VISA_MASTERCARD', 'KURAIMI', 'APPLE_PAY', 'STC_PAY', 'CASH', 'WAIVED']
   }
+};
+
+export const DEFAULT_MANUAL_ACCOUNTS = {
+  kuraimiAccount: '3055489211',
+  jawwaliAccount: '778901234',
+  oneCashAccount: '733456789',
+  jeebAccount: '711234567',
+  floosakAccount: '770123456',
+  beneficiaryName: 'مستشفى العناية الطبية التخصصي',
+  adminWhatsapp: '967770000000',
+  instructionsText: 'انسخ رقم الحساب لإرسال قيمة الاستشارة أو الحجز لكي يتم تأكيده، ثم أرسل إشعار وسند التحويل عبر واتساب الإدارة.'
 };
 
 export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
   defaultCurrency: 'YER',
-
-  supportedCurrencies: Object.values(
-    SUPPORTED_CURRENCIES
-  ),
-
+  supportedCurrencies: Object.values(SUPPORTED_CURRENCIES),
   kuraimi: {
     merchantId: 'KRM-HOSP-770921',
     terminalId: 'POS-SANAA-01',
     serviceKey: 'krm_api_live_medcare_pub_9921',
     serviceSecret: 'krm_sec_prod_live_9921049281',
     environment: 'LIVE',
-    webhookUrl:
-      'https://medicalcarehub.ye/api/payments/webhook/kuraimi',
+    webhookUrl: 'https://medicalcarehub.ye/api/payments/webhook/kuraimi',
     enableHasebPay: true,
     enableExpressPay: true,
     allowedCurrencies: ['YER', 'USD', 'SAR']
   },
-
   cardGateway: {
     gatewayProvider: 'MPGS',
     merchantId: 'MEDHUB_ACQUIRER_9901',
@@ -205,7 +150,7 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
     require3DSecure: true,
     allowedCurrencies: ['SAR', 'USD', 'YER']
   },
-
+  manualAccounts: DEFAULT_MANUAL_ACCOUNTS,
   enableCashOnArrival: true,
   enableWaiverOption: true,
   vatPercentage: 15,
@@ -223,14 +168,8 @@ export function convertCurrency(
   from: CurrencyCode | string = 'YER',
   to: CurrencyCode | string = 'YER'
 ): number {
-  const fromCode = (
-    from || 'YER'
-  ).toUpperCase() as CurrencyCode;
-
-  const toCode = (
-    to || 'YER'
-  ).toUpperCase() as CurrencyCode;
-
+  const fromCode = (from || 'YER').toUpperCase() as CurrencyCode;
+  const toCode = (to || 'YER').toUpperCase() as CurrencyCode;
   const num = Number(amount) || 0;
 
   if (fromCode === toCode || num === 0) {
@@ -241,7 +180,6 @@ export function convertCurrency(
 
   // 1. Convert source amount into base SAR (Pivot)
   let amountInSAR = num;
-
   if (fromCode === 'USD') {
     amountInSAR = num * rates.USD_TO_SAR;
   } else if (fromCode === 'YER') {
@@ -252,78 +190,39 @@ export function convertCurrency(
   if (toCode === 'SAR') {
     return Math.round(amountInSAR * 100) / 100;
   }
-
   if (toCode === 'USD') {
-    return Math.round(
-      amountInSAR * rates.SAR_TO_USD * 100
-    ) / 100;
+    return Math.round((amountInSAR * rates.SAR_TO_USD) * 100) / 100;
   }
-
   if (toCode === 'YER') {
-    return Math.round(
-      amountInSAR * rates.SAR_TO_YER
-    );
+    return Math.round(amountInSAR * rates.SAR_TO_YER);
   }
 
   return num;
 }
 
 /**
- * Format currency amount with appropriate symbols
+ * Format currency amount with appropriate symbols and decimal places
  */
-export function formatPaymentAmount(
-  amount: number,
-  currency: CurrencyCode | string = 'YER'
-): string {
-  const code = (
-    currency || 'YER'
-  ).toUpperCase() as CurrencyCode;
-
+export function formatPaymentAmount(amount: number, currency: CurrencyCode | string = 'YER'): string {
+  const code = (currency || 'YER').toUpperCase() as CurrencyCode;
   const num = Number(amount) || 0;
-
+  
   if (code === 'YER') {
-    return `${Math.round(num).toLocaleString(
-      'ar-YE'
-    )} ر.ي`;
+    return `${Math.round(num).toLocaleString('ar-YE')} ر.ي`;
   }
-
   if (code === 'USD') {
-    return `$${num.toLocaleString(
-      'en-US',
-      {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }
-    )}`;
+    return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
-
-  return `${num.toLocaleString(
-    'ar-SA',
-    {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }
-  )} ر.س`;
+  return `${num.toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ر.س`;
 }
 
 /**
  * Get currency symbol for quick badges
  */
-export function getCurrencySymbol(
-  currency: CurrencyCode | string = 'YER'
-): string {
-  const code = (
-    currency || 'YER'
-  ).toUpperCase() as CurrencyCode;
-
-  if (code === 'YER') {
-    return 'ر.ي';
-  }
-
-  if (code === 'USD') {
-    return '$';
-  }
-
+export function getCurrencySymbol(currency: CurrencyCode | string = 'YER'): string {
+  const code = (currency || 'YER').toUpperCase() as CurrencyCode;
+  if (code === 'YER') return 'ر.ي';
+  if (code === 'USD') return '$';
   return 'ر.س';
 }
 
@@ -332,70 +231,45 @@ export function getCurrencySymbol(
  * Guarantees equal, balanced conversion across all currencies at payment time.
  */
 export function resolveServicePrice(
-  item: {
-    consultationFee?: number;
-    price?: number;
-    fee?: number;
-    multiCurrencyPricing?: MultiCurrencyPrice;
-  },
+  item: { consultationFee?: number; price?: number; fee?: number; multiCurrencyPricing?: MultiCurrencyPrice },
   targetCurrency: CurrencyCode = 'YER',
   baseCurrency: CurrencyCode = 'YER'
 ): number {
-  const baseFee =
-    item?.consultationFee ??
-    item?.price ??
-    item?.fee ??
-    250;
-
+  const baseFee = item?.consultationFee ?? item?.price ?? item?.fee ?? 250;
+  
   // Guarantee exact equal exchange rate across currencies
-  return convertCurrency(
-    baseFee,
-    baseCurrency,
-    targetCurrency
-  );
+  return convertCurrency(baseFee, baseCurrency, targetCurrency);
 }
 
 /**
  * Safe provider name translation in Arabic
  */
-export function getProviderDisplayName(
-  provider?: PaymentProviderType | string
-): string {
+export function getProviderDisplayName(provider?: PaymentProviderType | string): string {
   switch (provider) {
     case 'ONE_CASH':
       return 'محفظة ون كاش (OneCash)';
-
     case 'JEEB':
       return 'محفظة جيب (Jeeb - بنك التضامن)';
-
     case 'FLOOSAK':
       return 'محفظة فلوسك (Floosak - بنك اليمن والكويت)';
-
     case 'JAWALI':
       return 'محفظة جوالي (Jawali - كاك بنك)';
-
     case 'KURAIMI':
       return 'بنك الكريمي للتمويل الأصغر الإسلامي (حاسب / إكسبرس)';
-
     case 'VISA_MASTERCARD':
       return 'فيزا / ماستركارد (Visa / Mastercard)';
-
     case 'MADA':
       return 'شبكة مدى للمدفوعات (Mada)';
-
     case 'APPLE_PAY':
       return 'آبل باي (Apple Pay)';
-
     case 'STC_PAY':
       return 'إس تي سي باي (STC Pay)';
-
     case 'CASH':
       return 'السداد المباشر في الاستقبال';
-
     case 'WAIVED':
       return 'إعفاء مالي معتمد';
-
     default:
       return 'بوابة الدفع الإلكتروني المعتمدة';
   }
 }
+

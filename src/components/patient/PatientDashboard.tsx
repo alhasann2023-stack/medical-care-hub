@@ -744,7 +744,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                   <span>العيادة: <strong>{upcomingAppointment.clinicRoom || 'سيتم تحديد الغرفة عند التأكيد'}</strong></span>
                   {upcomingAppointment.coordinatorNotes && (
                     <span className="text-slate-500 italic truncate max-w-sm">
-                      ملاحظة التنسيق: 
+                      ملاحظة التنسيق: {upcomingAppointment.coordinatorNotes}
                     </span>
                   )}
                 </div>

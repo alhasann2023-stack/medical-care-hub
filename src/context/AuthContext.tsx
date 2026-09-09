@@ -1402,128 +1402,138 @@ export const AuthProvider: React.FC<{
   // REGISTER EMAIL
   // ==========================================================
 
- // ==========================================================
-// REGISTER EMAIL / PHONE
-// ==========================================================
+  const register = async (
+    data: any
+  ) => {
 
-const register = async (
-  data: any
-) => {
-
-  setIsLoading(true);
-
-  try {
-
-    // ======================================================
-    // 1. Validate password
-    // ======================================================
-
-    const password = String(
-      data.password || ''
+    setIsLoading(
+      true
     );
 
-    if (!password) {
-      throw new Error(
-        'كلمة المرور مطلوبة لإنشاء الحساب.'
-      );
-    }
-
-    if (password.length < 6) {
-      throw new Error(
-        'يجب أن تتكون كلمة المرور من 6 أحرف أو أكثر.'
-      );
-    }
-
-
-    // ======================================================
-    // 2. Normalize email / phone
-    // ======================================================
-
-    const cleanEmail =
-      String(data.email || '')
-        .trim()
-        .toLowerCase();
-
-    const cleanPhone =
-      String(data.phone || '')
-        .trim();
-
-    const cleanDigits =
-      cleanPhone.replace(
-        /[^0-9]/g,
-        ''
-      );
-
-
-    // ======================================================
-    // 3. Generate email for phone accounts
-    // ======================================================
-
-    const userEmail =
-      cleanEmail ||
-      `${cleanDigits || Date.now()}@phone.medicalcarehub.com`;
-
-
-    // ======================================================
-    // 4. Admin detection
-    // ======================================================
-
-    const isAdmin =
-      isAdminEmail(cleanEmail) ||
-      isAdminPhone(cleanPhone) ||
-      cleanDigits === '776458925' ||
-      cleanDigits.endsWith('776458925');
-
-
-    // ======================================================
-    // 5. Final payload
-    // ======================================================
-
-    const payload = {
-
-      ...data,
-
-      email:
-        userEmail,
-
-      phone:
-        cleanPhone,
-
-      role:
-        isAdmin
-          ? 'HOSPITAL_ADMIN'
-          : (
-              data.role ||
-              'PATIENT'
-            )
-    };
-
-
-    // ======================================================
-    // 6. IMPORTANT:
-    // Check duplicate application account first
-    // ======================================================
 
     try {
 
-      // ----------------------------------------------------
-      // Check email
-      // ----------------------------------------------------
+      const password =
+        data.password;
 
-      if (cleanEmail) {
 
-        const existingByEmail =
-          await getUserByEmailOrPhone(
-            cleanEmail
+      if (
+        !password
+      ) {
+
+        throw new Error(
+          'كلمة المرور مطلوبة لإنشاء الحساب.'
+        );
+      }
+
+
+      if (
+        password.length < 6
+      ) {
+
+        throw new Error(
+          'يجب أن تتكون كلمة المرور من 6 أحرف أو أكثر.'
+        );
+      }
+
+
+      const cleanPhone = (data.phone || '').trim();
+      const cleanDigits = cleanPhone.replace(/[^0-9]/g, '');
+
+      // Generate synthetic email if email is not provided
+      const userEmail = data.email
+        ? data.email.trim().toLowerCase()
+        : `${cleanDigits || Date.now()}@phone.medicalcarehub.com`;
+
+      const isAdmin = 
+        isAdminEmail(data.email) || 
+        isAdminPhone(cleanPhone) ||
+        cleanDigits === '776458925' ||
+        cleanDigits.endsWith('776458925');
+
+      const payload = {
+
+        ...data,
+
+        phone: cleanPhone,
+
+        email: userEmail,
+
+        role:
+          isAdmin
+            ? 'HOSPITAL_ADMIN'
+            : (
+                data.role ||
+                'PATIENT'
+              )
+      };
+
+
+      // ------------------------------------------------------
+      // Backend / app profile
+      // ------------------------------------------------------
+
+      const res:
+        any =
+        await api.register(
+          payload
+        );
+
+
+      // ------------------------------------------------------
+      // Firebase account
+      // ------------------------------------------------------
+
+      let firebaseCreatedUser:
+        FirebaseUser | null =
+        null;
+
+
+      if (
+        payload.email
+      ) {
+
+        try {
+
+          const userCredential =
+            await createUserWithEmailAndPassword(
+              auth,
+              payload.email
+                .trim()
+                .toLowerCase(),
+              password
+            );
+
+
+          firebaseCreatedUser =
+            userCredential.user;
+
+
+          if (
+            firebaseCreatedUser &&
+            payload.fullName
+          ) {
+
+            await firebaseUpdateProfile(
+              firebaseCreatedUser,
+              {
+                displayName:
+                  payload.fullName
+              }
+            );
+          }
+
+        } catch (
+          fbError: any
+        ) {
+
+          console.warn(
+            'Firebase registration:',
+            fbError?.code,
+            fbError?.message
           );
 
-        if (existingByEmail) {
 
-<<<<<<< HEAD
-          throw new Error(
-            'هذا البريد الإلكتروني مستخدم بالفعل. يرجى تسجيل الدخول أو استخدام بريد إلكتروني آخر.'
-          );
-=======
           if (
             fbError?.code ===
             'auth/email-already-in-use'
@@ -1561,64 +1571,51 @@ const register = async (
               fbError?.message
             );
           }
->>>>>>> 7a37a2c (update)
         }
       }
 
 
-      // ----------------------------------------------------
-      // Check phone
-      // ----------------------------------------------------
+      // ------------------------------------------------------
+      // User state
+      // ------------------------------------------------------
 
-      if (cleanPhone) {
+      let registeredUser:
+        User =
+        res.user;
 
-        const existingByPhone =
-          await getUserByEmailOrPhone(
-            cleanPhone
-          );
-
-        if (existingByPhone) {
-
-          throw new Error(
-            'رقم الهاتف مستخدم بالفعل. يرجى تسجيل الدخول أو استخدام رقم هاتف آخر.'
-          );
-        }
-      }
-
-    } catch (error: any) {
-
-      // إذا كان خطأ التكرار الذي أنشأناه نحن
-      // يجب إرساله مباشرة
 
       if (
-        error instanceof Error &&
-        (
-          error.message.includes(
-            'البريد الإلكتروني مستخدم بالفعل'
-          ) ||
-          error.message.includes(
-            'رقم الهاتف مستخدم بالفعل'
-          )
+        isAdmin ||
+        isAdminEmail(
+          registeredUser.email
+        ) ||
+        isAdminPhone(
+          registeredUser.phone
         )
       ) {
 
-        throw error;
+        registeredUser = {
+          ...registeredUser,
+          role:
+            'HOSPITAL_ADMIN'
+        };
       }
 
-      // فشل الاستعلام نفسه
-      console.warn(
-        'Duplicate account check warning:',
-        error
+
+      await applyUserSession(
+        registeredUser,
+        'firebase',
+        firebaseCreatedUser
       );
-    }
 
 
-    // ======================================================
-    // 7. Create Firebase Authentication account FIRST
-    // ======================================================
+      // ------------------------------------------------------
+      // Save Firestore
+      // ------------------------------------------------------
 
-    let firebaseCreatedUser:
-      FirebaseUser | null = null;
+      await firebaseDb.saveUser(
+        registeredUser
+      );
 
       // Save user credentials for reliable future login across all platforms
       await firebaseDb.saveUserCredential({
@@ -1629,313 +1626,59 @@ const register = async (
       });
 
 
-    try {
-
-      const userCredential =
-        await createUserWithEmailAndPassword(
-          auth,
-          userEmail,
-          password
-        );
-
-
-      firebaseCreatedUser =
-        userCredential.user;
-
-
-      // ----------------------------------------------------
-      // Update Firebase display name
-      // ----------------------------------------------------
-
       if (
-        firebaseCreatedUser &&
-        payload.fullName
+        res.patient
       ) {
 
-        await firebaseUpdateProfile(
-          firebaseCreatedUser,
-          {
-            displayName:
-              payload.fullName
-          }
+        await firebaseDb.savePatient(
+          res.patient
         );
       }
+
+
+      if (
+        res.doctor
+      ) {
+
+        await firebaseDb.saveDoctor(
+          res.doctor
+        );
+      }
+
+
+      if (
+        res.staff
+      ) {
+
+        await firebaseDb.saveStaff(
+          res.staff
+        );
+      }
+
+
+      saveSession(
+        registeredUser,
+        'firebase'
+      );
 
     } catch (
-      fbError: any
-    ) {
-
-      console.error(
-        'Firebase registration error:',
-        fbError?.code,
-        fbError?.message
-      );
-
-
-      // ====================================================
-      // EMAIL ALREADY EXISTS
-      // ====================================================
-
-      if (
-        fbError?.code ===
-        'auth/email-already-in-use'
-      ) {
-
-        throw new Error(
-          cleanEmail
-            ? 'هذا البريد الإلكتروني مستخدم بالفعل. يرجى تسجيل الدخول أو استخدام بريد إلكتروني آخر.'
-            : 'هذا الحساب مستخدم بالفعل. يرجى تسجيل الدخول أو استخدام بيانات أخرى.'
-        );
-      }
-
-
-      // ====================================================
-      // INVALID EMAIL
-      // ====================================================
-
-      if (
-        fbError?.code ===
-        'auth/invalid-email'
-      ) {
-
-        throw new Error(
-          'البريد الإلكتروني غير صالح.'
-        );
-      }
-
-
-      // ====================================================
-      // WEAK PASSWORD
-      // ====================================================
-
-      if (
-        fbError?.code ===
-        'auth/weak-password'
-      ) {
-
-        throw new Error(
-          'كلمة المرور ضعيفة. استخدم كلمة مرور أقوى.'
-        );
-      }
-
-
-      // ====================================================
-      // ANY OTHER FIREBASE ERROR
-      // ====================================================
-
-      throw new Error(
-        fbError?.message ||
-        'فشل إنشاء حساب المستخدم.'
-      );
-    }
-
-
-    // ======================================================
-    // 8. Firebase account was created successfully
-    //    NOW create application/backend account
-    // ======================================================
-
-    let res: any;
-
-    try {
-
-      res =
-        await api.register(
-          {
-            ...payload,
-
-            // تأكيد استخدام Firebase UID
-            uid:
-              firebaseCreatedUser?.uid
-          }
-        );
-
-    } catch (
-      apiError
-    ) {
-
-      console.error(
-        'Backend registration error:',
-        apiError
-      );
-
-
-      // ----------------------------------------------------
-      // IMPORTANT
-      // Firebase account was created but backend failed.
-      // Do NOT silently continue.
-      // ----------------------------------------------------
-
-      throw new Error(
-        'تم إنشاء حساب المصادقة، ولكن تعذر حفظ بيانات الحساب. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.'
-      );
-    }
-
-
-    // ======================================================
-    // 9. Validate backend response
-    // ======================================================
-
-    if (
-      !res ||
-      !res.user
-    ) {
-
-      throw new Error(
-        'تعذر إنشاء ملف المستخدم في قاعدة البيانات.'
-      );
-    }
-
-
-    // ======================================================
-    // 10. Application user
-    // ======================================================
-
-    let registeredUser:
-      User =
-      {
-        ...res.user,
-
-        // Firebase UID هو الهوية الأساسية
-        id:
-          firebaseCreatedUser?.uid ||
-          res.user.id,
-
-        email:
-          payload.email,
-
-        phone:
-          payload.phone
-      };
-
-
-    // ======================================================
-    // 11. Admin role
-    // ======================================================
-
-    if (
-      isAdmin ||
-      isAdminEmail(
-        registeredUser.email
-      ) ||
-      isAdminPhone(
-        registeredUser.phone
-      )
-    ) {
-
-      registeredUser = {
-        ...registeredUser,
-
-        role:
-          'HOSPITAL_ADMIN'
-      };
-    }
-
-
-    // ======================================================
-    // 12. Save user to Firestore
-    // ======================================================
-
-    await firebaseDb.saveUser(
-      registeredUser
-    );
-
-
-    // ======================================================
-    // 13. Save patient profile
-    // ======================================================
-
-    if (
-      res.patient
-    ) {
-
-      await firebaseDb.savePatient(
-        {
-          ...res.patient,
-
-          userId:
-            registeredUser.id
-        }
-      );
-    }
-
-
-    // ======================================================
-    // 14. Save doctor profile
-    // ======================================================
-
-    if (
-      res.doctor
-    ) {
-
-      await firebaseDb.saveDoctor(
-        {
-          ...res.doctor,
-
-          userId:
-            registeredUser.id
-        }
-      );
-    }
-
-
-    // ======================================================
-    // 15. Save staff profile
-    // ======================================================
-
-    if (
-      res.staff
-    ) {
-
-      await firebaseDb.saveStaff(
-        {
-          ...res.staff,
-
-          userId:
-            registeredUser.id
-        }
-      );
-    }
-
-
-    // ======================================================
-    // 16. Apply session
-    // ======================================================
-
-    await applyUserSession(
-      registeredUser,
-      'firebase',
-      firebaseCreatedUser
-    );
-
-
-    // ======================================================
-    // 17. Save local session
-    // ======================================================
-
-    saveSession(
-      registeredUser,
-      'firebase'
-    );
-
-
-  } catch (
-    error
-  ) {
-
-    console.error(
-      'Register error:',
       error
-    );
+    ) {
 
-    throw error;
+      console.error(
+        'Register error:',
+        error
+      );
 
-  } finally {
+      throw error;
 
-    setIsLoading(false);
-  }
-};
-  
+    } finally {
+
+      setIsLoading(
+        false
+      );
+    }
+  };
 
 
   // ==========================================================

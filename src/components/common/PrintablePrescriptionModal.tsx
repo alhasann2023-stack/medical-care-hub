@@ -23,7 +23,7 @@ export const PrintablePrescriptionModal: React.FC<PrintablePrescriptionModalProp
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="p-4 bg-slate-800 text-white flex items-center  no-print">
+        <div className="p-4 bg-slate-800 text-white flex items-center justify-between no-print">
           <div className="flex items-center gap-2">
             <Pill className="w-5 h-5 text-emerald-400" />
             <span className="font-bold text-sm">الوصفة الطبية الإلكترونية ({prescription.rxNumber})</span>

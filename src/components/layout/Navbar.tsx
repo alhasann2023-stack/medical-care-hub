@@ -1,5 +1,3 @@
-declare module 'react/jsx-runtime';
-
 import React, { useState } from 'react';
 import { 
   Building2, 
@@ -36,7 +34,7 @@ interface NavbarProps {
   unreadNotificationsCount: number;
 }
 
-export const Navbar = ({
+export const Navbar: React.FC<NavbarProps> = ({
   currentView,
   setCurrentView,
   onOpenBooking,
@@ -44,7 +42,7 @@ export const Navbar = ({
   onOpenNotifications,
   onOpenAuth,
   unreadNotificationsCount
-}: NavbarProps) => {
+}) => {
   const { user, role, logout } = useAuth();
   const { language, toggleLanguage, t } = useLanguage();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -106,7 +104,17 @@ export const Navbar = ({
       {/* Top Announcement & Emergency Triage Bar */}
       <div className="bg-slate-900 text-slate-200 text-xs py-1.5 px-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-600 text-white animate-pulse">
+              طوارئ
+            </span>
+            <span className="hidden sm:inline text-slate-300">
+              للحالات الحرجة والإسعاف الفوري اتصل بـ <strong className="text-white">997</strong>
+            </span>
+            <span className="sm:hidden text-slate-300">
+              طوارئ الإسعاف: <strong className="text-white">997</strong>
+            </span>
+          </div>
 
           <div className="flex items-center gap-4 text-xs text-slate-300">
             <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px]">

@@ -320,7 +320,7 @@ export const MedicalTimeline: React.FC<MedicalTimelineProps> = ({
                       onClick={() => handleOpenItem(item)}
                       className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer self-start sm:self-auto"
                     >
-                      <span>عرض التفاصيل ااااالكاملة</span>
+                      <span>عرض التفاصيل الكاملة</span>
                       <Eye className="w-3.5 h-3.5" />
                     </button>
                   </div>

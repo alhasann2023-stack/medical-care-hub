@@ -713,11 +713,6 @@ function getGeminiAI(): GoogleGenAI | null {
 
 export function createApiApp() {
   const app = express();
-<<<<<<< HEAD
-  const PORT = 3024
-  ;
-=======
->>>>>>> 7a37a2c (update)
 
   // Security Hardening: Disable Express signature header
   app.disable('x-powered-by');

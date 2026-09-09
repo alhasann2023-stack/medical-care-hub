@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import React, { useState } from 'react';
-=======
 import React, { useEffect, useState } from 'react';
->>>>>>> 7a37a2c (update)
 import { 
   X, 
   AlertCircle, 
@@ -62,12 +58,6 @@ export const PatientMedicalProfileModal: React.FC<PatientMedicalProfileModalProp
 
   const [emergencyName, setEmergencyName] = useState<string>(patient?.emergencyContact?.name || '');
   const [emergencyRelation, setEmergencyRelation] = useState<string>(patient?.emergencyContact?.relation || 'قريب');
-<<<<<<< HEAD
-  const [emergencyPhone, setEmergencyPhone] = useState<string>(patient?.emergencyContact?.phone || '+966509998877');
-
-  const [bloodType, setBloodType] = useState<string>(patient?.bloodType || 'O+');
-
-=======
   const [emergencyPhone, setEmergencyPhone] = useState<string>(patient?.emergencyContact?.phone || '');
 
   const [bloodType, setBloodType] = useState<string>(patient?.bloodType || 'O+');
@@ -87,7 +77,6 @@ export const PatientMedicalProfileModal: React.FC<PatientMedicalProfileModalProp
     setIsSavedSuccessfully(false);
   }, [patient, isOpen]);
 
->>>>>>> 7a37a2c (update)
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isSavedSuccessfully, setIsSavedSuccessfully] = useState<boolean>(false);
@@ -139,11 +128,7 @@ export const PatientMedicalProfileModal: React.FC<PatientMedicalProfileModalProp
         emergencyContact: {
           name: emergencyName.trim() || 'جهة اتصال الطوارئ',
           relation: emergencyRelation.trim() || 'قريب',
-<<<<<<< HEAD
-          phone: emergencyPhone.trim() || '+966509998877'
-=======
           phone: emergencyPhone.trim()
->>>>>>> 7a37a2c (update)
         }
       };
 

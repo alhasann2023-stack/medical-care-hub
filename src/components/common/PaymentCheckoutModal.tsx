@@ -1,25 +1,3 @@
-declare module 'react' {
-  const React: any;
-  export const useState: any;
-  export const useEffect: any;
-  export type FC<P = {}> = (props: P) => any;
-  export default React;
-}
-
-declare module 'react/jsx-runtime' {
-  export const Fragment: any;
-  export const jsx: any;
-  export const jsxs: any;
-}
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      [elemName: string]: any;
-    }
-  }
-}
-
 import React, { useState, useEffect } from 'react';
 import { 
   CreditCard, 
@@ -55,9 +33,6 @@ import {
   SUPPORTED_CURRENCIES,
   LiveExchangeRates 
 } from '../../utils/paymentUtils';
-
-type InputEvent = { target: HTMLInputElement; currentTarget: HTMLInputElement };
-type FormSubmitEvent = { preventDefault: () => void; target: HTMLFormElement; currentTarget: HTMLFormElement };
 
 interface PaymentCheckoutModalProps {
   isOpen: boolean;
@@ -97,7 +72,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
   doctorId,
   doctorName,
   doctorSpecialty
-}: PaymentCheckoutModalProps) => {
+}) => {
   // Currency State
   const defaultCurr = currency || initialCurrency || 'YER';
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(defaultCurr);

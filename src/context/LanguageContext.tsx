@@ -69,7 +69,7 @@ const translations: Record<Language, Record<string, string>> = {
     print_report: 'طباعة التقرير',
     
     // Footer
-    footer_rights: 'جميع الحقوق محفوظة © 2026 مركز الرعاية الطبية المتكامل صحتك في يدك'
+    footer_rights: 'جميع الحقوق محفوظة © 2026 مركز الرعاية الطبية المتكامل Medical Care Hub'
   },
   en: {
     // Nav & General
