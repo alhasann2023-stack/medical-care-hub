@@ -3290,7 +3290,7 @@ export function createApiApp() {
   });
 
   // Patient Request Appointment (Integrated with Payment Intent)
-  app.post('/api/appointments', (req: Request, res: Response) => {
+  app.post('/api/appointments', async (req: Request, res: Response) => {
     const patientId = req.body.patientId || req.body.patient_id || req.body.userId || req.body.uid;
     const doctorId = req.body.doctorId || req.body.doctor_id;
     const serviceId = req.body.serviceId || req.body.service_id;
@@ -3414,6 +3414,22 @@ export function createApiApp() {
       payments.unshift(paymentRecord);
       newAppointment.paymentId = paymentRecord.id;
     }
+
+    // Persist the payment transaction in Firestore so it appears in the Admin financial ledger.
+    if (paymentRecord) {
+      await saveDocument(
+        FIRESTORE_COLLECTIONS.PAYMENTS,
+        paymentRecord.id,
+        paymentRecord
+      );
+    }
+
+    // Persist the appointment itself in Firestore.
+    await saveDocument(
+      FIRESTORE_COLLECTIONS.APPOINTMENTS,
+      newAppointment.id,
+      newAppointment
+    );
 
     logAudit(patient.userId || 'guest', patient.fullName, 'PATIENT', 'CREATE_APPOINTMENT', 'APPOINTMENT', newAppointment.id, `تقديم طلب موعد جديد مع ${docName} (رسوم: ${fee} YER - الحالة: ${newAppointment.paymentStatus})`, req);
 
@@ -3711,7 +3727,7 @@ export function createApiApp() {
   });
 
   // Patient Create Consultation Request (Integrated with Payment Intent)
-  app.post('/api/consultations', (req: Request, res: Response) => {
+  app.post('/api/consultations', async (req: Request, res: Response) => {
     const patientId = req.body.patientId || req.body.patient_id || req.body.userId || req.body.uid;
     const doctorId = req.body.doctorId || req.body.doctor_id;
     const title = req.body.title || req.body.subject || req.body.reason || 'استشارة طبية جديدة';
@@ -3867,6 +3883,22 @@ export function createApiApp() {
       payments.unshift(paymentRecord);
       newConsultation.paymentId = paymentRecord.id;
     }
+
+    // Persist the payment transaction in Firestore so it appears in the Admin financial ledger.
+    if (paymentRecord) {
+      await saveDocument(
+        FIRESTORE_COLLECTIONS.PAYMENTS,
+        paymentRecord.id,
+        paymentRecord
+      );
+    }
+
+    // Persist the consultation itself in Firestore.
+    await saveDocument(
+      FIRESTORE_COLLECTIONS.CONSULTATIONS,
+      newConsultation.id,
+      newConsultation
+    );
 
     logAudit(patient.userId || 'guest', patient.fullName, 'PATIENT', 'CREATE_CONSULTATION', 'CONSULTATION', newConsultation.id, `إرسال استشارة طبية إلى ${docName}: ${title} (رسوم: ${fee} YER - حالة الدفع: ${newConsultation.paymentStatus})`, req);
 
