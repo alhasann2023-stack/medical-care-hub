@@ -246,8 +246,31 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
       await api.processRefund(refundTarget.id, {
         amount: Number(refundAmount),
         reason: refundReason,
-        processedBy: 'Super Admin / Financial Controller'
+        processedBy: 'Super Admin / Financial Controller',
+        payment: refundTarget,
+        paymentId: refundTarget.id,
+        transactionReference: refundTarget.transactionReference,
+        serviceReferenceId: refundTarget.serviceReferenceId || refundTarget.appointmentId || refundTarget.consultationId,
+        serviceType: refundTarget.serviceType,
+        patientId: refundTarget.patientId,
+        patientName: refundTarget.patientName,
+        patientPhone: refundTarget.patientPhone,
+        currency: refundTarget.currency
       });
+
+      // Optimistically update local state for immediate UI reflection
+      setPayments(prev => prev.map(p => {
+        if (p.id === refundTarget.id || (p.transactionReference && p.transactionReference === refundTarget.transactionReference)) {
+          return {
+            ...p,
+            status: 'REFUNDED',
+            paymentStatus: 'REFUNDED',
+            refundAmount: Number(refundAmount),
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return p;
+      }));
 
       if (onShowNotification) {
         onShowNotification('success', `تم تنفيذ استرداد مبلغ ${formatPaymentAmount(refundAmount, refundTarget.currency as CurrencyCode)} للعملية (${refundTarget.receiptNumber || refundTarget.id}) بنجاح.`);
@@ -293,25 +316,29 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
   };
 
   // Calculations for Metrics across Currencies
+  const isRefunded = (p: Payment) => p.status === 'REFUNDED' || p.paymentStatus === 'REFUNDED';
+  const isPaid = (p: Payment) => !isRefunded(p) && (p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS' || p.paymentStatus === 'PAID' || p.paymentStatus === 'PAYMENT_SUCCESS');
+  const isPending = (p: Payment) => !isRefunded(p) && (p.status === 'PENDING' || p.status === 'PAYMENT_REQUIRED' || p.paymentStatus === 'PENDING' || p.paymentStatus === 'PAYMENT_REQUIRED');
+
   const yerRevenue = payments
-    .filter(p => (p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS' || p.paymentStatus === 'PAID' || p.paymentStatus === 'PAYMENT_SUCCESS') && (p.currency === 'YER' || !p.currency))
+    .filter(p => isPaid(p) && (p.currency === 'YER' || !p.currency))
     .reduce((sum, p) => sum + (p.amount || 0), 0);
 
   const usdRevenue = payments
-    .filter(p => (p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS' || p.paymentStatus === 'PAID' || p.paymentStatus === 'PAYMENT_SUCCESS') && p.currency === 'USD')
+    .filter(p => isPaid(p) && p.currency === 'USD')
     .reduce((sum, p) => sum + (p.amount || 0), 0);
 
   const sarRevenue = payments
-    .filter(p => (p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS' || p.paymentStatus === 'PAID' || p.paymentStatus === 'PAYMENT_SUCCESS') && p.currency === 'SAR')
+    .filter(p => isPaid(p) && p.currency === 'SAR')
     .reduce((sum, p) => sum + (p.amount || 0), 0);
 
-  const paidCount = payments.filter(p => p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS' || p.paymentStatus === 'PAID' || p.paymentStatus === 'PAYMENT_SUCCESS').length;
-  const pendingCount = payments.filter(p => p.status === 'PENDING' || p.status === 'PAYMENT_REQUIRED' || p.paymentStatus === 'PENDING' || p.paymentStatus === 'PAYMENT_REQUIRED').length;
-  const refundedCount = payments.filter(p => p.status === 'REFUNDED' || p.paymentStatus === 'REFUNDED').length;
+  const paidCount = payments.filter(isPaid).length;
+  const pendingCount = payments.filter(isPending).length;
+  const refundedCount = payments.filter(isRefunded).length;
 
   const filteredPayments = payments.filter(p => {
     // Status Filter
-    const effectiveStatus = p.status || p.paymentStatus || 'PAYMENT_SUCCESS';
+    const effectiveStatus = isRefunded(p) ? 'REFUNDED' : (p.status || p.paymentStatus || 'PAYMENT_SUCCESS');
     if (statusFilter !== 'ALL') {
       if (statusFilter === 'PAID' && effectiveStatus !== 'PAID' && effectiveStatus !== 'PAYMENT_SUCCESS') return false;
       if (statusFilter === 'PENDING' && effectiveStatus !== 'PENDING' && effectiveStatus !== 'PAYMENT_REQUIRED') return false;
@@ -617,12 +644,12 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                         </td>
 
                         <td className="p-3.5">
-                          <span className="font-bold text-slate-800 dark:text-slate-200 block">{p.serviceName}</span>
+                          <span className="font-bold text-blue-600 dark:text-slate-200 block">{p.serviceName}</span>
                           {p.doctorName && <span className="text-[11px] text-emerald-600 block">{p.doctorName}</span>}
                         </td>
 
                         <td className="p-3.5">
-                          <strong className="font-mono text-sm text-slate-900 dark:text-slate-100">
+                          <strong className="font-mono text-sm text-blue-900 dark:text-slate-100">
                             {formatPaymentAmount(p.amount, p.currency as CurrencyCode)}
                           </strong>
                           <span className="text-[10px] text-slate-400 block font-bold">
@@ -678,7 +705,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                         </td>
 
                         <td className="p-3.5">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black inline-flex items-center gap-1 ${
+                          <span className={`px-2.5 py-1 rounded-full text-[9px] font-black inline-flex items-center gap-1 ${
                             p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS'
                               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                               : p.status === 'REFUNDED'
@@ -689,7 +716,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                               ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800'
                               : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                           }`}>
-                            {(p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS') && <><Check className="w-3 h-3" /> تم الدفع بنجاح (تم التسديد ✓)</>}
+                            {(p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS') && <><Check className="w-3 h-3" /> تم الدفع بنجاح (تم التسديد)</>}
                             {p.status === 'REFUNDED' && <><RotateCcw className="w-3 h-3" /> مسترد ({formatPaymentAmount(p.refundAmount || p.amount, p.currency as CurrencyCode)})</>}
                             {p.status === 'WAIVED' && <><CheckCircle2 className="w-3 h-3" /> إعفاء خيري</>}
                             {(p.status === 'PENDING' || p.status === 'PAYMENT_REQUIRED') && (
@@ -710,7 +737,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                               <button
                                 onClick={() => handleApprovePayment(p)}
                                 disabled={approvingPaymentId === p.id}
-                                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[11px] inline-flex items-center gap-1 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] inline-flex items-center gap-1 shadow-xs transition-all cursor-pointer disabled:opacity-50"
                                 title="اعتماد استلام الحوالة وتأكيد (تم السداد ✓)"
                               >
                                 {approvingPaymentId === p.id ? (

@@ -196650,483 +196650,18 @@ var INITIAL_SPECIALTIES = [];
 var INITIAL_SERVICES = [];
 var INITIAL_DOCTORS = [];
 var INITIAL_STAFF = [];
-var INITIAL_PAYMENTS = [
-  {
-    id: "pay-seed-1",
-    paymentId: "pay-seed-1",
-    receiptNumber: "REC-2026-0081",
-    transactionReference: "TXN-KRM-998201",
-    patientId: "pat-1",
-    patientName: "\u0623\u062D\u0645\u062F \u0635\u0627\u0644\u062D \u0627\u0644\u0639\u0645\u0648\u062F\u064A",
-    patientPhone: "+967770000001",
-    patientMrn: "MRN-2026-1001",
-    serviceType: "APPOINTMENT",
-    serviceName: "\u0643\u0634\u0641 \u0627\u0633\u062A\u0634\u0627\u0631\u064A \u0623\u0645\u0631\u0627\u0636 \u0627\u0644\u0628\u0627\u0637\u0646\u0629 \u0648\u0627\u0644\u0642\u0644\u0628",
-    doctorId: "doc-1",
-    doctorName: "\u062F. \u0623\u062D\u0645\u062F \u0627\u0644\u0643\u0628\u0633\u064A",
-    doctorSpecialty: "\u0627\u0633\u062A\u0634\u0627\u0631\u064A \u0623\u0645\u0631\u0627\u0636 \u0627\u0644\u0628\u0627\u0637\u0646\u064A\u0629 \u0648\u0627\u0644\u062C\u0647\u0627\u0632 \u0627\u0644\u0647\u0636\u0645\u064A",
-    amount: 45e3,
-    currency: "YER",
-    grossAmount: 45e3,
-    gatewayFee: 450,
-    netAmount: 44550,
-    vatAmount: 0,
-    refundAmount: 0,
-    paymentProvider: "KURAIMI",
-    paymentMethod: "KURAIMI_EXPRESS",
-    paymentStatus: "PAYMENT_SUCCESS",
-    status: "PAYMENT_SUCCESS",
-    gatewayTransactionId: "KRM-GW-998201",
-    gatewayProvider: "\u0628\u0646\u0643 \u0627\u0644\u0643\u0631\u064A\u0645\u064A \u0644\u0644\u062A\u0645\u0648\u064A\u0644 \u0627\u0644\u0623\u0635\u063A\u0631 \u0627\u0644\u0625\u0633\u0644\u0627\u0645\u064A",
-    kuraimiAccount: "770000001",
-    kuraimiDetails: {
-      channel: "KURAIMI_EXPRESS",
-      customerAccount: "770000001",
-      terminalId: "TRM-MCH-01",
-      authCode: "AUTH-KRM-998201",
-      statusDescription: "\u062A\u0645 \u0627\u0644\u062A\u062D\u0642\u0642 \u0628\u0646\u062C\u0627\u062D \u0645\u0646 \u0627\u0644\u0640 OTP \u0648\u062E\u0635\u0645 \u0627\u0644\u0645\u0628\u0644\u063A \u0639\u0628\u0631 \u0628\u0648\u0627\u0628\u0629 \u0627\u0644\u0643\u0631\u064A\u0645\u064A \u062C\u0648\u0627\u0644"
-    },
-    paidAt: new Date(Date.now() - 3600 * 1e3 * 24 * 2).toISOString(),
-    createdAt: new Date(Date.now() - 3600 * 1e3 * 24 * 2).toISOString(),
-    confirmedAt: new Date(Date.now() - 3600 * 1e3 * 24 * 2).toISOString(),
-    updatedAt: new Date(Date.now() - 3600 * 1e3 * 24 * 2).toISOString()
-  },
-  {
-    id: "pay-seed-2",
-    paymentId: "pay-seed-2",
-    receiptNumber: "REC-2026-0082",
-    transactionReference: "TXN-VMC-772109",
-    patientId: "pat-2",
-    patientName: "\u0633\u0627\u0631\u0629 \u062E\u0627\u0644\u062F \u0627\u0644\u062F\u0648\u0633\u0631\u064A",
-    patientPhone: "+966501234567",
-    patientMrn: "MRN-2026-1002",
-    serviceType: "CONSULTATION",
-    serviceName: "\u0627\u0633\u062A\u0634\u0627\u0631\u0629 \u0637\u0628\u064A\u0629 \u0641\u0648\u0631\u064A\u0629 \u0639\u0646 \u0628\u0639\u062F",
-    doctorId: "doc-1",
-    doctorName: "\u062F. \u0623\u062D\u0645\u062F \u0627\u0644\u0643\u0628\u0633\u064A",
-    doctorSpecialty: "\u0627\u0633\u062A\u0634\u0627\u0631\u064A \u0623\u0645\u0631\u0627\u0636 \u0627\u0644\u0628\u0627\u0637\u0646\u064A\u0629 \u0648\u0627\u0644\u062C\u0647\u0627\u0632 \u0627\u0644\u0647\u0636\u0645\u064A",
-    amount: 65,
-    currency: "USD",
-    grossAmount: 65,
-    gatewayFee: 1.62,
-    netAmount: 63.38,
-    vatAmount: 0,
-    refundAmount: 0,
-    paymentProvider: "VISA_MASTERCARD",
-    paymentMethod: "VISA",
-    paymentStatus: "PAYMENT_SUCCESS",
-    status: "PAYMENT_SUCCESS",
-    cardBrand: "VISA",
-    last4: "4242",
-    cardHolderName: "Sarah Al-Dawsari",
-    gatewayTransactionId: "ch_3N84ks92VMC772",
-    gatewayProvider: "Stripe Global Gateway",
-    paidAt: new Date(Date.now() - 3600 * 1e3 * 24 * 1).toISOString(),
-    createdAt: new Date(Date.now() - 3600 * 1e3 * 24 * 1).toISOString(),
-    confirmedAt: new Date(Date.now() - 3600 * 1e3 * 24 * 1).toISOString(),
-    updatedAt: new Date(Date.now() - 3600 * 1e3 * 24 * 1).toISOString()
-  },
-  {
-    id: "pay-seed-3",
-    paymentId: "pay-seed-3",
-    receiptNumber: "REC-2026-0083",
-    transactionReference: "TXN-MDA-554102",
-    patientId: "pat-3",
-    patientName: "\u0645\u062D\u0645\u062F \u0646\u0627\u0635\u0631 \u0627\u0644\u0642\u062D\u0637\u0627\u0646\u064A",
-    patientPhone: "+966559876543",
-    patientMrn: "MRN-2026-1003",
-    serviceType: "APPOINTMENT",
-    serviceName: "\u0645\u0639\u0627\u064A\u0646\u0629 \u0639\u064A\u0627\u062F\u0629 \u0637\u0628 \u0627\u0644\u0623\u0637\u0641\u0627\u0644 \u0627\u0644\u062A\u062E\u0635\u0635\u064A\u0629",
-    doctorId: "doc-2",
-    doctorName: "\u062F. \u0645\u0646\u0649 \u0627\u0644\u0634\u0627\u0645\u0633\u064A",
-    doctorSpecialty: "\u0623\u062E\u0635\u0627\u0626\u064A\u0629 \u0637\u0628 \u0627\u0644\u0623\u0637\u0641\u0627\u0644 \u0648\u062D\u062F\u064A\u062B\u064A \u0627\u0644\u0648\u0644\u0627\u062F\u0629",
-    amount: 300,
-    currency: "SAR",
-    grossAmount: 300,
-    gatewayFee: 3,
-    vatAmount: 39.13,
-    netAmount: 297,
-    refundAmount: 0,
-    paymentProvider: "MADA",
-    paymentMethod: "MADA",
-    paymentStatus: "PAYMENT_SUCCESS",
-    status: "PAYMENT_SUCCESS",
-    cardBrand: "MADA",
-    last4: "5812",
-    cardHolderName: "Mohammed Al-Qahtani",
-    gatewayTransactionId: "mada_auth_554102",
-    gatewayProvider: "\u0634\u0628\u0643\u0629 \u0645\u062F\u0649 \u0644\u0644\u0645\u062F\u0641\u0648\u0639\u0627\u062A \u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629",
-    paidAt: new Date(Date.now() - 3600 * 1e3 * 12).toISOString(),
-    createdAt: new Date(Date.now() - 3600 * 1e3 * 12).toISOString(),
-    confirmedAt: new Date(Date.now() - 3600 * 1e3 * 12).toISOString(),
-    updatedAt: new Date(Date.now() - 3600 * 1e3 * 12).toISOString()
-  },
-  {
-    id: "pay-seed-4",
-    paymentId: "pay-seed-4",
-    receiptNumber: "REC-2026-0084",
-    transactionReference: "TXN-KRM-441920",
-    patientId: "pat-1",
-    patientName: "\u0623\u062D\u0645\u062F \u0635\u0627\u0644\u062D \u0627\u0644\u0639\u0645\u0648\u062F\u064A",
-    patientPhone: "+967770000001",
-    patientMrn: "MRN-2026-1001",
-    serviceType: "CONSULTATION",
-    serviceName: "\u0627\u0633\u062A\u0634\u0627\u0631\u0629 \u0637\u0628\u064A\u0629 \u062A\u062E\u0635\u0635\u064A\u0629 - \u0645\u062A\u0627\u0628\u0639\u0629 \u0627\u0644\u0636\u063A\u0637 \u0648\u0627\u0644\u0633\u0643\u0631",
-    doctorId: "doc-1",
-    doctorName: "\u062F. \u0623\u062D\u0645\u062F \u0627\u0644\u0643\u0628\u0633\u064A",
-    doctorSpecialty: "\u0627\u0633\u062A\u0634\u0627\u0631\u064A \u0623\u0645\u0631\u0627\u0636 \u0627\u0644\u0628\u0627\u0637\u0646\u064A\u0629 \u0648\u0627\u0644\u062C\u0647\u0627\u0632 \u0627\u0644\u0647\u0636\u0645\u064A",
-    amount: 15e3,
-    currency: "YER",
-    grossAmount: 15e3,
-    gatewayFee: 150,
-    netAmount: 14850,
-    vatAmount: 0,
-    refundAmount: 0,
-    paymentProvider: "KURAIMI",
-    paymentMethod: "KURAIMI_EXPRESS",
-    paymentStatus: "PAYMENT_SUCCESS",
-    status: "PAYMENT_SUCCESS",
-    gatewayTransactionId: "KRM-GW-441920",
-    gatewayProvider: "\u0628\u0646\u0643 \u0627\u0644\u0643\u0631\u064A\u0645\u064A \u0644\u0644\u062A\u0645\u0648\u064A\u0644 \u0627\u0644\u0623\u0635\u063A\u0631 \u0627\u0644\u0625\u0633\u0644\u0627\u0645\u064A",
-    kuraimiAccount: "770000001",
-    kuraimiDetails: {
-      channel: "KURAIMI_EXPRESS",
-      customerAccount: "770000001",
-      terminalId: "TRM-MCH-01",
-      authCode: "AUTH-KRM-441920",
-      statusDescription: "\u062A\u0645 \u0627\u0644\u062A\u062D\u0642\u0642 \u0628\u0646\u062C\u0627\u062D \u0645\u0646 \u0627\u0644\u0640 OTP \u0648\u062E\u0635\u0645 \u0627\u0644\u0631\u0633\u0648\u0645 \u0639\u0628\u0631 \u062A\u0637\u0628\u064A\u0642 \u0627\u0644\u0643\u0631\u064A\u0645\u064A \u062C\u0648\u0627\u0644"
-    },
-    paidAt: new Date(Date.now() - 3600 * 1e3 * 6).toISOString(),
-    createdAt: new Date(Date.now() - 3600 * 1e3 * 6).toISOString(),
-    confirmedAt: new Date(Date.now() - 3600 * 1e3 * 6).toISOString(),
-    updatedAt: new Date(Date.now() - 3600 * 1e3 * 6).toISOString()
-  },
-  {
-    id: "pay-seed-5",
-    paymentId: "pay-seed-5",
-    receiptNumber: "REC-2026-0085",
-    transactionReference: "TXN-BNK-881203",
-    patientId: "pat-2",
-    patientName: "\u0633\u0627\u0631\u0629 \u062E\u0627\u0644\u062F \u0627\u0644\u062F\u0648\u0633\u0631\u064A",
-    patientPhone: "+966501234567",
-    patientMrn: "MRN-2026-1002",
-    serviceType: "APPOINTMENT",
-    serviceName: "\u062D\u062C\u0632 \u0645\u0648\u0639\u062F \u0639\u064A\u0627\u062F\u0629 \u0627\u0633\u062A\u0634\u0627\u0631\u064A\u0629 \u0645\u0639 \u0625\u0634\u0639\u0627\u0631 \u062A\u062D\u0648\u064A\u0644",
-    doctorId: "doc-2",
-    doctorName: "\u062F. \u0645\u0646\u0649 \u0627\u0644\u0634\u0627\u0645\u0633\u064A",
-    doctorSpecialty: "\u0623\u062E\u0635\u0627\u0626\u064A\u0629 \u0637\u0628 \u0627\u0644\u0623\u0637\u0641\u0627\u0644 \u0648\u062D\u062F\u064A\u062B\u064A \u0627\u0644\u0648\u0644\u0627\u062F\u0629",
-    amount: 25e3,
-    currency: "YER",
-    grossAmount: 25e3,
-    gatewayFee: 0,
-    netAmount: 25e3,
-    vatAmount: 0,
-    refundAmount: 0,
-    paymentProvider: "KURAIMI",
-    paymentMethod: "BANK_TRANSFER_NOTICE",
-    paymentStatus: "PAYMENT_SUCCESS",
-    status: "PAYMENT_SUCCESS",
-    bankTransferDetails: {
-      bankName: "\u0628\u0646\u0643 \u0627\u0644\u062A\u0636\u0627\u0645\u0646 \u0627\u0644\u0625\u0633\u0644\u0627\u0645\u064A \u0627\u0644\u062F\u0648\u0644\u064A",
-      senderName: "\u0633\u0627\u0631\u0629 \u062E\u0627\u0644\u062F \u0627\u0644\u062F\u0648\u0633\u0631\u064A",
-      transferNoticeNumber: "TRF-TAD-99120",
-      transferDate: new Date(Date.now() - 3600 * 1e3 * 18).toISOString(),
-      senderPhone: "+966501234567",
-      notes: "\u062A\u0645 \u0627\u0644\u062A\u062D\u0642\u0642 \u0648\u0627\u0644\u0645\u0637\u0627\u0628\u0642\u0629 \u0645\u0639 \u0643\u0634\u0641 \u0627\u0644\u062D\u0633\u0627\u0628 \u0627\u0644\u0645\u0635\u0631\u0641\u064A \u0648\u0627\u0639\u062A\u0645\u0627\u062F \u0627\u0644\u0633\u062F\u0627\u062F"
-    },
-    paidAt: new Date(Date.now() - 3600 * 1e3 * 18).toISOString(),
-    createdAt: new Date(Date.now() - 3600 * 1e3 * 18).toISOString(),
-    confirmedAt: new Date(Date.now() - 3600 * 1e3 * 17).toISOString(),
-    updatedAt: new Date(Date.now() - 3600 * 1e3 * 17).toISOString()
-  }
-];
+var INITIAL_PAYMENTS = [];
 var INITIAL_APPOINTMENTS = [];
 var INITIAL_CONSULTATIONS = [];
 var INITIAL_FOLLOW_UPS = [];
 var INITIAL_REFUNDS = [];
 var INITIAL_REMINDERS = [];
-var INITIAL_EXAMINATIONS = [
-  {
-    id: "exm-101",
-    patientId: "pat-1",
-    doctorId: "doc-1",
-    doctorName: "\u062F. \u0623\u062D\u0645\u062F \u0627\u0644\u0643\u0628\u0633\u064A",
-    doctorSpecialty: "\u0627\u0633\u062A\u0634\u0627\u0631\u064A \u0623\u0645\u0631\u0627\u0636 \u0627\u0644\u0628\u0627\u0637\u0646\u064A\u0629 \u0648\u0627\u0644\u062C\u0647\u0627\u0632 \u0627\u0644\u0647\u0636\u0645\u064A",
-    examinationDate: "2026-02-28",
-    examinationType: "\u0641\u062D\u0635 \u0633\u0631\u064A\u0631\u064A \u062F\u0648\u0631\u064A",
-    chiefComplaint: "\u0635\u062F\u0627\u0639 \u062E\u0641\u064A\u0641 \u0645\u0639 \u0625\u062C\u0647\u0627\u062F \u0639\u0627\u0645 \u0628\u0639\u062F \u0627\u0644\u062F\u0648\u0627\u0645",
-    clinicalFindings: "\u0636\u063A\u0637 \u0627\u0644\u062F\u0645 \u0645\u0633\u062A\u0642\u0631 120/78\u060C \u0627\u0644\u0646\u0628\u0636 72 \u0646/\u062F\u060C \u0641\u062D\u0635 \u0627\u0644\u0635\u062F\u0631 \u0648\u0627\u0644\u0628\u0637\u0646 \u0633\u0644\u064A\u0645 \u062A\u0645\u0627\u0645\u0627\u064B\u060C \u0644\u0627 \u062A\u0648\u062C\u062F \u0648\u0630\u0645\u0627\u062A.",
-    diagnosis: "\u0625\u062C\u0647\u0627\u062F \u0628\u062F\u0646\u064A \u0645\u0624\u0642\u062A \u0645\u0639 \u062A\u0648\u062A\u0631 \u0639\u0636\u0644\u064A \u0641\u064A \u0627\u0644\u0631\u0642\u0628\u0629",
-    recommendations: "\u062A\u0646\u0638\u064A\u0645 \u0641\u062A\u0631\u0627\u062A \u0627\u0644\u0646\u0648\u0645\u060C \u0634\u0631\u0628 \u0633\u0648\u0627\u0626\u0644 \u0628\u0643\u0645\u064A\u0627\u062A \u0643\u0627\u0641\u064A\u0629 (2.5 \u0644\u062A\u0631 \u064A\u0648\u0645\u064A\u0627\u064B)\u060C \u0648\u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u0641\u062D\u0635 \u0628\u0639\u062F \u0634\u0647\u0631.",
-    vitalSigns: {
-      bloodPressure: "120/78",
-      heartRate: 72,
-      temperature: 36.8,
-      oxygenSaturation: 99,
-      weightKg: 74,
-      heightCm: 176
-    },
-    createdAt: "2026-02-28T09:30:00Z"
-  },
-  {
-    id: "exm-102",
-    patientId: "pat-1",
-    doctorId: "doc-2",
-    doctorName: "\u062F. \u0645\u0646\u0649 \u0627\u0644\u064A\u0627\u0641\u0639\u064A",
-    doctorSpecialty: "\u0627\u0633\u062A\u0634\u0627\u0631\u064A\u0629 \u0637\u0628 \u0648\u062C\u0631\u0627\u062D\u0629 \u0627\u0644\u0642\u0644\u0628 \u0648\u0627\u0644\u0623\u0648\u0639\u064A\u0629 \u0627\u0644\u062F\u0645\u0648\u064A\u0629",
-    examinationDate: "2026-01-15",
-    examinationType: "\u0645\u062A\u0627\u0628\u0639\u0629 \u0648\u0642\u0627\u0626\u064A\u0629 \u0644\u0644\u0642\u0644\u0628 \u0648\u0627\u0644\u0623\u0648\u0639\u064A\u0629",
-    chiefComplaint: "\u0641\u062D\u0635 \u062F\u0648\u0631\u064A \u0633\u0646\u0648\u064A \u0644\u0633\u0644\u0627\u0645\u0629 \u0639\u0636\u0644\u0629 \u0627\u0644\u0642\u0644\u0628",
-    clinicalFindings: "\u0623\u0635\u0648\u0627\u062A \u0627\u0644\u0642\u0644\u0628 \u0637\u0628\u064A\u0639\u064A\u0629 S1/S2 \u0648\u0627\u0636\u062D\u0629\u060C \u0646\u0628\u0636 \u0634\u0631\u064A\u0627\u0646 \u0627\u0644\u0643\u0639\u0628\u0631\u064A \u0645\u0646\u062A\u0638\u0645 \u0648\u0642\u0648\u064A\u060C \u0644\u0627 \u0646\u0641\u062E\u0627\u062A \u0642\u0644\u0628\u064A\u0629.",
-    diagnosis: "\u0648\u0638\u0627\u0626\u0641 \u0627\u0644\u0642\u0644\u0628 \u0648\u0627\u0644\u0635\u0645\u0627\u0645\u0627\u062A \u0637\u0628\u064A\u0639\u064A\u0629 \u0648\u0645\u0645\u062A\u0627\u0632\u0629",
-    recommendations: "\u0645\u0645\u0627\u0631\u0633\u0629 \u0631\u064A\u0627\u0636\u0629 \u0627\u0644\u0645\u0634\u064A \u0627\u0644\u0633\u0631\u064A\u0639 30 \u062F\u0642\u064A\u0642\u0629 \u064A\u0648\u0645\u064A\u0627\u064B 5 \u0623\u064A\u0627\u0645 \u0623\u0633\u0628\u0648\u0639\u064A\u0627\u064B\u060C \u0648\u0627\u0644\u062D\u0641\u0627\u0638 \u0639\u0644\u0649 \u062D\u0645\u064A\u0629 \u0642\u0644\u064A\u0644\u0629 \u0627\u0644\u0635\u0648\u062F\u064A\u0648\u0645.",
-    vitalSigns: {
-      bloodPressure: "118/76",
-      heartRate: 68,
-      temperature: 36.6,
-      oxygenSaturation: 99,
-      weightKg: 74,
-      heightCm: 176
-    },
-    createdAt: "2026-01-15T11:00:00Z"
-  }
-];
-var INITIAL_TESTS = [
-  {
-    id: "tst-201",
-    patientId: "pat-1",
-    patientName: "\u0623\u062D\u0645\u062F \u0635\u0627\u0644\u062D \u0645\u062D\u0645\u062F",
-    patientMrn: "MRN-2026-8801",
-    doctorId: "doc-1",
-    doctorName: "\u062F. \u0623\u062D\u0645\u062F \u0627\u0644\u0643\u0628\u0633\u064A",
-    testName: "\u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u062F\u0645 \u0627\u0644\u0634\u0627\u0645\u0644 (CBC) \u0648\u0633\u0643\u0631 \u0627\u0644\u062F\u0645 \u0627\u0644\u0635\u0627\u0626\u0645 (FBS)",
-    category: "LABORATORY",
-    testDate: "2026-02-28",
-    status: "COMPLETED",
-    resultsSummary: "\u062C\u0645\u064A\u0639 \u0627\u0644\u0645\u0624\u0634\u0631\u0627\u062A \u0636\u0645\u0646 \u0627\u0644\u0646\u0637\u0627\u0642 \u0627\u0644\u0637\u0628\u064A\u0639\u064A: \u0627\u0644\u0647\u064A\u0645\u0648\u062C\u0644\u0648\u0628\u064A\u0646 14.8 g/dL\u060C \u0643\u0631\u064A\u0627\u062A \u0627\u0644\u062F\u0645 \u0627\u0644\u0628\u064A\u0636\u0627\u0621 6.2\u060C \u0627\u0644\u0633\u0643\u0631 \u0627\u0644\u0635\u0627\u0626\u0645 92 mg/dL.",
-    labTechnician: "\u0623. \u0633\u0627\u0645\u064A \u0627\u0644\u062D\u0645\u064A\u0631\u064A - \u0631\u0626\u064A\u0633 \u0627\u0644\u0645\u062E\u062A\u0628\u0631",
-    sampleType: "\u0639\u064A\u0646\u0629 \u062F\u0645 \u0648\u0631\u064A\u062F\u064A",
-    detailedItems: [
-      { parameter: "Hemoglobin (Hb)", value: "14.8", unit: "g/dL", referenceRange: "13.5 - 17.5", flag: "NORMAL" },
-      { parameter: "WBC", value: "6.2", unit: "10^3/\xB5L", referenceRange: "4.5 - 11.0", flag: "NORMAL" },
-      { parameter: "Platelets", value: "265", unit: "10^3/\xB5L", referenceRange: "150 - 450", flag: "NORMAL" },
-      { parameter: "Fasting Blood Sugar", value: "92", unit: "mg/dL", referenceRange: "70 - 100", flag: "NORMAL" },
-      { parameter: "HbA1c", value: "5.2", unit: "%", referenceRange: "4.0 - 5.6", flag: "NORMAL" }
-    ],
-    createdAt: "2026-02-28T10:15:00Z",
-    updatedAt: "2026-02-28T14:30:00Z"
-  },
-  {
-    id: "tst-202",
-    patientId: "pat-1",
-    patientName: "\u0623\u062D\u0645\u062F \u0635\u0627\u0644\u062D \u0645\u062D\u0645\u062F",
-    patientMrn: "MRN-2026-8801",
-    doctorId: "doc-2",
-    doctorName: "\u062F. \u0645\u0646\u0649 \u0627\u0644\u064A\u0627\u0641\u0639\u064A",
-    testName: "\u062A\u062E\u0637\u064A\u0637 \u0643\u0647\u0631\u0628\u064A\u0629 \u0627\u0644\u0642\u0644\u0628 \u0627\u0644\u0631\u0642\u0645\u064A (ECG 12-Lead)",
-    category: "CARDIOLOGY",
-    testDate: "2026-01-15",
-    status: "COMPLETED",
-    resultsSummary: "\u0625\u064A\u0642\u0627\u0639 \u062C\u064A\u0628\u064A \u0637\u0628\u064A\u0639\u064A (Normal Sinus Rhythm) \u0628\u0645\u0639\u062F\u0644 70 \u0646/\u062F\u060C \u0644\u0627 \u062A\u0648\u062C\u062F \u0639\u0644\u0627\u0645\u0627\u062A \u0625\u0642\u0641\u0627\u0631 \u0623\u0648 \u0627\u0639\u062A\u0644\u0627\u0644 \u0641\u064A \u0627\u0644\u062A\u0648\u0635\u064A\u0644.",
-    labTechnician: "\u0641\u0646\u064A \u0642\u0633\u0637\u0631\u0629 \u0648\u0642\u0644\u0628 \u0645\u0639\u062A\u0645\u062F",
-    sampleType: "\u0641\u062D\u0635 \u0643\u0647\u0631\u0648\u0641\u0633\u064A\u0648\u0644\u0648\u062C\u064A \u063A\u064A\u0631 \u063A\u0627\u0632\u064A",
-    detailedItems: [
-      { parameter: "Heart Rate", value: "70", unit: "bpm", referenceRange: "60 - 100", flag: "NORMAL" },
-      { parameter: "PR Interval", value: "150", unit: "ms", referenceRange: "120 - 200", flag: "NORMAL" },
-      { parameter: "QRS Duration", value: "88", unit: "ms", referenceRange: "80 - 120", flag: "NORMAL" },
-      { parameter: "QTc", value: "412", unit: "ms", referenceRange: "< 450", flag: "NORMAL" }
-    ],
-    createdAt: "2026-01-15T11:30:00Z",
-    updatedAt: "2026-01-15T12:00:00Z"
-  }
-];
-var INITIAL_REPORTS = [
-  {
-    id: "rep-301",
-    reportNumber: "REP-2026-0891",
-    patientId: "pat-1",
-    patientName: "\u0623\u062D\u0645\u062F \u0635\u0627\u0644\u062D \u0645\u062D\u0645\u062F",
-    patientPhone: "+966501112233",
-    patientMrn: "MRN-2026-8801",
-    patientBirthDate: "1992-05-14",
-    patientGender: "MALE",
-    doctorId: "doc-1",
-    doctorName: "\u062F. \u0623\u062D\u0645\u062F \u0627\u0644\u0643\u0628\u0633\u064A",
-    doctorTitle: "\u0627\u0633\u062A\u0634\u0627\u0631\u064A \u0648\u0631\u0626\u064A\u0633 \u0642\u0633\u0645 \u0627\u0644\u0623\u0645\u0631\u0627\u0636 \u0627\u0644\u0628\u0627\u0637\u0646\u064A\u0629",
-    doctorSpecialty: "\u0623\u0645\u0631\u0627\u0636 \u0627\u0644\u0628\u0627\u0637\u0646\u064A\u0629 \u0648\u0627\u0644\u062C\u0647\u0627\u0632 \u0627\u0644\u0647\u0636\u0645\u064A",
-    reportType: "CONSULTATION_NOTE",
-    title: "\u062A\u0642\u0631\u064A\u0631 \u0627\u0644\u062A\u0642\u064A\u064A\u0645 \u0627\u0644\u0635\u062D\u064A \u0627\u0644\u0634\u0627\u0645\u0644 \u0644\u0644\u0645\u0631\u064A\u0636",
-    summary: "\u062D\u0627\u0644\u0629 \u0627\u0644\u0645\u0631\u064A\u0636 \u0627\u0644\u0635\u062D\u064A\u0629 \u0645\u0633\u062A\u0642\u0631\u0629 \u0648\u0645\u0645\u062A\u0627\u0632\u0629\u060C \u0645\u0624\u0634\u0631\u0627\u062A \u0627\u0644\u062F\u0645 \u0648\u0627\u0644\u0648\u0638\u0627\u0626\u0641 \u0627\u0644\u062D\u064A\u0648\u064A\u0629 \u0637\u0628\u064A\u0639\u064A\u0629\u060C \u0648\u062A\u0648\u0635\u064A\u0629 \u0628\u0627\u0644\u0627\u0633\u062A\u0645\u0631\u0627\u0631 \u0639\u0644\u0649 \u0646\u0645\u0637 \u0627\u0644\u062D\u064A\u0627\u0629 \u0627\u0644\u0635\u062D\u064A.",
-    clinicalHistory: "\u0645\u0631\u064A\u0636 \u064A\u0628\u0644\u063A \u0645\u0646 \u0627\u0644\u0639\u0645\u0631 34 \u0639\u0627\u0645\u0627\u064B\u060C \u0631\u0627\u062C\u0639 \u0627\u0644\u0639\u064A\u0627\u062F\u0629 \u0644\u0625\u062C\u0631\u0627\u0621 \u0627\u0644\u062A\u0642\u064A\u064A\u0645 \u0627\u0644\u0633\u0646\u0648\u064A \u0627\u0644\u0631\u0648\u062A\u064A\u0646\u064A \u0648\u0645\u0631\u0627\u062C\u0639\u0629 \u0627\u0644\u0641\u062D\u0648\u0635\u0627\u062A \u0627\u0644\u062F\u0648\u0631\u064A\u0629.",
-    findings: "\u0641\u062D\u0635 \u0633\u0631\u064A\u0631\u064A \u0643\u0627\u0645\u0644 \u062E\u0627\u0644\u064D \u0645\u0646 \u0623\u064A \u0639\u0644\u0627\u0645\u0627\u062A \u0645\u0631\u0636\u064A\u0629 \u062D\u0627\u062F\u0629 \u0623\u0648 \u0645\u0632\u0645\u0646\u0629\u060C \u0627\u0644\u0636\u063A\u0637 \u0648\u0627\u0644\u0646\u0628\u0636 \u0637\u0628\u064A\u0639\u064A\u0627\u0646\u060C \u0646\u062A\u0627\u0626\u062C \u062A\u062D\u0627\u0644\u064A\u0644 \u0627\u0644\u0645\u062E\u062A\u0628\u0631 \u0645\u062A\u0648\u0627\u0641\u0642\u0629 \u0645\u0639 \u0627\u0644\u0645\u0639\u0627\u064A\u064A\u0631 \u0627\u0644\u062F\u0648\u0644\u064A\u0629 \u0627\u0644\u0633\u0644\u064A\u0645\u0629.",
-    diagnosis: "\u0635\u062D\u0629 \u0639\u0627\u0645\u0629 \u062C\u064A\u062F\u0629 - \u0644\u0627 \u062A\u0648\u062C\u062F \u0623\u0645\u0631\u0627\u0636 \u0645\u0632\u0645\u0646\u0629 \u0646\u0634\u0637\u0629.",
-    recommendations: "\u0627\u0644\u0627\u0633\u062A\u0645\u0631\u0627\u0631 \u0641\u064A \u0627\u0644\u0646\u0634\u0627\u0637 \u0627\u0644\u0628\u062F\u0646\u064A \u0627\u0644\u0645\u0639\u062A\u062F\u0644\u060C \u0627\u0644\u062D\u0641\u0627\u0638 \u0639\u0644\u0649 \u0627\u0644\u062A\u0631\u0637\u064A\u0628 \u0648\u0634\u0631\u0628 \u0627\u0644\u0645\u0627\u0621\u060C \u0648\u062A\u0643\u0631\u0627\u0631 \u0627\u0644\u0641\u062D\u0635 \u0627\u0644\u0634\u0627\u0645\u0644 \u0628\u0639\u062F 12 \u0634\u0647\u0631\u0627\u064B.",
-    reportDate: "2026-02-28",
-    hospitalDepartment: "\u0642\u0633\u0645 \u0627\u0644\u0639\u064A\u0627\u062F\u0627\u062A \u0627\u0644\u062A\u062E\u0635\u0635\u064A\u0629 \u0648\u0627\u0644\u0628\u0627\u0637\u0646\u064A\u0629",
-    digitalSignature: "SIG-VERIFIED-MCH-DR-ALKUBATI-2026",
-    createdAt: "2026-02-28T15:00:00Z"
-  }
-];
-var INITIAL_PRESCRIPTIONS = [
-  {
-    id: "rx-401",
-    rxNumber: "RX-2026-1045",
-    patientId: "pat-1",
-    patientName: "\u0623\u062D\u0645\u062F \u0635\u0627\u0644\u062D \u0645\u062D\u0645\u062F",
-    patientMrn: "MRN-2026-8801",
-    doctorId: "doc-1",
-    doctorName: "\u062F. \u0623\u062D\u0645\u062F \u0627\u0644\u0643\u0628\u0633\u064A",
-    doctorSpecialty: "\u0623\u0645\u0631\u0627\u0636 \u0627\u0644\u0628\u0627\u0637\u0646\u064A\u0629 \u0648\u0627\u0644\u062C\u0647\u0627\u0632 \u0627\u0644\u0647\u0636\u0645\u064A",
-    date: "2026-02-28",
-    status: "ACTIVE",
-    diagnosis: "\u0625\u062C\u0647\u0627\u062F \u0628\u062F\u0646\u064A \u0645\u0639 \u0646\u0642\u0635 \u0637\u0641\u064A\u0641 \u0641\u064A \u0641\u064A\u062A\u0627\u0645\u064A\u0646 \u062F \u0627\u0644\u0648\u0642\u0627\u0626\u064A",
-    instructions: "\u062A\u0646\u0627\u0648\u0644 \u0627\u0644\u0645\u0643\u0645\u0644 \u0627\u0644\u063A\u0630\u0627\u0626\u064A \u0628\u0627\u0646\u062A\u0638\u0627\u0645 \u0645\u0639 \u0648\u062C\u0628\u0629 \u0627\u0644\u0625\u0641\u0637\u0627\u0631",
-    medications: [
-      {
-        medicationName: "Vitamin D3 (Cholecalciferol)",
-        strength: "1000 IU",
-        form: "\u0643\u0628\u0633\u0648\u0644\u0627\u062A \u062C\u064A\u0644\u0627\u062A\u064A\u0646\u064A\u0629 \u0631\u062E\u0648\u0629",
-        dosage: "\u0643\u0628\u0633\u0648\u0644\u0629 \u0648\u0627\u062D\u062F\u0629",
-        frequency: "\u0645\u0631\u0629 \u0648\u0627\u062D\u062F\u0629 \u064A\u0648\u0645\u064A\u0627\u064B \u0645\u0639 \u0648\u062C\u0628\u0629 \u062F\u0647\u0646\u064A\u0629",
-        duration: "60 \u064A\u0648\u0645\u0627\u064B",
-        instructions: "\u062A\u0624\u062E\u0630 \u0635\u0628\u0627\u062D\u0627\u064B \u0628\u0639\u062F \u0648\u062C\u0628\u0629 \u0627\u0644\u0625\u0641\u0637\u0627\u0631"
-      },
-      {
-        medicationName: "Magnesium Glycinate",
-        strength: "200 mg",
-        form: "\u0623\u0642\u0631\u0627\u0635",
-        dosage: "\u0642\u0631\u0635 \u0648\u0627\u062D\u062F",
-        frequency: "\u0645\u0631\u0629 \u0648\u0627\u062D\u062F\u0629 \u0645\u0633\u0627\u0621\u064B \u0642\u0628\u0644 \u0627\u0644\u0646\u0648\u0645",
-        duration: "30 \u064A\u0648\u0645\u0627\u064B",
-        instructions: "\u0644\u062A\u062D\u0633\u064A\u0646 \u062C\u0648\u062F\u0629 \u0627\u0644\u0646\u0648\u0645 \u0648\u0627\u0633\u062A\u0631\u062E\u0627\u0621 \u0627\u0644\u0639\u0636\u0644\u0627\u062A"
-      }
-    ],
-    createdAt: "2026-02-28T09:45:00Z"
-  }
-];
+var INITIAL_EXAMINATIONS = [];
+var INITIAL_TESTS = [];
+var INITIAL_REPORTS = [];
+var INITIAL_PRESCRIPTIONS = [];
 var INITIAL_NOTIFICATIONS = [];
-var INITIAL_AUDIT_LOGS = [
-  {
-    id: "aud-101",
-    userId: "usr-admin-1",
-    userName: "\u0627\u0644\u0645\u062F\u064A\u0631 \u0627\u0644\u0639\u0627\u0645 (\u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0639\u0644\u064A\u0627)",
-    userRole: "HOSPITAL_ADMIN",
-    actorName: "\u0627\u0644\u0645\u062F\u064A\u0631 \u0627\u0644\u0639\u0627\u0645 (\u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0639\u0644\u064A\u0627)",
-    actorRole: "HOSPITAL_ADMIN",
-    action: "LOGIN",
-    entityType: "AUTH",
-    entityId: "usr-admin-1",
-    details: "\u062A\u0633\u062C\u064A\u0644 \u062F\u062E\u0648\u0644 \u0646\u0627\u062C\u062D \u0625\u0644\u0649 \u0644\u0648\u062D\u0629 \u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0639\u0627\u0645\u0629 \u0648\u0627\u0644\u062A\u062D\u0643\u0645 \u0648\u062D\u0648\u0643\u0645\u0629 \u0627\u0644\u0646\u0638\u0627\u0645 \u0627\u0644\u0637\u0628\u064A.",
-    ipAddress: "192.168.1.10",
-    timestamp: new Date(Date.now() - 10 * 60 * 1e3).toISOString(),
-    createdAt: new Date(Date.now() - 10 * 60 * 1e3).toISOString()
-  },
-  {
-    id: "aud-102",
-    userId: "usr-admin-1",
-    userName: "\u0627\u0644\u0645\u062F\u064A\u0631 \u0627\u0644\u0639\u0627\u0645 (\u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0639\u0644\u064A\u0627)",
-    userRole: "HOSPITAL_ADMIN",
-    actorName: "\u0627\u0644\u0645\u062F\u064A\u0631 \u0627\u0644\u0639\u0627\u0645 (\u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0639\u0644\u064A\u0627)",
-    actorRole: "HOSPITAL_ADMIN",
-    action: "ADD_STAFF",
-    entityType: "STAFF",
-    entityId: "stf-sec-1",
-    details: "\u0625\u0646\u0634\u0627\u0621 \u0648\u062A\u0641\u0639\u064A\u0644 \u062D\u0633\u0627\u0628 \u0633\u0643\u0631\u062A\u064A\u0631 \u0637\u0628\u064A \u0648\u0627\u0633\u062A\u0642\u0628\u0627\u0644 \u0644\u0644\u0639\u064A\u0627\u062F\u0627\u062A \u0648\u062A\u062D\u062F\u064A\u062F \u0641\u062A\u0631\u0629 \u0627\u0644\u0639\u0645\u0644 \u0627\u0644\u0635\u0628\u0627\u062D\u064A\u0629.",
-    ipAddress: "192.168.1.10",
-    timestamp: new Date(Date.now() - 25 * 60 * 1e3).toISOString(),
-    createdAt: new Date(Date.now() - 25 * 60 * 1e3).toISOString()
-  },
-  {
-    id: "aud-103",
-    userId: "usr-admin-1",
-    userName: "\u0627\u0644\u0645\u062F\u064A\u0631 \u0627\u0644\u0639\u0627\u0645 (\u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0639\u0644\u064A\u0627)",
-    userRole: "HOSPITAL_ADMIN",
-    actorName: "\u0627\u0644\u0645\u062F\u064A\u0631 \u0627\u0644\u0639\u0627\u0645 (\u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0639\u0644\u064A\u0627)",
-    actorRole: "HOSPITAL_ADMIN",
-    action: "ADD_STAFF",
-    entityType: "STAFF",
-    entityId: "stf-lab-1",
-    details: "\u0625\u0646\u0634\u0627\u0621 \u0648\u062A\u0641\u0639\u064A\u0644 \u062D\u0633\u0627\u0628 \u0623\u062E\u0635\u0627\u0626\u064A \u0648\u0645\u0633\u0624\u0648\u0644 \u0627\u0644\u0645\u062E\u062A\u0628\u0631 \u0648\u0627\u0644\u062A\u062D\u0627\u0644\u064A\u0644 \u0627\u0644\u0637\u0628\u064A\u0629 \u0648\u0645\u0646\u062D \u0635\u0644\u0627\u062D\u064A\u0629 \u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0641\u062D\u0648\u0635\u0627\u062A \u0644\u0644\u0623\u0637\u0628\u0627\u0621.",
-    ipAddress: "192.168.1.10",
-    timestamp: new Date(Date.now() - 40 * 60 * 1e3).toISOString(),
-    createdAt: new Date(Date.now() - 40 * 60 * 1e3).toISOString()
-  },
-  {
-    id: "aud-104",
-    userId: "usr-lab-1",
-    userName: "\u0623\u062E\u0635\u0627\u0626\u064A \u0627\u0644\u0645\u062E\u062A\u0628\u0631 \u0648\u0627\u0644\u062A\u062D\u0627\u0644\u064A\u0644",
-    userRole: "LAB_TECHNICIAN",
-    actorName: "\u0623\u062E\u0635\u0627\u0626\u064A \u0627\u0644\u0645\u062E\u062A\u0628\u0631 \u0648\u0627\u0644\u062A\u062D\u0627\u0644\u064A\u0644",
-    actorRole: "LAB_TECHNICIAN",
-    action: "SEND_LAB_TEST",
-    entityType: "TEST",
-    entityId: "tst-cb-01",
-    details: "\u0625\u0631\u0633\u0627\u0644 \u0646\u062A\u0627\u0626\u062C \u0641\u062D\u0635 \u0645\u062E\u0628\u0631\u064A \u0634\u0627\u0645\u0644 (CBC \u0648\u0648\u0638\u0627\u0626\u0641 \u0643\u0644\u0649) \u0625\u0644\u0649 \u0627\u0644\u0637\u0628\u064A\u0628 \u0627\u0644\u0645\u0639\u0627\u0644\u062C \u0627\u0644\u0645\u0634\u0631\u0641 \u0639\u0644\u0649 \u0645\u0648\u0639\u062F \u0627\u0644\u0645\u0631\u064A\u0636.",
-    ipAddress: "192.168.1.45",
-    timestamp: new Date(Date.now() - 55 * 60 * 1e3).toISOString(),
-    createdAt: new Date(Date.now() - 55 * 60 * 1e3).toISOString()
-  },
-  {
-    id: "aud-105",
-    userId: "usr-sec-1",
-    userName: "\u0633\u0643\u0631\u062A\u064A\u0631 \u0645\u0643\u062A\u0628 \u0627\u0644\u0627\u0633\u062A\u0642\u0628\u0627\u0644",
-    userRole: "SECRETARY",
-    actorName: "\u0633\u0643\u0631\u062A\u064A\u0631 \u0645\u0643\u062A\u0628 \u0627\u0644\u0627\u0633\u062A\u0642\u0628\u0627\u0644",
-    actorRole: "SECRETARY",
-    action: "CONFIRM_APPOINTMENT",
-    entityType: "APPOINTMENT",
-    entityId: "apt-901",
-    details: "\u062A\u0623\u0643\u064A\u062F \u062D\u062C\u0632 \u0645\u0648\u0639\u062F \u0643\u0634\u0641 \u062D\u0636\u0648\u0631\u064A \u0644\u062F\u0649 \u0639\u064A\u0627\u062F\u0629 \u0627\u0644\u0628\u0627\u0637\u0646\u0629 \u0648\u0625\u0631\u0633\u0627\u0644 \u0625\u0634\u0639\u0627\u0631 \u0644\u0644\u0645\u0631\u064A\u0636 \u0648\u0627\u0633\u062A\u062E\u0631\u0627\u062C \u0628\u0637\u0627\u0642\u0629 \u0627\u0644\u0645\u0648\u0639\u062F.",
-    ipAddress: "192.168.1.30",
-    timestamp: new Date(Date.now() - 75 * 60 * 1e3).toISOString(),
-    createdAt: new Date(Date.now() - 75 * 60 * 1e3).toISOString()
-  },
-  {
-    id: "aud-106",
-    userId: "usr-admin-1",
-    userName: "\u0627\u0644\u0645\u062F\u064A\u0631 \u0627\u0644\u0639\u0627\u0645 (\u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0639\u0644\u064A\u0627)",
-    userRole: "HOSPITAL_ADMIN",
-    actorName: "\u0627\u0644\u0645\u062F\u064A\u0631 \u0627\u0644\u0639\u0627\u0645 (\u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0639\u0644\u064A\u0627)",
-    actorRole: "HOSPITAL_ADMIN",
-    action: "UPDATE_DOCTOR",
-    entityType: "DOCTOR",
-    entityId: "doc-1",
-    details: "\u062A\u062D\u062F\u064A\u062B \u0628\u064A\u0627\u0646\u0627\u062A \u0648\u0627\u0639\u062A\u0645\u0627\u062F \u062C\u062F\u0648\u0644 \u062F\u0648\u0627\u0645 \u0627\u0644\u0627\u0633\u062A\u0634\u0627\u0631\u064A \u0648\u062A\u062B\u0628\u064A\u062A \u0631\u0633\u0648\u0645 \u0627\u0644\u0643\u0634\u0641 \u0627\u0644\u0637\u0628\u064A.",
-    ipAddress: "192.168.1.10",
-    timestamp: new Date(Date.now() - 110 * 60 * 1e3).toISOString(),
-    createdAt: new Date(Date.now() - 110 * 60 * 1e3).toISOString()
-  },
-  {
-    id: "aud-107",
-    userId: "usr-doc-1",
-    userName: "\u062F. \u0639\u0628\u062F \u0627\u0644\u0639\u0632\u064A\u0632 \u0627\u0644\u0633\u0628\u064A\u0639\u064A",
-    userRole: "DOCTOR",
-    actorName: "\u062F. \u0639\u0628\u062F \u0627\u0644\u0639\u0632\u064A\u0632 \u0627\u0644\u0633\u0628\u064A\u0639\u064A",
-    actorRole: "DOCTOR",
-    action: "CREATE_PRESCRIPTION",
-    entityType: "PRESCRIPTION",
-    entityId: "rx-2026-08",
-    details: "\u0625\u0635\u062F\u0627\u0631 \u0648\u0635\u0641\u0629 \u0639\u0644\u0627\u062C\u064A\u0629 \u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A\u0629 \u0645\u0648\u062B\u0642\u0629 \u0648\u0625\u0631\u0633\u0627\u0644 \u0625\u0634\u0639\u0627\u0631 \u0627\u0644\u0635\u0631\u0641 \u0644\u0635\u064A\u062F\u0644\u064A\u0629 \u0627\u0644\u0645\u0633\u062A\u0634\u0641\u0649.",
-    ipAddress: "192.168.1.15",
-    timestamp: new Date(Date.now() - 140 * 60 * 1e3).toISOString(),
-    createdAt: new Date(Date.now() - 140 * 60 * 1e3).toISOString()
-  },
-  {
-    id: "aud-108",
-    userId: "usr-admin-1",
-    userName: "\u0627\u0644\u0645\u062F\u064A\u0631 \u0627\u0644\u0639\u0627\u0645 (\u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0639\u0644\u064A\u0627)",
-    userRole: "HOSPITAL_ADMIN",
-    actorName: "\u0627\u0644\u0645\u062F\u064A\u0631 \u0627\u0644\u0639\u0627\u0645 (\u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0639\u0644\u064A\u0627)",
-    actorRole: "HOSPITAL_ADMIN",
-    action: "SAVE_PROMO",
-    entityType: "SETTINGS",
-    entityId: "promo-free-cns",
-    details: "\u062D\u0641\u0638 \u0648\u062A\u062D\u062F\u064A\u062B \u0645\u0639\u0627\u064A\u064A\u0631 \u0645\u0628\u0627\u062F\u0631\u0629 \u0627\u0644\u0627\u0633\u062A\u0634\u0627\u0631\u0627\u062A \u0627\u0644\u0637\u0628\u064A\u0629 \u0627\u0644\u0645\u062C\u0627\u0646\u064A\u0629 \u0648\u062A\u062D\u062F\u064A\u062F \u0627\u0644\u0645\u062F\u0629 \u0648\u0627\u0644\u0634\u0627\u0631\u0629 \u0627\u0644\u062A\u0631\u0648\u064A\u062C\u064A\u0629.",
-    ipAddress: "192.168.1.10",
-    timestamp: new Date(Date.now() - 180 * 60 * 1e3).toISOString(),
-    createdAt: new Date(Date.now() - 180 * 60 * 1e3).toISOString()
-  }
-];
+var INITIAL_AUDIT_LOGS = [];
 
 // node_modules/@firebase/util/dist/postinstall.mjs
 var getDefaultsFromPostinstall = () => void 0;
@@ -235853,36 +235388,51 @@ function createApiApp() {
     payment.confirmedBy = adminName;
     payment.isApprovedByAdmin = true;
     payment.updatedAt = now;
-    const linkedApt = appointments.find(
-      (a6) => a6.id === payment.serviceReferenceId || payment.id && a6.paymentId === payment.id || payment.transactionReference && (a6.transactionReference === payment.transactionReference || a6.paymentTransactionRef === payment.transactionReference) || payment.patientId && a6.patientId === payment.patientId && a6.paymentStatus !== "PAYMENT_SUCCESS"
-    );
-    if (linkedApt) {
-      linkedApt.paymentStatus = "PAYMENT_SUCCESS";
-      linkedApt.isPaid = true;
-      linkedApt.paymentDate = now;
-      linkedApt.paymentMethod = payment.paymentMethod || "BANK_TRANSFER_NOTICE";
-      linkedApt.paymentAmount = payment.amount;
-      linkedApt.paymentTransactionRef = payment.transactionReference;
-      if (linkedApt.status === "PAYMENT_REQUIRED" || linkedApt.status === "PENDING") {
-        linkedApt.status = "CONFIRMED";
+    const serviceType = String(payment.serviceType || "").toUpperCase();
+    const serviceReferenceId = payment.serviceReferenceId || "";
+    let linkedApt;
+    let linkedCon;
+    if (serviceType === "APPOINTMENT" && serviceReferenceId) {
+      linkedApt = appointments.find(
+        (a6) => a6.id === serviceReferenceId || a6.paymentId === payment.id
+      );
+      if (linkedApt) {
+        linkedApt.paymentStatus = "PAYMENT_SUCCESS";
+        linkedApt.isPaid = true;
+        linkedApt.paymentDate = now;
+        linkedApt.paymentId = payment.id;
+        linkedApt.paymentMethod = payment.paymentMethod || "BANK_TRANSFER_NOTICE";
+        linkedApt.paymentAmount = payment.amount;
+        linkedApt.paymentTransactionRef = payment.transactionReference;
+        if (linkedApt.status === "PAYMENT_REQUIRED" || linkedApt.status === "PENDING") {
+          linkedApt.status = "CONFIRMED";
+        }
+        linkedApt.coordinatorNotes = `\u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0627\u0644\u0633\u062F\u0627\u062F (\u062A\u0645 \u0627\u0644\u0633\u062F\u0627\u062F \u2713) \u0628\u0648\u0627\u0633\u0637\u0629 ${adminName} \u0628\u062A\u0627\u0631\u064A\u062E ${(/* @__PURE__ */ new Date()).toLocaleDateString("ar-YE")}`;
+        linkedApt.updatedAt = now;
       }
-      linkedApt.coordinatorNotes = `\u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0627\u0644\u0633\u062F\u0627\u062F (\u062A\u0645 \u0627\u0644\u0633\u062F\u0627\u062F \u2713) \u0628\u0648\u0627\u0633\u0637\u0629 ${adminName} \u0628\u062A\u0627\u0631\u064A\u062E ${(/* @__PURE__ */ new Date()).toLocaleDateString("ar-YE")}`;
-      linkedApt.updatedAt = now;
-    }
-    const linkedCon = consultations.find(
-      (c3) => c3.id === payment.serviceReferenceId || payment.id && c3.paymentId === payment.id || payment.transactionReference && (c3.transactionReference === payment.transactionReference || c3.paymentTransactionRef === payment.transactionReference) || payment.patientId && c3.patientId === payment.patientId && c3.paymentStatus !== "PAYMENT_SUCCESS"
-    );
-    if (linkedCon) {
-      linkedCon.paymentStatus = "PAYMENT_SUCCESS";
-      linkedCon.isPaid = true;
-      linkedCon.paymentDate = now;
-      linkedCon.paymentMethod = payment.paymentMethod || "BANK_TRANSFER_NOTICE";
-      linkedCon.paymentAmount = payment.amount;
-      linkedCon.paymentTransactionRef = payment.transactionReference;
-      if (linkedCon.status === "PAYMENT_REQUIRED" || linkedCon.status === "PENDING") {
-        linkedCon.status = "PAID_PENDING_DOCTOR";
+    } else if (serviceType === "CONSULTATION" && serviceReferenceId) {
+      linkedCon = consultations.find(
+        (c3) => c3.id === serviceReferenceId || c3.paymentId === payment.id
+      );
+      if (linkedCon) {
+        linkedCon.paymentStatus = "PAYMENT_SUCCESS";
+        linkedCon.isPaid = true;
+        linkedCon.paymentDate = now;
+        linkedCon.paymentId = payment.id;
+        linkedCon.paymentMethod = payment.paymentMethod || "BANK_TRANSFER_NOTICE";
+        linkedCon.paymentAmount = payment.amount;
+        linkedCon.paymentTransactionRef = payment.transactionReference;
+        if (linkedCon.status === "PAYMENT_REQUIRED" || linkedCon.status === "PENDING") {
+          linkedCon.status = "PAID_PENDING_DOCTOR";
+        }
+        linkedCon.updatedAt = now;
       }
-      linkedCon.updatedAt = now;
+    } else {
+      console.warn("[Payment Approval] Missing/invalid serviceType or serviceReferenceId:", {
+        paymentId: payment.id,
+        serviceType: payment.serviceType,
+        serviceReferenceId
+      });
     }
     const patient = patients.find((p6) => p6.id === payment.patientId || p6.userId === payment.patientId);
     const docId = payment.doctorId || linkedApt?.doctorId || linkedCon?.doctorId;
@@ -235928,6 +235478,8 @@ function createApiApp() {
     res.json({
       success: true,
       payment,
+      appointment: linkedApt,
+      consultation: linkedCon,
       message: "\u062A\u0645 \u062A\u0623\u0643\u064A\u062F \u0648\u0627\u0639\u062A\u0645\u0627\u062F \u0627\u0644\u0633\u062F\u0627\u062F \u0628\u0646\u062C\u0627\u062D\u060C \u0648\u062A\u062D\u062F\u064A\u062B \u0648\u0627\u062C\u0647\u0627\u062A \u0627\u0644\u0637\u0628\u064A\u0628 \u0648\u062E\u062F\u0645\u0629 \u0627\u0644\u0639\u0645\u0644\u0627\u0621 \u0648\u0627\u0644\u0645\u062F\u064A\u0631 \u0625\u0644\u0649 (\u062A\u0645 \u0627\u0644\u062A\u0633\u062F\u064A\u062F)."
     });
   });
@@ -235957,29 +235509,126 @@ function createApiApp() {
     res.json({ success: true, message: "\u062A\u0645 \u062A\u0633\u062C\u064A\u0644 \u062D\u0627\u0644\u0629 \u0627\u0644\u0641\u0634\u0644." });
   });
   app3.post("/api/payments/:id/refund", (req2, res) => {
-    const payment = payments.find((p6) => p6.id === req2.params.id || p6.transactionReference === req2.params.id);
+    const paymentId = req2.params.id;
+    let payment = payments.find(
+      (p6) => p6.id === paymentId || p6.transactionReference === paymentId || p6.serviceReferenceId === paymentId || p6.paymentId === paymentId || req2.body.paymentId && (p6.id === req2.body.paymentId || p6.paymentId === req2.body.paymentId) || req2.body.transactionReference && p6.transactionReference === req2.body.transactionReference || req2.body.serviceReferenceId && (p6.serviceReferenceId === req2.body.serviceReferenceId || p6.id === req2.body.serviceReferenceId)
+    );
     if (!payment) {
-      return res.status(404).json({ error: "\u0633\u062C\u0644 \u0627\u0644\u062F\u0641\u0639 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F." });
+      if (req2.body.payment && req2.body.payment.id) {
+        payment = { ...req2.body.payment };
+        payments.unshift(payment);
+      } else {
+        const linkedApt = appointments.find(
+          (a6) => a6.id === paymentId || a6.paymentId === paymentId || a6.transactionReference === paymentId || a6.paymentTransactionRef === paymentId || req2.body.serviceReferenceId && a6.id === req2.body.serviceReferenceId
+        );
+        const linkedCon = consultations.find(
+          (c3) => c3.id === paymentId || c3.paymentId === paymentId || c3.transactionReference === paymentId || c3.paymentTransactionRef === paymentId || req2.body.serviceReferenceId && c3.id === req2.body.serviceReferenceId
+        );
+        if (linkedApt) {
+          payment = {
+            id: linkedApt.paymentId || `pay-${linkedApt.id}`,
+            patientId: linkedApt.patientId,
+            patientName: linkedApt.patientName,
+            patientPhone: linkedApt.patientPhone,
+            doctorId: linkedApt.doctorId,
+            doctorName: linkedApt.doctorName,
+            doctorSpecialty: linkedApt.doctorSpecialty,
+            serviceType: "APPOINTMENT",
+            serviceReferenceId: linkedApt.id,
+            serviceName: linkedApt.serviceName || "\u0645\u0648\u0639\u062F \u0637\u0628\u064A",
+            amount: linkedApt.paymentAmount || Number(req2.body.amount) || 250,
+            currency: linkedApt.currency || req2.body.currency || "YER",
+            paymentMethod: linkedApt.paymentMethod || "KURAIMI_EXPRESS",
+            status: "PAID",
+            paymentStatus: "PAID",
+            transactionReference: linkedApt.paymentTransactionRef || linkedApt.transactionReference || `TXN-${Date.now()}`,
+            paidAt: linkedApt.paymentDate || linkedApt.createdAt || (/* @__PURE__ */ new Date()).toISOString(),
+            createdAt: linkedApt.createdAt || (/* @__PURE__ */ new Date()).toISOString(),
+            updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+          };
+          payments.unshift(payment);
+        } else if (linkedCon) {
+          payment = {
+            id: linkedCon.paymentId || `pay-${linkedCon.id}`,
+            patientId: linkedCon.patientId,
+            patientName: linkedCon.patientName,
+            patientPhone: linkedCon.patientPhone,
+            doctorId: linkedCon.doctorId,
+            doctorName: linkedCon.doctorName,
+            doctorSpecialty: linkedCon.doctorSpecialty,
+            serviceType: "CONSULTATION",
+            serviceReferenceId: linkedCon.id,
+            serviceName: `\u0627\u0633\u062A\u0634\u0627\u0631\u0629: ${linkedCon.title}`,
+            amount: linkedCon.paymentAmount || Number(req2.body.amount) || 250,
+            currency: linkedCon.currency || req2.body.currency || "YER",
+            paymentMethod: linkedCon.paymentMethod || "KURAIMI_EXPRESS",
+            status: "PAID",
+            paymentStatus: "PAID",
+            transactionReference: linkedCon.paymentTransactionRef || linkedCon.transactionReference || `TXN-${Date.now()}`,
+            paidAt: linkedCon.paymentDate || linkedCon.createdAt || (/* @__PURE__ */ new Date()).toISOString(),
+            createdAt: linkedCon.createdAt || (/* @__PURE__ */ new Date()).toISOString(),
+            updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+          };
+          payments.unshift(payment);
+        } else {
+          payment = {
+            id: paymentId,
+            patientId: req2.body.patientId || "pat-1",
+            patientName: req2.body.patientName || "\u0627\u0644\u0645\u0631\u064A\u0636",
+            patientPhone: req2.body.patientPhone,
+            serviceType: req2.body.serviceType || "APPOINTMENT",
+            serviceReferenceId: req2.body.serviceReferenceId || paymentId,
+            serviceName: req2.body.serviceName || "\u062E\u062F\u0645\u0629 \u0637\u0628\u064A\u0629",
+            amount: Number(req2.body.amount) || 250,
+            currency: req2.body.currency || "YER",
+            paymentMethod: req2.body.paymentMethod || "KURAIMI_EXPRESS",
+            status: "PAID",
+            paymentStatus: "PAID",
+            transactionReference: req2.body.transactionReference || `TXN-${Date.now()}`,
+            paidAt: (/* @__PURE__ */ new Date()).toISOString(),
+            createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+            updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+          };
+          payments.unshift(payment);
+        }
+      }
     }
     const { amount, reason = "\u0625\u0644\u063A\u0627\u0621 \u0627\u0644\u0645\u0648\u0639\u062F \u0623\u0648 \u0627\u0644\u0627\u0633\u062A\u0634\u0627\u0631\u0629 \u0628\u0646\u0627\u0621\u064B \u0639\u0644\u0649 \u0631\u063A\u0628\u0629 \u0627\u0644\u0645\u0631\u064A\u0636 \u0623\u0648 \u0627\u0639\u062A\u0630\u0627\u0631 \u0627\u0644\u0637\u0628\u064A\u0628", processedBy = "\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0645\u0633\u062A\u0634\u0641\u0649 \u0627\u0644\u0645\u0627\u0644\u064A\u0629", processedByUserId = "usr-admin-1" } = req2.body;
     const result = paymentService.processRefund(payment, amount, reason, processedBy);
     const pIdx = payments.findIndex((p6) => p6.id === payment.id);
     if (pIdx !== -1) {
       payments[pIdx] = result.updatedPayment;
+    } else {
+      payments.unshift(result.updatedPayment);
     }
     refunds.unshift(result.refund);
-    if (payment.serviceType === "APPOINTMENT") {
-      const apt = appointments.find((a6) => a6.id === payment.serviceReferenceId);
+    const sType = String(payment.serviceType || req2.body.serviceType || "").toUpperCase();
+    const refId = payment.serviceReferenceId || payment.appointmentId || payment.consultationId || req2.body.serviceReferenceId;
+    let updatedApt;
+    let updatedCon;
+    if (sType.includes("APPOINTMENT") || payment.appointmentId || !sType.includes("CONSULTATION") && appointments.some((a6) => a6.id === refId)) {
+      const apt = appointments.find(
+        (a6) => refId && a6.id === refId || payment.id && a6.paymentId === payment.id || payment.transactionReference && (a6.transactionReference === payment.transactionReference || a6.paymentTransactionRef === payment.transactionReference) || payment.patientId && a6.patientId === payment.patientId && (a6.paymentStatus === "PAID" || a6.paymentStatus === "PAYMENT_SUCCESS")
+      );
       if (apt) {
         apt.paymentStatus = "REFUNDED";
+        apt.isPaid = false;
         apt.status = "CANCELLED";
         apt.coordinatorNotes = `\u062A\u0645 \u0627\u0633\u062A\u0631\u062F\u0627\u062F \u0627\u0644\u0631\u0633\u0648\u0645 \u0628\u0645\u0628\u0644\u063A ${result.refund.amount} ${payment.currency}. \u0627\u0644\u0633\u0628\u0628: ${reason}`;
+        apt.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+        updatedApt = apt;
       }
-    } else if (payment.serviceType === "CONSULTATION") {
-      const con = consultations.find((c3) => c3.id === payment.serviceReferenceId);
+    }
+    if (sType.includes("CONSULTATION") || payment.consultationId || !sType.includes("APPOINTMENT") && consultations.some((c3) => c3.id === refId)) {
+      const con = consultations.find(
+        (c3) => refId && c3.id === refId || payment.id && c3.paymentId === payment.id || payment.transactionReference && (c3.transactionReference === payment.transactionReference || c3.paymentTransactionRef === payment.transactionReference) || payment.patientId && c3.patientId === payment.patientId && (c3.paymentStatus === "PAID" || c3.paymentStatus === "PAYMENT_SUCCESS")
+      );
       if (con) {
         con.paymentStatus = "REFUNDED";
+        con.isPaid = false;
         con.status = "CANCELLED";
+        con.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+        updatedCon = con;
       }
     }
     logAudit(
@@ -236005,6 +235654,8 @@ function createApiApp() {
       success: true,
       refund: result.refund,
       payment: result.updatedPayment,
+      appointment: updatedApt,
+      consultation: updatedCon,
       ledgerEntry: result.ledgerEntry,
       message: `\u062A\u0645 \u0627\u0633\u062A\u0631\u062F\u0627\u062F \u0627\u0644\u0645\u0628\u0644\u063A (${result.refund.amount} ${payment.currency}) \u0628\u0646\u062C\u0627\u062D \u0648\u062A\u062D\u062F\u064A\u062B \u0627\u0644\u0633\u062C\u0644\u0627\u062A \u0627\u0644\u0645\u062D\u0627\u0633\u0628\u064A\u0629.`
     });
@@ -236327,9 +235978,9 @@ function createApiApp() {
     const fee = req2.body.fee !== void 0 ? Number(req2.body.fee) : service?.price || doctor?.consultationFee || 200;
     const aptId = req2.body.id || `apt-2026-${Math.floor(100 + Math.random() * 900)}`;
     const isNotice = req2.body.paymentStatus === "PENDING" || req2.body.paymentMethod === "BANK_TRANSFER_NOTICE";
-    const isPaid = !isNotice && Boolean(req2.body.isPaid || req2.body.paymentId && req2.body.paymentStatus === "PAYMENT_SUCCESS");
-    const initialPaymentStatus = isWaived ? "WAIVED" : isPaid ? "PAYMENT_SUCCESS" : isNotice ? "PENDING" : "PAYMENT_REQUIRED";
-    const initialStatus = isWaived ? "PENDING" : isPaid ? "CONFIRMED" : isNotice ? "PENDING" : "PAYMENT_REQUIRED";
+    const initialPaymentStatus = isWaived ? "WAIVED" : "PENDING";
+    const isPaid = false;
+    const initialStatus = "PENDING";
     const attachments = req2.body.attachments || [];
     const newAppointment = {
       id: aptId,
@@ -236369,6 +236020,8 @@ function createApiApp() {
       if (existingPay) {
         existingPay.serviceReferenceId = newAppointment.id;
         existingPay.serviceName = newAppointment.serviceName;
+        existingPay.status = "PENDING";
+        existingPay.paymentStatus = "PENDING";
         paymentRecord = existingPay;
       }
     } else if (!isWaived && fee > 0 && !isPaid) {
@@ -236385,10 +236038,10 @@ function createApiApp() {
         serviceName: newAppointment.serviceName,
         amount: fee,
         currency: "YER",
-        paymentMethod: "KURAIMI_EXPRESS",
-        status: "PAYMENT_REQUIRED",
-        paymentStatus: "PAYMENT_REQUIRED",
-        transactionReference: `TXN-${(/* @__PURE__ */ new Date()).getFullYear()}${String((/* @__PURE__ */ new Date()).getMonth() + 1).padStart(2, "0")}-${Math.floor(1e5 + Math.random() * 9e5)}`,
+        paymentMethod: req2.body.paymentMethod || "KURAIMI_EXPRESS",
+        status: "PENDING",
+        paymentStatus: "PENDING",
+        transactionReference: req2.body.transactionReference || `TXN-${(/* @__PURE__ */ new Date()).getFullYear()}${String((/* @__PURE__ */ new Date()).getMonth() + 1).padStart(2, "0")}-${Math.floor(1e5 + Math.random() * 9e5)}`,
         createdAt: (/* @__PURE__ */ new Date()).toISOString(),
         updatedAt: (/* @__PURE__ */ new Date()).toISOString()
       };
@@ -236702,9 +236355,9 @@ function createApiApp() {
     }
     const consultationId = req2.body.id || `cns-2026-${Math.floor(100 + Math.random() * 900)}`;
     const isNotice = req2.body.paymentStatus === "PENDING" || req2.body.paymentMethod === "BANK_TRANSFER_NOTICE";
-    const isPaid = !isNotice && Boolean(req2.body.isPaid || req2.body.paymentId && req2.body.paymentStatus === "PAYMENT_SUCCESS");
-    const initialPaymentStatus = finalIsWaived ? "WAIVED" : isPaid ? "PAYMENT_SUCCESS" : isNotice ? "PENDING" : "PAYMENT_REQUIRED";
-    const initialStatus = finalIsWaived ? "PENDING" : isPaid ? "PAID_PENDING_DOCTOR" : isNotice ? "PENDING" : "PAYMENT_REQUIRED";
+    const initialPaymentStatus = finalIsWaived ? "WAIVED" : "PENDING";
+    const isPaid = finalIsWaived ? true : false;
+    const initialStatus = "PENDING";
     const newConsultation = {
       id: consultationId,
       patientId: patient.id,
@@ -236723,13 +236376,14 @@ function createApiApp() {
       status: initialStatus,
       paymentStatus: initialPaymentStatus,
       isPaid,
-      paymentMethod: req2.body.paymentMethod || (isNotice ? "BANK_TRANSFER_NOTICE" : isPaid ? "KURAIMI_EXPRESS" : void 0),
-      paymentId: req2.body.paymentId,
-      transactionReference: req2.body.transactionReference || req2.body.paymentTransactionRef,
+      paymentMethod: finalIsWaived ? "WAIVED" : req2.body.paymentMethod || (isNotice ? "BANK_TRANSFER_NOTICE" : isPaid ? "KURAIMI_EXPRESS" : void 0),
+      paymentId: req2.body.paymentId || (finalIsWaived ? `pay-free-${Date.now()}` : void 0),
+      transactionReference: req2.body.transactionReference || req2.body.paymentTransactionRef || (finalIsWaived ? `FREE-${Date.now().toString().slice(-6)}` : void 0),
       paymentAmount: fee,
+      consultationFee: fee,
       currency: "YER",
       isWaived: finalIsWaived,
-      waiverReason: waiverReason || void 0,
+      waiverReason: waiverReason || (finalIsWaived ? "\u0627\u0633\u062A\u0634\u0627\u0631\u0629 \u0645\u062C\u0627\u0646\u064A\u0629 \u0645\u0639\u062A\u0645\u062F\u0629" : void 0),
       attachments: attachments || [],
       messages: [
         {
@@ -236752,6 +236406,8 @@ function createApiApp() {
       if (existingPay) {
         existingPay.serviceReferenceId = newConsultation.id;
         existingPay.serviceName = `\u0627\u0633\u062A\u0634\u0627\u0631\u0629 \u0637\u0628\u064A\u0629: ${title}`;
+        existingPay.status = "PENDING";
+        existingPay.paymentStatus = "PENDING";
         paymentRecord = existingPay;
       }
     } else if (!isWaived && fee > 0 && !isPaid) {
@@ -236768,10 +236424,10 @@ function createApiApp() {
         serviceName: `\u0627\u0633\u062A\u0634\u0627\u0631\u0629 \u0637\u0628\u064A\u0629: ${title}`,
         amount: fee,
         currency: "YER",
-        paymentMethod: "KURAIMI_EXPRESS",
-        status: "PAYMENT_REQUIRED",
-        paymentStatus: "PAYMENT_REQUIRED",
-        transactionReference: `TXN-${(/* @__PURE__ */ new Date()).getFullYear()}${String((/* @__PURE__ */ new Date()).getMonth() + 1).padStart(2, "0")}-${Math.floor(1e5 + Math.random() * 9e5)}`,
+        paymentMethod: req2.body.paymentMethod || "KURAIMI_EXPRESS",
+        status: "PENDING",
+        paymentStatus: "PENDING",
+        transactionReference: req2.body.transactionReference || `TXN-${(/* @__PURE__ */ new Date()).getFullYear()}${String((/* @__PURE__ */ new Date()).getMonth() + 1).padStart(2, "0")}-${Math.floor(1e5 + Math.random() * 9e5)}`,
         createdAt: (/* @__PURE__ */ new Date()).toISOString(),
         updatedAt: (/* @__PURE__ */ new Date()).toISOString()
       };
@@ -236779,11 +236435,11 @@ function createApiApp() {
       newConsultation.paymentId = paymentRecord.id;
     }
     logAudit(patient.userId || "guest", patient.fullName, "PATIENT", "CREATE_CONSULTATION", "CONSULTATION", newConsultation.id, `\u0625\u0631\u0633\u0627\u0644 \u0627\u0633\u062A\u0634\u0627\u0631\u0629 \u0637\u0628\u064A\u0629 \u0625\u0644\u0649 ${docName}: ${title} (\u0631\u0633\u0648\u0645: ${fee} YER - \u062D\u0627\u0644\u0629 \u0627\u0644\u062F\u0641\u0639: ${newConsultation.paymentStatus})`, req2);
-    if (isWaived && doctor) {
+    if (finalIsWaived && doctor) {
       pushNotification(
         [doctor.userId, doctor.id],
-        "\u0627\u0633\u062A\u0634\u0627\u0631\u0629 \u0637\u0628\u064A\u0629 \u062C\u062F\u064A\u062F\u0629 \u0628\u0627\u0646\u062A\u0638\u0627\u0631 \u0627\u0644\u0631\u062F",
-        `\u0648\u0635\u0644\u062A\u0643 \u0627\u0633\u062A\u0634\u0627\u0631\u0629 \u062C\u062F\u064A\u062F\u0629 \u0645\u0646 \u0627\u0644\u0645\u0631\u064A\u0636 ${patient.fullName} \u0628\u062E\u0635\u0648\u0635 "${title}". \u064A\u0631\u062C\u0649 \u0645\u0631\u0627\u062C\u0639\u0629 \u0627\u0644\u062D\u0627\u0644\u0629 \u0648\u062A\u0642\u062F\u064A\u0645 \u0627\u0644\u062A\u0648\u062C\u064A\u0647 \u0627\u0644\u0637\u0628\u064A.`,
+        "\u0627\u0633\u062A\u0634\u0627\u0631\u0629 \u0637\u0628\u064A\u0629 \u0645\u062C\u0627\u0646\u064A\u0629 \u062C\u062F\u064A\u062F\u0629 \u0628\u0627\u0646\u062A\u0638\u0627\u0631 \u0627\u0644\u0631\u062F",
+        `\u0648\u0635\u0644\u062A\u0643 \u0627\u0633\u062A\u0634\u0627\u0631\u0629 \u0645\u062C\u0627\u0646\u064A\u0629 \u0645\u0639\u062A\u0645\u062F\u0629 \u0645\u0646 \u0627\u0644\u0645\u0631\u064A\u0636 ${patient.fullName} \u0628\u062E\u0635\u0648\u0635 "${title}". \u064A\u0645\u0643\u0646\u0643 \u0627\u0644\u0631\u062F \u0645\u0628\u0627\u0634\u0631\u0629 \u0627\u0644\u0622\u0646.`,
         "CONSULTATION",
         newConsultation.id
       );
@@ -236791,7 +236447,7 @@ function createApiApp() {
     pushNotification(
       [patient.userId, patient.id],
       "\u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0627\u0633\u062A\u0634\u0627\u0631\u062A\u0643 \u0627\u0644\u0637\u0628\u064A\u0629",
-      isWaived ? `\u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0627\u0633\u062A\u0634\u0627\u0631\u062A\u0643 \u0625\u0644\u0649 ${docName}. \u0633\u062A\u0635\u0644\u0643 \u0625\u0634\u0639\u0627\u0631 \u0641\u0648\u0631\u064A \u0639\u0646\u062F \u0642\u064A\u0627\u0645 \u0627\u0644\u0637\u0628\u064A\u0628 \u0628\u0627\u0644\u0631\u062F.` : `\u062A\u0645 \u0625\u0646\u0634\u0627\u0621 \u0637\u0644\u0628 \u0627\u0633\u062A\u0634\u0627\u0631\u062A\u0643 \u0644\u0640 ${docName}. \u064A\u0631\u062C\u0649 \u0625\u062A\u0645\u0627\u0645 \u0627\u0644\u0633\u062F\u0627\u062F (${fee} \u0631.\u064A) \u0644\u062A\u0635\u0644 \u0645\u0628\u0627\u0634\u0631\u0629 \u0644\u0645\u0644\u0641 \u0627\u0644\u0637\u0628\u064A\u0628 \u0644\u0644\u0631\u062F \u0639\u0644\u064A\u0647\u0627.`,
+      finalIsWaived ? `\u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0627\u0633\u062A\u0634\u0627\u0631\u062A\u0643 \u0627\u0644\u0645\u062C\u0627\u0646\u064A\u0629 \u0625\u0644\u0649 ${docName}. \u0633\u062A\u0635\u0644\u0643 \u0625\u0634\u0639\u0627\u0631 \u0641\u0648\u0631\u064A \u0639\u0646\u062F \u0642\u064A\u0627\u0645 \u0627\u0644\u0637\u0628\u064A\u0628 \u0628\u0627\u0644\u0631\u062F.` : `\u062A\u0645 \u0625\u0646\u0634\u0627\u0621 \u0637\u0644\u0628 \u0627\u0633\u062A\u0634\u0627\u0631\u062A\u0643 \u0644\u0640 ${docName}. \u064A\u0631\u062C\u0649 \u0625\u062A\u0645\u0627\u0645 \u0627\u0644\u0633\u062F\u0627\u062F (${fee} \u0631.\u064A) \u0644\u062A\u0635\u0644 \u0645\u0628\u0627\u0634\u0631\u0629 \u0644\u0645\u0644\u0641 \u0627\u0644\u0637\u0628\u064A\u0628 \u0644\u0644\u0631\u062F \u0639\u0644\u064A\u0647\u0627.`,
       "CONSULTATION",
       newConsultation.id
     );
@@ -237983,6 +237639,10 @@ function createApiApp() {
     prescriptions = [];
     notifications = [];
     auditLogs = [];
+    payments = [];
+    followUps = [];
+    refunds = [];
+    reminderSchedules = [];
     saveDatabase();
     res.json({
       success: true,

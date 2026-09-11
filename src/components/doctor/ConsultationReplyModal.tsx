@@ -99,10 +99,16 @@ export const ConsultationReplyModal: React.FC<ConsultationReplyModalProps> = ({
           {/* Patient Complaint Info Card */}
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <User className="w-4 h-4 text-slate-500" />
                 <span className="font-bold text-slate-900">{consultation.patientName}</span>
                 <span className="text-slate-400">({consultation.patientMrn})</span>
+                {(consultation.isWaived || consultation.paymentStatus === 'WAIVED' || consultation.consultationFee === 0 || consultation.paymentAmount === 0 || (consultation.waiverReason && consultation.waiverReason.includes('مجاني'))) && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-blue-600 shrink-0" />
+                    استشارة مجانية
+                  </span>
+                )}
               </div>
               <span className="text-slate-400 text-[11px] font-mono">
                 {new Date(consultation.createdAt).toLocaleDateString('ar-SA')}

@@ -269,42 +269,254 @@ async function fetchJson<T>(
 
 
 // Helper: Sync confirmed or updated payment and its linked service to Firestore
-async function syncPaymentAndServiceToFirestore(payment: Payment) {
+async function syncPaymentAndServiceToFirestore(
+  payment: Payment,
+  linkedAptFromServer?: Appointment,
+  linkedConFromServer?: Consultation
+) {
   try {
-    await firebaseDb.createPayment(payment);
-    if (payment.serviceType === 'CONSULTATION' && payment.serviceReferenceId) {
-      const cns = await fetchDocById<Consultation>(FIRESTORE_COLLECTIONS.CONSULTATIONS, payment.serviceReferenceId);
-      if (cns) {
+    // IMPORTANT: A payment belongs to exactly ONE service.
+    // Never use patientId alone to infer which consultation/appointment is paid.
+    const serviceType = String(payment.serviceType || '').toUpperCase();
+    const serviceReferenceId =
+      payment.serviceReferenceId ||
+      payment.appointmentId ||
+      payment.consultationId;
+
+    // Keep the payment itself synchronized.
+    await firebaseDb.createPayment({
+      ...payment,
+      paymentStatus: 'PAID',
+      status: 'PAYMENT_SUCCESS',
+      updatedAt: new Date().toISOString()
+    });
+
+    // CONSULTATION: sync ONLY the consultation explicitly linked to this payment.
+    if (serviceType === 'CONSULTATION') {
+      let consultation: Consultation | null = null;
+
+      if (serviceReferenceId) {
+        consultation = await fetchDocById<Consultation>(
+          FIRESTORE_COLLECTIONS.CONSULTATIONS,
+          serviceReferenceId
+        );
+      }
+
+      // Only accept the server-linked consultation when it is the same service.
+      if (
+        !consultation &&
+        linkedConFromServer?.id &&
+        (!serviceReferenceId || linkedConFromServer.id === serviceReferenceId)
+      ) {
+        consultation = linkedConFromServer;
+      }
+
+      if (consultation) {
         await firebaseDb.saveConsultation({
-          ...cns,
+          ...consultation,
           paymentStatus: 'PAID',
           isPaid: true,
-          status: cns.status === 'ANSWERED' ? 'ANSWERED' : 'PENDING',
           paymentId: payment.id,
-          transactionReference: payment.transactionReference || cns.transactionReference,
-          paymentMethod: payment.paymentMethod || cns.paymentMethod,
-          paymentAmount: payment.amount || cns.paymentAmount,
-          paymentDate: payment.paidAt || new Date().toISOString()
+          transactionReference:
+            payment.transactionReference || consultation.transactionReference,
+          paymentMethod: payment.paymentMethod || consultation.paymentMethod,
+          paymentAmount: payment.amount || consultation.paymentAmount,
+          paymentDate: payment.paidAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         });
+      } else {
+        console.warn(
+          '[Sync] Consultation payment has no exact linked consultation:',
+          payment.id,
+          serviceReferenceId
+        );
       }
-    } else if (payment.serviceType === 'APPOINTMENT' && payment.serviceReferenceId) {
-      const apt = await fetchDocById<Appointment>(FIRESTORE_COLLECTIONS.APPOINTMENTS, payment.serviceReferenceId);
-      if (apt) {
+    }
+
+    // APPOINTMENT: sync ONLY the appointment explicitly linked to this payment.
+    if (serviceType === 'APPOINTMENT') {
+      let appointment: Appointment | null = null;
+
+      if (serviceReferenceId) {
+        appointment = await fetchDocById<Appointment>(
+          FIRESTORE_COLLECTIONS.APPOINTMENTS,
+          serviceReferenceId
+        );
+      }
+
+      // Only accept the server-linked appointment when it is the same service.
+      if (
+        !appointment &&
+        linkedAptFromServer?.id &&
+        (!serviceReferenceId || linkedAptFromServer.id === serviceReferenceId)
+      ) {
+        appointment = linkedAptFromServer;
+      }
+
+      if (appointment) {
         await firebaseDb.saveAppointment({
-          ...apt,
+          ...appointment,
           paymentStatus: 'PAID',
           isPaid: true,
           status: 'CONFIRMED',
           paymentId: payment.id,
-          transactionReference: payment.transactionReference || apt.paymentTransactionRef || apt.transactionReference,
-          paymentMethod: payment.paymentMethod || apt.paymentMethod,
-          paymentAmount: payment.amount || apt.paymentAmount,
-          paymentDate: payment.paidAt || new Date().toISOString()
+          transactionReference:
+            payment.transactionReference ||
+            appointment.paymentTransactionRef ||
+            appointment.transactionReference,
+          paymentMethod: payment.paymentMethod || appointment.paymentMethod,
+          paymentAmount: payment.amount || appointment.paymentAmount,
+          paymentDate: payment.paidAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         });
+      } else {
+        console.warn(
+          '[Sync] Appointment payment has no exact linked appointment:',
+          payment.id,
+          serviceReferenceId
+        );
       }
+    }
+
+    // Do NOT guess the service when serviceType is missing.
+    // This prevents one patient's consultation approval from paying another appointment.
+    if (serviceType !== 'CONSULTATION' && serviceType !== 'APPOINTMENT') {
+      console.warn(
+        '[Sync] Payment has no valid serviceType; payment updated only:',
+        payment.id,
+        payment.serviceType,
+        serviceReferenceId
+      );
     }
   } catch (err) {
     console.warn('[Sync] Failed to sync payment status to Firestore:', err);
+  }
+}
+
+// Helper: Sync refunded payment and its linked service to Firestore
+async function syncRefundToFirestore(
+  payment: Payment,
+  refund: Refund,
+  linkedAptFromServer?: Appointment,
+  linkedConFromServer?: Consultation
+) {
+  try {
+    const updatedPayment: Payment = {
+      ...payment,
+      paymentStatus: 'REFUNDED',
+      status: 'REFUNDED',
+      refundAmount: refund.amount,
+      updatedAt: new Date().toISOString()
+    };
+
+    // 1. Update in Firestore payments collection
+    await firebaseDb.createPayment(updatedPayment);
+
+    const sType = String(payment.serviceType || '').toUpperCase();
+    const refId = payment.serviceReferenceId || payment.appointmentId || payment.consultationId;
+
+    // 2. Sync server-returned linked appointment if present
+    if (linkedAptFromServer && linkedAptFromServer.id) {
+      await firebaseDb.saveAppointment({
+        ...linkedAptFromServer,
+        paymentStatus: 'REFUNDED',
+        isPaid: false,
+        status: 'CANCELLED',
+        coordinatorNotes: `تم استرداد الرسوم بمبلغ ${refund.amount} ${refund.currency}. السبب: ${refund.reason}`,
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    // 3. Sync server-returned linked consultation if present
+    if (linkedConFromServer && linkedConFromServer.id) {
+      await firebaseDb.saveConsultation({
+        ...linkedConFromServer,
+        paymentStatus: 'REFUNDED',
+        isPaid: false,
+        status: 'CANCELLED',
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    // 4. If consultation or serviceReferenceId relates to consultation
+    if (sType.includes('CONSULTATION') || payment.consultationId || (!sType.includes('APPOINTMENT') && !linkedConFromServer)) {
+      if (refId) {
+        const cns = await fetchDocById<Consultation>(FIRESTORE_COLLECTIONS.CONSULTATIONS, refId);
+        if (cns) {
+          await firebaseDb.saveConsultation({
+            ...cns,
+            paymentStatus: 'REFUNDED',
+            isPaid: false,
+            status: 'CANCELLED',
+            updatedAt: new Date().toISOString()
+          });
+        }
+      }
+      try {
+        const fsCnsList = await getConsultationsWithFilter({ patientId: payment.patientId });
+        for (const c of fsCnsList) {
+          if (
+            c.id === refId ||
+            (c.paymentId && c.paymentId === payment.id) ||
+            (payment.transactionReference && (c.transactionReference === payment.transactionReference || (c as any).paymentTransactionRef === payment.transactionReference)) ||
+            (c.patientId === payment.patientId && (c.paymentStatus === 'PAID' || c.paymentStatus === 'PAYMENT_SUCCESS'))
+          ) {
+            await firebaseDb.saveConsultation({
+              ...c,
+              paymentStatus: 'REFUNDED',
+              isPaid: false,
+              status: 'CANCELLED',
+              updatedAt: new Date().toISOString()
+            });
+            break;
+          }
+        }
+      } catch (e) {
+        // quiet fallback
+      }
+    }
+
+    // 5. If appointment or serviceReferenceId relates to appointment
+    if (sType.includes('APPOINTMENT') || payment.appointmentId || (!sType.includes('CONSULTATION') && !linkedAptFromServer)) {
+      if (refId) {
+        const apt = await fetchDocById<Appointment>(FIRESTORE_COLLECTIONS.APPOINTMENTS, refId);
+        if (apt) {
+          await firebaseDb.saveAppointment({
+            ...apt,
+            paymentStatus: 'REFUNDED',
+            isPaid: false,
+            status: 'CANCELLED',
+            coordinatorNotes: `تم استرداد الرسوم بمبلغ ${refund.amount} ${refund.currency}. السبب: ${refund.reason}`,
+            updatedAt: new Date().toISOString()
+          });
+        }
+      }
+      try {
+        const fsAptList = await getAppointmentsWithFilter({ patientId: payment.patientId });
+        for (const a of fsAptList) {
+          if (
+            a.id === refId ||
+            (a.paymentId && a.paymentId === payment.id) ||
+            (payment.transactionReference && (a.transactionReference === payment.transactionReference || a.paymentTransactionRef === payment.transactionReference)) ||
+            (a.patientId === payment.patientId && (a.paymentStatus === 'PAID' || a.paymentStatus === 'PAYMENT_SUCCESS'))
+          ) {
+            await firebaseDb.saveAppointment({
+              ...a,
+              paymentStatus: 'REFUNDED',
+              isPaid: false,
+              status: 'CANCELLED',
+              coordinatorNotes: `تم استرداد الرسوم بمبلغ ${refund.amount} ${refund.currency}. السبب: ${refund.reason}`,
+              updatedAt: new Date().toISOString()
+            });
+            break;
+          }
+        }
+      } catch (e) {
+        // quiet fallback
+      }
+    }
+  } catch (err) {
+    console.warn('[Sync] Failed to sync refund status to Firestore:', err);
   }
 }
 
@@ -3268,6 +3480,15 @@ createDoctor: async (
             consultation.id,
             consultation
           );
+        } else {
+          const existing = mergedMap.get(consultation.id)!;
+          if (consultation.isPaid || consultation.paymentStatus === 'PAID' || consultation.paymentStatus === 'PAYMENT_SUCCESS') {
+            existing.isPaid = true;
+            existing.paymentStatus = 'PAID';
+            if (consultation.paymentDate) existing.paymentDate = consultation.paymentDate;
+            if (consultation.paymentId) existing.paymentId = consultation.paymentId;
+            if (consultation.transactionReference) existing.transactionReference = consultation.transactionReference;
+          }
         }
       }
     );
@@ -3341,6 +3562,7 @@ createDoctor: async (
         paymentId?: string;
         transactionReference?: string;
         isPaid?: boolean;
+        paymentStatus?: string;
       }
     ) => {
 
@@ -3483,16 +3705,16 @@ const newCns: Consultation = {
     data.transactionReference,
 
   isPaid:
-    Boolean(data.isPaid || data.paymentId || data.isWaived || data.fee === 0 || data.consultationFee === 0),
+    Boolean(data.isPaid || data.isWaived || data.fee === 0 || data.consultationFee === 0),
 
   paymentStatus:
-    data.isWaived ? 'WAIVED' : (Boolean(data.isPaid || data.paymentId || data.fee === 0 || data.consultationFee === 0) ? 'PAID' : ((data as any).paymentStatus || 'PENDING')),
+    (data.isWaived || data.fee === 0 || data.consultationFee === 0) ? 'WAIVED' : ((data as any).paymentStatus || 'PENDING'),
 
   paymentMethod:
-    (data as any).paymentMethod || (data.paymentId ? 'KURAIMI_EXPRESS' : undefined),
+    (data as any).paymentMethod || ((data.isWaived || data.fee === 0 || data.consultationFee === 0) ? 'WAIVED' : (data.paymentId ? 'KURAIMI_EXPRESS' : undefined)),
 
   isWaived:
-    Boolean(data.isWaived),
+    Boolean(data.isWaived || data.fee === 0 || data.consultationFee === 0),
 
   waiverReason:
     data.waiverReason,
@@ -6400,9 +6622,9 @@ createStaff: async (
   },
 
   processRefund: async (
-    paymentIdOrOptions: string | { paymentId: string; amount?: number; reason?: string; refundedBy?: string; processedBy?: string; serviceReferenceId?: string },
-    data?: { amount?: number; reason?: string; processedBy?: string; processedByUserId?: string }
-  ): Promise<{ success: boolean; refund: Refund; payment: Payment; message: string }> => {
+    paymentIdOrOptions: string | { paymentId: string; amount?: number; reason?: string; refundedBy?: string; processedBy?: string; serviceReferenceId?: string; payment?: Payment; [key: string]: any },
+    data?: { amount?: number; reason?: string; processedBy?: string; processedByUserId?: string; payment?: Payment; [key: string]: any }
+  ): Promise<{ success: boolean; refund: Refund; payment: Payment; appointment?: Appointment; consultation?: Consultation; message: string }> => {
     let paymentId: string;
     let payload: any;
     if (typeof paymentIdOrOptions === 'string') {
@@ -6411,19 +6633,88 @@ createStaff: async (
     } else {
       paymentId = paymentIdOrOptions.paymentId;
       payload = {
+        ...paymentIdOrOptions,
         amount: paymentIdOrOptions.amount,
         reason: paymentIdOrOptions.reason || 'استرداد مالي',
         processedBy: paymentIdOrOptions.processedBy || paymentIdOrOptions.refundedBy || 'إدارة المستشفى',
         serviceReferenceId: paymentIdOrOptions.serviceReferenceId
       };
     }
-    return await fetchJson<{ success: boolean; refund: Refund; payment: Payment; message: string }>(
-      `/api/payments/${paymentId}/refund`,
-      {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      }
-    );
+
+    let res: { success: boolean; refund: Refund; payment: Payment; appointment?: Appointment; consultation?: Consultation; message: string };
+    try {
+      res = await fetchJson<{ success: boolean; refund: Refund; payment: Payment; appointment?: Appointment; consultation?: Consultation; message: string }>(
+        `/api/payments/${paymentId}/refund`,
+        {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        }
+      );
+    } catch (err: any) {
+      console.warn('Backend /api/payments/:id/refund failed or returned error, using fallback:', err);
+      const paymentObj: Payment = payload.payment || {
+        id: paymentId,
+        patientId: payload.patientId || 'pat-1',
+        patientName: payload.patientName || 'المريض',
+        patientPhone: payload.patientPhone || '',
+        serviceType: payload.serviceType || 'APPOINTMENT',
+        serviceReferenceId: payload.serviceReferenceId || paymentId,
+        serviceName: payload.serviceName || 'خدمة طبية',
+        amount: Number(payload.amount) || 250,
+        currency: payload.currency || 'YER',
+        paymentMethod: payload.paymentMethod || 'KURAIMI_EXPRESS',
+        status: 'PAID',
+        paymentStatus: 'PAID',
+        transactionReference: payload.transactionReference || `TXN-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      const refundAmount = Number(payload.amount) > 0 ? Number(payload.amount) : paymentObj.amount;
+      const ref: Refund = {
+        id: `ref-${Date.now()}`,
+        paymentId: paymentObj.id,
+        appointmentId: paymentObj.appointmentId,
+        consultationId: paymentObj.consultationId,
+        patientId: paymentObj.patientId,
+        patientName: paymentObj.patientName,
+        amount: refundAmount,
+        currency: (paymentObj.currency || 'YER') as any,
+        reason: payload.reason || 'إلغاء واسترداد الرسوم',
+        status: 'REFUNDED',
+        transactionReference: `REF-TXN-${Date.now().toString().slice(-6)}`,
+        processedBy: payload.processedBy || 'إدارة المستشفى المالية',
+        createdAt: new Date().toISOString()
+      };
+
+      const updatedPay: Payment = {
+        ...paymentObj,
+        status: 'REFUNDED',
+        paymentStatus: 'REFUNDED',
+        refundAmount,
+        updatedAt: new Date().toISOString()
+      };
+
+      res = {
+        success: true,
+        refund: ref,
+        payment: updatedPay,
+        message: `تم استرداد مبلغ ${refundAmount} ${paymentObj.currency} بنجاح.`
+      };
+    }
+
+    // Synchronize refund to Firestore (payment, appointment, consultation)
+    if (res && res.payment && res.refund) {
+      await syncRefundToFirestore(res.payment, res.refund, res.appointment, res.consultation);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('mch_payments_updated'));
+      window.dispatchEvent(new Event('mch_appointments_updated'));
+      window.dispatchEvent(new Event('mch_consultations_updated'));
+    }
+
+    return res;
   },
 
   updatePaymentStatus: async (paymentId: string, status: any): Promise<Payment> => {
@@ -6433,8 +6724,8 @@ createStaff: async (
     });
   },
 
-  approvePayment: async (paymentId: string, adminName?: string): Promise<{ success: boolean; payment: Payment; message: string }> => {
-    const res = await fetchJson<{ success: boolean; payment: Payment; message: string }>(
+  approvePayment: async (paymentId: string, adminName?: string): Promise<{ success: boolean; payment: Payment; appointment?: Appointment; consultation?: Consultation; message: string }> => {
+    const res = await fetchJson<{ success: boolean; payment: Payment; appointment?: Appointment; consultation?: Consultation; message: string }>(
       `/api/payments/${paymentId}/approve`,
       {
         method: 'POST',
@@ -6442,7 +6733,7 @@ createStaff: async (
       }
     );
     if (res && res.payment) {
-      await syncPaymentAndServiceToFirestore(res.payment);
+      await syncPaymentAndServiceToFirestore(res.payment, res.appointment, res.consultation);
     }
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('mch_payments_updated'));

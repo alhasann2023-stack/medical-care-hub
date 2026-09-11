@@ -13,7 +13,8 @@ import {
   Activity,
   Paperclip,
   Download,
-  Clock
+  Clock,
+  Sparkles
 } from 'lucide-react';
 
 import {
@@ -129,22 +130,29 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       normalizedStatus = 'PENDING';
     }
 
+    const isFree = Boolean(
+      consultation?.isWaived ||
+      consultation?.paymentStatus === 'WAIVED' ||
+      (consultation?.paymentStatus as string) === 'FREE' ||
+      (consultation?.consultationFee === 0 && consultation?.consultationFee !== undefined) ||
+      (consultation?.paymentAmount === 0 && consultation?.paymentAmount !== undefined) ||
+      ((consultation as any)?.fee === 0 && (consultation as any)?.fee !== undefined) ||
+      (consultation?.waiverReason && consultation.waiverReason.includes('مجاني'))
+    );
+
     const isPaid = Boolean(
-      consultation?.isPaid ||
+      isFree ||
       consultation?.paymentStatus === 'PAID' ||
       consultation?.paymentStatus === 'PAYMENT_SUCCESS' ||
-      (consultation as any)?.status === 'PAID_PENDING_DOCTOR' ||
-      consultation?.paymentId ||
-      consultation?.transactionReference ||
-      consultation?.isWaived ||
-      consultation?.consultationFee === 0 ||
-      (consultation as any)?.fee === 0
+      consultation?.paymentStatus === 'WAIVED' ||
+      (consultation?.isPaid && consultation?.paymentStatus !== 'PENDING' && consultation?.paymentStatus !== 'PAYMENT_REQUIRED')
     );
 
     return {
       ...consultation,
       isPaid,
-      paymentStatus: isPaid ? 'PAID' : (consultation.paymentStatus || 'PENDING'),
+      isWaived: isFree || Boolean(consultation.isWaived),
+      paymentStatus: isFree ? 'WAIVED' : (isPaid ? 'PAID' : (consultation.paymentStatus || 'PENDING')),
       status: normalizedStatus,
       patientName: safeText(
         consultation.patientName,
@@ -400,6 +408,14 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   useEffect(() => {
     loadDoctorData();
 
+    const handleUpdate = () => {
+      loadDoctorData();
+    };
+
+    window.addEventListener('mch_payments_updated', handleUpdate);
+    window.addEventListener('mch_appointments_updated', handleUpdate);
+    window.addEventListener('mch_consultations_updated', handleUpdate);
+
     const unsubApts = api.subscribeAppointments(
       {},
       (liveApts) => {
@@ -434,6 +450,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     );
 
     return () => {
+      window.removeEventListener('mch_payments_updated', handleUpdate);
+      window.removeEventListener('mch_appointments_updated', handleUpdate);
+      window.removeEventListener('mch_consultations_updated', handleUpdate);
       unsubApts();
       unsubCns();
     };
@@ -1012,25 +1031,32 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
                         <div className="flex items-center gap-1.5 shrink-0">
 
-                          <span
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1 ${
-                              cns.paymentStatus === 'PAID' || cns.paymentStatus === 'PAYMENT_SUCCESS' || cns.isPaid
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
-                                : 'bg-rose-50 text-rose-700 border border-rose-200'
-                            }`}
-                          >
-                            {cns.paymentStatus === 'PAID' || cns.paymentStatus === 'PAYMENT_SUCCESS' || cns.isPaid ? (
-                              <>
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                                <span>تم التسديد (جاهزة للرد)</span>
-                              </>
-                            ) : (
-                              <>
-                                <Clock className="w-3 h-3 text-rose-500 shrink-0" />
-                                <span>بانتظار السداد</span>
-                              </>
-                            )}
-                          </span>
+                          {cns.isWaived || cns.paymentStatus === 'WAIVED' || (cns.consultationFee === 0 && cns.consultationFee !== undefined) || (cns.paymentAmount === 0 && cns.paymentAmount !== undefined) || (cns.waiverReason && cns.waiverReason.includes('مجاني')) ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200">
+                              <Sparkles className="w-3 h-3 text-blue-600 shrink-0" />
+                              <span>استشارة مجانية</span>
+                            </span>
+                          ) : (
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1 ${
+                                cns.paymentStatus === 'PAID' || cns.paymentStatus === 'PAYMENT_SUCCESS' || cns.isPaid
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
+                                  : 'bg-rose-50 text-rose-700 border border-rose-200'
+                              }`}
+                            >
+                              {cns.paymentStatus === 'PAID' || cns.paymentStatus === 'PAYMENT_SUCCESS' || cns.isPaid ? (
+                                <>
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                  <span>تم السداد</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Clock className="w-3 h-3 text-rose-500 shrink-0" />
+                                  <span>انتظار السداد</span>
+                                </>
+                              )}
+                            </span>
+                          )}
 
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${consultationStatus.className}`}
@@ -1165,7 +1191,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         </span>
                       </button>
 
-                      {cns.paymentStatus === 'PAID' || cns.paymentStatus === 'PAYMENT_SUCCESS' || cns.isPaid ? (
+                      {cns.paymentStatus === 'PAID' || cns.paymentStatus === 'PAYMENT_SUCCESS' || cns.paymentStatus === 'WAIVED' || cns.isWaived || cns.isPaid ? (
                         <button
                           onClick={() =>
                             setSelectedConsultationForReply(
@@ -1173,7 +1199,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                             )
                           }
                           className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                          title="تم سداد الرسوم - يمكنك الرد على الاستشارة"
+                          title={cns.isWaived || cns.paymentStatus === 'WAIVED' ? "استشارة مجانية معتمدة - يمكنك الرد مباشرة" : "تم سداد الرسوم - يمكنك الرد على الاستشارة"}
                         >
                           <Send className="w-3.5 h-3.5" />
                           <span>
@@ -1186,7 +1212,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         <div className="flex items-center gap-1.5">
                           <span className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg font-bold flex items-center gap-1">
                             <Clock className="w-3 h-3 text-amber-600" />
-                            بانتظار السداد للرد
+                            انتظار السداد للرد
                           </span>
                           <button
                             onClick={() =>
@@ -1322,14 +1348,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       <td className="p-3">
                         {(() => {
                           const isAptPaid = Boolean(
-                            apt.isPaid ||
                             apt.paymentStatus === 'PAID' ||
                             apt.paymentStatus === 'PAYMENT_SUCCESS' ||
-                            apt.status === 'CONFIRMED' ||
-                            apt.paymentId ||
-                            apt.paymentTransactionRef ||
-                            apt.transactionReference ||
-                            apt.isWaived
+                            (apt.isPaid && apt.paymentStatus !== 'PENDING' && apt.paymentStatus !== 'PAYMENT_REQUIRED')
                           );
                           return (
                             <span
@@ -1339,7 +1360,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                                   : 'bg-rose-100 text-rose-800'
                               }`}
                             >
-                              {isAptPaid ? 'تم التسديد ✓' : 'بانتظار السداد'}
+                              {isAptPaid ? 'تم السداد' : 'انتظار السداد'}
                             </span>
                           );
                         })()}

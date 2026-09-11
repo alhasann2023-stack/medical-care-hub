@@ -146,54 +146,7 @@ export const CURRENT_PATIENT: PatientProfile = {
   phone: '+966 50 123 4567',
 };
 
-export const INITIAL_RECORDS: MedicalRecordItem[] = [
-  {
-    id: 'rec-1',
-    type: 'visit',
-    titleAr: 'فحص سريري واستشارة قلبية دورية',
-    titleEn: 'Routine Cardiology Consultation',
-    date: '2026-03-02',
-    doctorName: 'د. طارق المنصوري',
-    specialty: 'أمراض القلب',
-    details: 'فحص ضغط الدم 125/82 mmHg، انتظام ضربات القلب، تخطيط قلب ECG طبيعي مع التوصية بالاستمرار على المشي 30 دقيقة يومياً.',
-    statusBadge: 'مكتمل بنجاح',
-  },
-  {
-    id: 'rec-2',
-    type: 'lab',
-    titleAr: 'لوحة تحاليل الدم والدهون الشاملة (Lipid Profile & CBC)',
-    titleEn: 'Comprehensive Lipid & Blood Profile',
-    date: '2026-02-28',
-    doctorName: 'د. فهد الغامدي',
-    specialty: 'المختبر المركزي',
-    details: 'الكوليسترول الكلي: 185 mg/dL (طبيعي)، السكر الصائم: 94 mg/dL، الهيموجلوبين: 15.2 g/dL، وظائف الكبد والكلى سليمة.',
-    attachmentsCount: 1,
-    statusBadge: 'نتائج معتمدة',
-  },
-  {
-    id: 'rec-3',
-    type: 'xray',
-    titleAr: 'أشعة سينية للصدر (Chest X-Ray PA)',
-    titleEn: 'Chest Radiography PA View',
-    date: '2026-01-15',
-    doctorName: 'قسم الأشعة والتصوير الطبي',
-    specialty: 'التشخيص الإشعاعي',
-    details: 'حقول الرئة واضحة خالية من أي ارتشاح أو التهاب، حجم ظل القلب طبيعي، الجيبان الضلعيان الحجابي غائران وسليمان.',
-    attachmentsCount: 1,
-    statusBadge: 'تقرير نهائي',
-  },
-  {
-    id: 'rec-4',
-    type: 'prescription',
-    titleAr: 'وصفة طبية إلكترونية - مكملات وفيتامينات وقائية',
-    titleEn: 'Preventive Multivitamins & Omega-3 Rx',
-    date: '2026-01-15',
-    doctorName: 'د. فهد الغامدي',
-    specialty: 'الباطنة العامة',
-    details: 'أوميجا-3 (1000 mg) حبة يومياً بعد الغداء، فيتامين د3 (50,000 IU) كبسولة أسبوعياً لمدة شهرين.',
-    statusBadge: 'تم الصرف',
-  },
-];
+export const INITIAL_RECORDS: MedicalRecordItem[] = [];
 
 // Sample medical scan images for quick test / demo of the AI Scanner
 export const SAMPLE_MEDICAL_IMAGES = [

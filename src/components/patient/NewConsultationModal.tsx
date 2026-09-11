@@ -236,11 +236,13 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
         symptoms: symptomsList,
         duration,
         fee: finalFee,
+        consultationFee: finalFee,
         isWaived: isFreeEligible,
         waiverReason: isFreeEligible ? (patientEligibility?.waiverReason || 'استشارة مجانية معتمدة') : undefined,
-        paymentId: paymentDetails?.paymentId,
-        transactionReference: paymentDetails?.transactionRef,
-        isPaid: Boolean(paymentDetails?.paymentId),
+        paymentId: isFreeEligible ? `pay-free-${Date.now()}` : paymentDetails?.paymentId,
+        transactionReference: isFreeEligible ? `FREE-${Date.now().toString().slice(-6)}` : paymentDetails?.transactionRef,
+        isPaid: isFreeEligible ? true : false,
+        paymentStatus: isFreeEligible ? 'WAIVED' : 'PENDING',
         attachments,
         attachmentFiles
       });

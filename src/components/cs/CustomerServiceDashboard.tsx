@@ -79,7 +79,7 @@ export const CustomerServiceDashboard: React.FC = () => {
   const [newServiceNameAr, setNewServiceNameAr] = useState<string>('');
   const [newServiceNameEn, setNewServiceNameEn] = useState<string>('');
   const [newServicePrice, setNewServicePrice] = useState<number>(250);
-  const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
+  const [newServiceDuration, setNewServiceDuration] = useState<number>();
   const [newServiceCategory, setNewServiceCategory] = useState<string>('قسم العيادات التخصصية');
   const [newServiceDescAr, setNewServiceDescAr] = useState<string>('');
 
@@ -88,7 +88,7 @@ export const CustomerServiceDashboard: React.FC = () => {
   const [editServiceNameAr, setEditServiceNameAr] = useState<string>('');
   const [editServiceNameEn, setEditServiceNameEn] = useState<string>('');
   const [editServicePrice, setEditServicePrice] = useState<number>(250);
-  const [editServiceDuration, setEditServiceDuration] = useState<number>(30);
+  const [editServiceDuration, setEditServiceDuration] = useState<number>();
   const [editServiceCategory, setEditServiceCategory] = useState<string>('قسم العيادات التخصصية');
   const [editServiceDescAr, setEditServiceDescAr] = useState<string>('');
   const [editServiceIsActive, setEditServiceIsActive] = useState<boolean>(true);
@@ -103,14 +103,30 @@ export const CustomerServiceDashboard: React.FC = () => {
   useEffect(() => {
     loadData();
 
+    const handleUpdate = () => {
+      loadData();
+    };
+
+    window.addEventListener('mch_payments_updated', handleUpdate);
+    window.addEventListener('mch_appointments_updated', handleUpdate);
+    window.addEventListener('mch_consultations_updated', handleUpdate);
+
     // Real-time synchronization for Customer Service Dashboard
     const unsubApts = api.subscribeAppointments({}, (liveApts) => {
       if (liveApts) {
         setAppointments(liveApts);
+        setCoordinatingAppointment(prev => {
+          if (!prev) return null;
+          const updated = liveApts.find(a => a.id === prev.id);
+          return updated || prev;
+        });
       }
     });
 
     return () => {
+      window.removeEventListener('mch_payments_updated', handleUpdate);
+      window.removeEventListener('mch_appointments_updated', handleUpdate);
+      window.removeEventListener('mch_consultations_updated', handleUpdate);
       unsubApts();
     };
   }, []);
@@ -719,18 +735,25 @@ export const CustomerServiceDashboard: React.FC = () => {
                               </span>
 
                               {/* Payment status badge */}
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
-                                apt.paymentStatus === 'PAID' || apt.paymentStatus === 'PAYMENT_SUCCESS' || apt.isPaid
-                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                  : 'bg-amber-50 text-amber-800 border border-amber-200'
-                              }`}>
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                <span>
-                                  {apt.paymentStatus === 'PAID' || apt.paymentStatus === 'PAYMENT_SUCCESS' || apt.isPaid
-                                    ? 'تم التسديد ✓'
-                                    : 'بانتظار السداد'}
-                                </span>
-                              </span>
+                              {(() => {
+                                const isAptPaid = Boolean(
+                                  apt.paymentStatus === 'PAID' ||
+                                  apt.paymentStatus === 'PAYMENT_SUCCESS' ||
+                                  (apt.isPaid && apt.paymentStatus !== 'PENDING' && apt.paymentStatus !== 'PAYMENT_REQUIRED')
+                                );
+                                return (
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
+                                    isAptPaid
+                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                      : 'bg-amber-50 text-amber-800 border border-amber-200'
+                                  }`}>
+                                    <CheckCircle2 className={`w-3 h-3 ${isAptPaid ? 'text-emerald-600' : 'text-amber-500'}`} />
+                                    <span>
+                                      {isAptPaid ? 'تم السداد' : 'انتظار السداد'}
+                                    </span>
+                                  </span>
+                                );
+                              })()}
 
                               {apt.isDoctorAbsent && (
                                 <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 flex items-center gap-1">
@@ -923,15 +946,22 @@ export const CustomerServiceDashboard: React.FC = () => {
                   </strong>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                    coordinatingAppointment.paymentStatus === 'PAID' || coordinatingAppointment.paymentStatus === 'PAYMENT_SUCCESS' || coordinatingAppointment.isPaid
-                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                      : 'bg-amber-100 text-amber-800 border border-amber-300'
-                  }`}>
-                    {coordinatingAppointment.paymentStatus === 'PAID' || coordinatingAppointment.paymentStatus === 'PAYMENT_SUCCESS' || coordinatingAppointment.isPaid
-                      ? 'تم التسديد ✓'
-                      : 'بانتظار السداد'}
-                  </span>
+                  {(() => {
+                    const isCoordinatingPaid = Boolean(
+                      coordinatingAppointment.paymentStatus === 'PAID' ||
+                      coordinatingAppointment.paymentStatus === 'PAYMENT_SUCCESS' ||
+                      (coordinatingAppointment.isPaid && coordinatingAppointment.paymentStatus !== 'PENDING' && coordinatingAppointment.paymentStatus !== 'PAYMENT_REQUIRED')
+                    );
+                    return (
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                        isCoordinatingPaid
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : 'bg-amber-100 text-amber-800 border border-amber-300'
+                      }`}>
+                        {isCoordinatingPaid ? 'تم السداد' : 'انتظار السداد'}
+                      </span>
+                    );
+                  })()}
                   <a
                     href={`tel:${patients.find(p => p.id === coordinatingAppointment.patientId)?.phone}`}
                     className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-bold flex items-center gap-1 hover:bg-purple-700"

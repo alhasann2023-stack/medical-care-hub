@@ -969,7 +969,14 @@ export const PatientFileModal: React.FC<PatientFileModalProps> = ({
                         return (
                           <div key={cns.id} className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2.5">
                             <div className="flex items-center justify-between">
-                              <h4 className="font-extrabold text-sm text-slate-900">{cns.title}</h4>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-extrabold text-sm text-slate-900">{cns.title}</h4>
+                                {(cns.isWaived || cns.paymentStatus === 'WAIVED' || cns.consultationFee === 0 || cns.paymentAmount === 0 || (cns.waiverReason && cns.waiverReason.includes('مجاني'))) && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
+                                    استشارة مجانية
+                                  </span>
+                                )}
+                              </div>
                               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                                 isAnswered ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                               }`}>

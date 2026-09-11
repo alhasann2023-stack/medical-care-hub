@@ -585,13 +585,13 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
           payment.id,
 
         paymentStatus:
-          'PAYMENT_SUCCESS',
+          'PENDING',
 
         transactionReference:
           payment.transactionReference,
 
         isPaid:
-          true
+          false
       });
 
       setIsSubmitted(true);
@@ -799,7 +799,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                       key={s.id}
                       value={s.id}
                     >
-                      {s.nameAr} — السعر الرسمي: {s.price} ر.ي{' '}
+                      {s.nameAr} — السعرتتت الرسمي: {s.price} ر.ي{' '}
                       {s.durationMinutes
                         ? `(${s.durationMinutes} دقيقة)`
                         : ''}
