@@ -74,16 +74,10 @@ import {
 // Backend availability
 // ============================================================
 
-let isBackendAvailable: boolean =
-  typeof window !== 'undefined'
-    ? !(
-        window.location.hostname.includes('netlify.app') ||
-        window.location.hostname.includes('vercel.app') ||
-        window.location.hostname.includes('github.io') ||
-        window.location.hostname.includes('web.app') ||
-        window.location.hostname.includes('firebaseapp.com')
-      )
-    : true;
+// The production app is hosted on Netlify and the backend is exposed
+// through Netlify Functions at /api/*, so Netlify must NOT be treated
+// as an unavailable backend.
+let isBackendAvailable = true;
 
 
 // ============================================================
@@ -275,118 +269,120 @@ async function syncPaymentAndServiceToFirestore(
   linkedConFromServer?: Consultation
 ) {
   try {
-    // IMPORTANT: A payment belongs to exactly ONE service.
-    // Never use patientId alone to infer which consultation/appointment is paid.
-    const serviceType = String(payment.serviceType || '').toUpperCase();
-    const serviceReferenceId =
-      payment.serviceReferenceId ||
-      payment.appointmentId ||
-      payment.consultationId;
-
-    // Keep the payment itself synchronized.
     await firebaseDb.createPayment({
       ...payment,
       paymentStatus: 'PAID',
-      status: 'PAYMENT_SUCCESS',
-      updatedAt: new Date().toISOString()
+      status: 'PAYMENT_SUCCESS'
     });
 
-    // CONSULTATION: sync ONLY the consultation explicitly linked to this payment.
-    if (serviceType === 'CONSULTATION') {
-      let consultation: Consultation | null = null;
+    // Directly sync server-returned linked consultation if present
+    if (linkedConFromServer && linkedConFromServer.id) {
+      await firebaseDb.saveConsultation({
+        ...linkedConFromServer,
+        paymentStatus: 'PAID',
+        isPaid: true,
+        paymentId: payment.id,
+        transactionReference: payment.transactionReference || linkedConFromServer.transactionReference,
+        paymentDate: payment.paidAt || new Date().toISOString()
+      });
+    }
 
-      if (serviceReferenceId) {
-        consultation = await fetchDocById<Consultation>(
-          FIRESTORE_COLLECTIONS.CONSULTATIONS,
-          serviceReferenceId
-        );
+    // Directly sync server-returned linked appointment if present
+    if (linkedAptFromServer && linkedAptFromServer.id) {
+      await firebaseDb.saveAppointment({
+        ...linkedAptFromServer,
+        paymentStatus: 'PAID',
+        isPaid: true,
+        status: 'CONFIRMED',
+        paymentId: payment.id,
+        transactionReference: payment.transactionReference || linkedAptFromServer.paymentTransactionRef || linkedAptFromServer.transactionReference,
+        paymentDate: payment.paidAt || new Date().toISOString()
+      });
+    }
+
+    if (payment.serviceType === 'CONSULTATION' || !payment.serviceType) {
+      if (payment.serviceReferenceId) {
+        const cns = await fetchDocById<Consultation>(FIRESTORE_COLLECTIONS.CONSULTATIONS, payment.serviceReferenceId);
+        if (cns) {
+          await firebaseDb.saveConsultation({
+            ...cns,
+            paymentStatus: 'PAID',
+            isPaid: true,
+            status: cns.status === 'ANSWERED' ? 'ANSWERED' : 'PENDING',
+            paymentId: payment.id,
+            transactionReference: payment.transactionReference || cns.transactionReference,
+            paymentMethod: payment.paymentMethod || cns.paymentMethod,
+            paymentAmount: payment.amount || cns.paymentAmount,
+            paymentDate: payment.paidAt || new Date().toISOString()
+          });
+        }
       }
-
-      // Only accept the server-linked consultation when it is the same service.
-      if (
-        !consultation &&
-        linkedConFromServer?.id &&
-        (!serviceReferenceId || linkedConFromServer.id === serviceReferenceId)
-      ) {
-        consultation = linkedConFromServer;
-      }
-
-      if (consultation) {
-        await firebaseDb.saveConsultation({
-          ...consultation,
-          paymentStatus: 'PAID',
-          isPaid: true,
-          paymentId: payment.id,
-          transactionReference:
-            payment.transactionReference || consultation.transactionReference,
-          paymentMethod: payment.paymentMethod || consultation.paymentMethod,
-          paymentAmount: payment.amount || consultation.paymentAmount,
-          paymentDate: payment.paidAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-      } else {
-        console.warn(
-          '[Sync] Consultation payment has no exact linked consultation:',
-          payment.id,
-          serviceReferenceId
-        );
+      try {
+        const fsCnsList = await getConsultationsWithFilter({ patientId: payment.patientId });
+        for (const c of fsCnsList) {
+          if (
+            c.id === payment.serviceReferenceId ||
+            (c.paymentId && c.paymentId === payment.id) ||
+            (payment.transactionReference && (c.transactionReference === payment.transactionReference || (c as any).paymentTransactionRef === payment.transactionReference)) ||
+            (c.patientId === payment.patientId && !c.isPaid && c.paymentStatus !== 'PAID' && c.paymentStatus !== 'PAYMENT_SUCCESS')
+          ) {
+            await firebaseDb.saveConsultation({
+              ...c,
+              paymentStatus: 'PAID',
+              isPaid: true,
+              paymentId: payment.id,
+              transactionReference: payment.transactionReference || c.transactionReference,
+              paymentDate: payment.paidAt || new Date().toISOString()
+            });
+            break;
+          }
+        }
+      } catch (e) {
+        // quiet fallback
       }
     }
 
-    // APPOINTMENT: sync ONLY the appointment explicitly linked to this payment.
-    if (serviceType === 'APPOINTMENT') {
-      let appointment: Appointment | null = null;
-
-      if (serviceReferenceId) {
-        appointment = await fetchDocById<Appointment>(
-          FIRESTORE_COLLECTIONS.APPOINTMENTS,
-          serviceReferenceId
-        );
+    if (payment.serviceType === 'APPOINTMENT' || !payment.serviceType) {
+      if (payment.serviceReferenceId) {
+        const apt = await fetchDocById<Appointment>(FIRESTORE_COLLECTIONS.APPOINTMENTS, payment.serviceReferenceId);
+        if (apt) {
+          await firebaseDb.saveAppointment({
+            ...apt,
+            paymentStatus: 'PAID',
+            isPaid: true,
+            status: 'CONFIRMED',
+            paymentId: payment.id,
+            transactionReference: payment.transactionReference || apt.paymentTransactionRef || apt.transactionReference,
+            paymentMethod: payment.paymentMethod || apt.paymentMethod,
+            paymentAmount: payment.amount || apt.paymentAmount,
+            paymentDate: payment.paidAt || new Date().toISOString()
+          });
+        }
       }
-
-      // Only accept the server-linked appointment when it is the same service.
-      if (
-        !appointment &&
-        linkedAptFromServer?.id &&
-        (!serviceReferenceId || linkedAptFromServer.id === serviceReferenceId)
-      ) {
-        appointment = linkedAptFromServer;
+      try {
+        const fsAptList = await getAppointmentsWithFilter({ patientId: payment.patientId });
+        for (const a of fsAptList) {
+          if (
+            a.id === payment.serviceReferenceId ||
+            (a.paymentId && a.paymentId === payment.id) ||
+            (payment.transactionReference && (a.transactionReference === payment.transactionReference || a.paymentTransactionRef === payment.transactionReference)) ||
+            (a.patientId === payment.patientId && !a.isPaid && a.paymentStatus !== 'PAID' && a.paymentStatus !== 'PAYMENT_SUCCESS')
+          ) {
+            await firebaseDb.saveAppointment({
+              ...a,
+              paymentStatus: 'PAID',
+              isPaid: true,
+              status: 'CONFIRMED',
+              paymentId: payment.id,
+              transactionReference: payment.transactionReference || a.paymentTransactionRef || a.transactionReference,
+              paymentDate: payment.paidAt || new Date().toISOString()
+            });
+            break;
+          }
+        }
+      } catch (e) {
+        // quiet fallback
       }
-
-      if (appointment) {
-        await firebaseDb.saveAppointment({
-          ...appointment,
-          paymentStatus: 'PAID',
-          isPaid: true,
-          status: 'CONFIRMED',
-          paymentId: payment.id,
-          transactionReference:
-            payment.transactionReference ||
-            appointment.paymentTransactionRef ||
-            appointment.transactionReference,
-          paymentMethod: payment.paymentMethod || appointment.paymentMethod,
-          paymentAmount: payment.amount || appointment.paymentAmount,
-          paymentDate: payment.paidAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-      } else {
-        console.warn(
-          '[Sync] Appointment payment has no exact linked appointment:',
-          payment.id,
-          serviceReferenceId
-        );
-      }
-    }
-
-    // Do NOT guess the service when serviceType is missing.
-    // This prevents one patient's consultation approval from paying another appointment.
-    if (serviceType !== 'CONSULTATION' && serviceType !== 'APPOINTMENT') {
-      console.warn(
-        '[Sync] Payment has no valid serviceType; payment updated only:',
-        payment.id,
-        payment.serviceType,
-        serviceReferenceId
-      );
     }
   } catch (err) {
     console.warn('[Sync] Failed to sync payment status to Firestore:', err);
