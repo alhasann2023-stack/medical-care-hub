@@ -2731,18 +2731,23 @@ export function createApiApp() {
     (payment as any).isApprovedByAdmin = true;
     payment.updatedAt = now;
 
-    // IMPORTANT: This approval belongs to ONE payment and ONE service only.
-    // Never use patientId as a fallback because the same patient can have
-    // an appointment and a consultation at the same time.
+    // IMPORTANT: approve exactly ONE payment -> exactly ONE linked service.
+    // Never use patientId, transactionReference alone, or broad fallbacks to
+    // select another appointment/consultation for the same patient.
     const serviceType = String(payment.serviceType || '').toUpperCase();
-    const serviceReferenceId = payment.serviceReferenceId || '';
+    const serviceReferenceId = String(
+      payment.serviceReferenceId ||
+      (payment as any).appointmentId ||
+      (payment as any).consultationId ||
+      ''
+    );
 
     let linkedApt: Appointment | undefined;
     let linkedCon: Consultation | undefined;
 
-    if (serviceType === 'APPOINTMENT' && serviceReferenceId) {
+    if (serviceType === 'APPOINTMENT') {
       linkedApt = appointments.find(a =>
-        a.id === serviceReferenceId ||
+        (serviceReferenceId && a.id === serviceReferenceId) ||
         a.paymentId === payment.id
       );
 
@@ -2760,9 +2765,9 @@ export function createApiApp() {
         linkedApt.coordinatorNotes = `تم اعتماد السداد (تم السداد ✓) بواسطة ${adminName} بتاريخ ${new Date().toLocaleDateString('ar-YE')}`;
         linkedApt.updatedAt = now;
       }
-    } else if (serviceType === 'CONSULTATION' && serviceReferenceId) {
+    } else if (serviceType === 'CONSULTATION') {
       linkedCon = consultations.find(c =>
-        c.id === serviceReferenceId ||
+        (serviceReferenceId && c.id === serviceReferenceId) ||
         c.paymentId === payment.id
       );
 
@@ -2780,10 +2785,9 @@ export function createApiApp() {
         linkedCon.updatedAt = now;
       }
     } else {
-      console.warn('[Payment Approval] Missing/invalid serviceType or serviceReferenceId:', {
-        paymentId: payment.id,
-        serviceType: payment.serviceType,
-        serviceReferenceId
+      return res.status(400).json({
+        error: 'عملية الدفع لا تحتوي على نوع خدمة صالح (APPOINTMENT أو CONSULTATION).',
+        payment
       });
     }
 

@@ -74,10 +74,19 @@ import {
 // Backend availability
 // ============================================================
 
-// The production app is hosted on Netlify and the backend is exposed
-// through Netlify Functions at /api/*, so Netlify must NOT be treated
-// as an unavailable backend.
+// Production API endpoint. Netlify serves /api/* through the API Function.
+// In Android WebView/file:// builds there may be no relative HTTP origin, so
+// use the production Netlify URL explicitly.
+const PRODUCTION_API_BASE = 'https://silly-tapioca-576af1.netlify.app';
 let isBackendAvailable = true;
+
+function resolveApiUrl(url: string): string {
+  if (/^https?:\/\//i.test(url)) return url;
+  if (typeof window !== 'undefined' && window.location.protocol !== 'file:') {
+    return url;
+  }
+  return PRODUCTION_API_BASE + (url.startsWith('/') ? url : '/' + url);
+}
 
 
 // ============================================================
@@ -135,12 +144,6 @@ async function fetchJson<T>(
   options?: RequestInit
 ): Promise<T> {
 
-  if (!isBackendAvailable) {
-    throw new Error(
-      'BACKEND_UNAVAILABLE'
-    );
-  }
-
   try {
 
     const token =
@@ -176,7 +179,7 @@ async function fetchJson<T>(
 
     const res =
       await fetch(
-        url,
+        resolveApiUrl(url),
         {
           ...options,
           headers
@@ -184,20 +187,13 @@ async function fetchJson<T>(
       );
 
 
-    if (
-      res.status === 404
-    ) {
+    if (res.status === 404) {
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         const errorData = await res.json().catch(() => ({ error: 'العنصر المطلوب غير موجود' }));
         throw new Error(errorData?.error || errorData?.message || 'العنصر المطلوب غير موجود');
       }
-      isBackendAvailable =
-        false;
-
-      throw new Error(
-        'BACKEND_UNAVAILABLE'
-      );
+      throw new Error('API endpoint not found: ' + resolveApiUrl(url));
     }
 
 
@@ -253,8 +249,7 @@ async function fetchJson<T>(
       )
     ) {
 
-      isBackendAvailable =
-        false;
+      isBackendAvailable = true;
     }
 
     throw err;
