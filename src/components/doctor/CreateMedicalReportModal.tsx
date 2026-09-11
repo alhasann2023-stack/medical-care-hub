@@ -34,12 +34,12 @@ export const CreateMedicalReportModal: React.FC<CreateMedicalReportModalProps> =
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState<string>(targetPatientId || '');
   
-  const [title, setTitle] = useState<string>('');
-  const [hospitalDepartment, setHospitalDepartment] = useState<string>(doctorProfile?.specialtyNameAr || '');
-  const [clinicalHistory, setClinicalHistory] = useState<string>(' ');
-  const [findings, setFindings] = useState<string>(' ');
-  const [diagnosis, setDiagnosis] = useState<string>(' ');
-  const [recommendations, setRecommendations] = useState<string>('  ');
+  const [title, setTitle] = useState<string>('تقرير تقييم طبي واستشارة سريرية');
+  const [hospitalDepartment, setHospitalDepartment] = useState<string>(doctorProfile?.specialtyNameAr || 'مركز أمراض وجراحة القلب');
+  const [clinicalHistory, setClinicalHistory] = useState<string>('مراجعة العيادة لمتابعة حالة خفقان متكررة مع بذل مجهود خفيف.');
+  const [findings, setFindings] = useState<string>('العلامات الحيوية: ضغط الدم 125/82، نبض 76 د/د، الفحص الصدري طبيعي.');
+  const [diagnosis, setDiagnosis] = useState<string>('خفقان جيبي حميد استجابة للإجهاد (Sinus Tachycardia - Benign)');
+  const [recommendations, setRecommendations] = useState<string>('1. تجنب المنبهات والكافيين.\n2. إجراء نشاط رياضي معتدل 30 دقيقة يومياً.\n3. مراجعة العيادة بعد شهرين.');
   const [summary, setSummary] = useState<string>('');
   
   const [isAiDrafting, setIsAiDrafting] = useState<boolean>(false);

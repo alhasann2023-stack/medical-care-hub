@@ -84,7 +84,7 @@ export const SUPPORTED_CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
     exchangeRateToUSD: 1 / 1575, // 1 YER = 0.00063492 USD (1 USD = 1575 YER)
     decimals: 0,
     flagIcon: '🇾🇪',
-    supportedProviders: ['ONE_CASH', 'JEEB', 'FLOOSAK', 'JAWALI', 'KURAIMI', 'VISA_MASTERCARD', 'CASH', 'WAIVED']
+    supportedProviders: ['ONE_CASH', 'MAHFAZATI', 'JEEB', 'FLOOSAK', 'JAWALI', 'KURAIMI', 'VISA_MASTERCARD', 'CASH', 'WAIVED']
   },
   USD: {
     code: 'USD',
@@ -116,17 +116,6 @@ export const SUPPORTED_CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
   }
 };
 
-export const DEFAULT_MANUAL_ACCOUNTS = {
-  kuraimiAccount: '3055489211',
-  jawwaliAccount: '778901234',
-  oneCashAccount: '733456789',
-  jeebAccount: '711234567',
-  floosakAccount: '770123456',
-  beneficiaryName: 'مستشفى العناية الطبية التخصصي',
-  adminWhatsapp: '967770000000',
-  instructionsText: 'انسخ رقم الحساب لإرسال قيمة الاستشارة أو الحجز لكي يتم تأكيده، ثم أرسل إشعار وسند التحويل عبر واتساب الإدارة.'
-};
-
 export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
   defaultCurrency: 'YER',
   supportedCurrencies: Object.values(SUPPORTED_CURRENCIES),
@@ -150,7 +139,51 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
     require3DSecure: true,
     allowedCurrencies: ['SAR', 'USD', 'YER']
   },
-  manualAccounts: DEFAULT_MANUAL_ACCOUNTS,
+  hospitalAccounts: {
+    kuraimi: {
+      accountNumber: '300889214',
+      accountName: 'مستشفى وهج الطبي التخصصي',
+      merchantId: 'KRM-HOSP-770921',
+      terminalId: 'POS-SANAA-01',
+      enableHasebPay: true,
+      enableExpressPay: true,
+      enableKuraimiJawwal: true,
+      isActive: true,
+      notes: 'حساب بنك الكريمي المعتمد للتحصيل والسداد الإلكتروني وحاسب وإكسبرس'
+    },
+    oneCash: {
+      accountNumber: '777123456',
+      accountName: 'مستشفى وهج الطبي التخصصي - وان كاش',
+      phone: '777123456',
+      providerNameAr: 'محفظة وان كاش (OneCash)',
+      isActive: true,
+      notes: 'التحويل المباشر لحساب ون كاش المعتمد'
+    },
+    mahfazati: {
+      accountNumber: '778901234',
+      accountName: 'مستشفى وهج الطبي التخصصي - محفظتي',
+      phone: '778901234',
+      providerNameAr: 'محفظة محفظتي (Mahfazati)',
+      isActive: true,
+      notes: 'التحويل المباشر لمحفظة محفظتي المعتمدة'
+    },
+    jeeb: {
+      accountNumber: '773456789',
+      accountName: 'مستشفى وهج الطبي التخصصي - جيب',
+      phone: '773456789',
+      providerNameAr: 'محفظة جيب (Jeeb - بنك التضامن)',
+      isActive: true,
+      notes: 'التحويل المباشر لمحفظة جيب المعتمدة'
+    },
+    floosak: {
+      accountNumber: '774567890',
+      accountName: 'مستشفى وهج الطبي التخصصي - فلوسك',
+      phone: '774567890',
+      providerNameAr: 'محفظة فلوسك (Floosak - بنك اليمن والكويت)',
+      isActive: true,
+      notes: 'التحويل المباشر لمحفظة فلوسك المعتمدة'
+    }
+  },
   enableCashOnArrival: true,
   enableWaiverOption: true,
   vatPercentage: 15,
@@ -248,6 +281,8 @@ export function getProviderDisplayName(provider?: PaymentProviderType | string):
   switch (provider) {
     case 'ONE_CASH':
       return 'محفظة ون كاش (OneCash)';
+    case 'MAHFAZATI':
+      return 'محفظة محفظتي (Mahfazati)';
     case 'JEEB':
       return 'محفظة جيب (Jeeb - بنك التضامن)';
     case 'FLOOSAK':

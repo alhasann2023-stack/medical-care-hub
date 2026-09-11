@@ -18,12 +18,13 @@ import {
 import {
   Doctor,
   MedicalService,
-  PreferredPeriod
+  PreferredPeriod,
+  Payment
 } from '../../types/medical';
 
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { ManualPaymentInstructionModal } from './ManualPaymentInstructionModal';
+import { PaymentCheckoutModal } from '../common/PaymentCheckoutModal';
 
 interface AppointmentBookingModalProps {
   isOpen: boolean;
@@ -78,9 +79,16 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
-  const [createdAppointmentData, setCreatedAppointmentData] = useState<any>(null);
-  const [showPaymentInstructions, setShowPaymentInstructions] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Payment checkout
+  const [pendingAppointmentPayload, setPendingAppointmentPayload] =
+    useState<any | null>(null);
+
+  const [showPaymentCheckout, setShowPaymentCheckout] =
+    useState<boolean>(false);
+
+  const [checkoutRef, setCheckoutRef] = useState<string>('');
 
   // File input refs MUST be before the early return
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -105,6 +113,9 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
 
     setIsSubmitted(false);
     setError(null);
+    setPendingAppointmentPayload(null);
+    setShowPaymentCheckout(false);
+    setCheckoutRef('');
 
     // Release old preview URLs
     setAttachments(prev => {
@@ -489,26 +500,118 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
         calculatedFee
     };
 
-    // Directly submit appointment request without electronic payment
+    // ==========================================================
+    // FREE APPOINTMENT
+    // ==========================================================
+
+    if (calculatedFee <= 0) {
+      setIsLoading(true);
+
+      try {
+        await api.createAppointment(
+          payload
+        );
+
+        setIsSubmitted(true);
+
+        setTimeout(() => {
+          onSuccess();
+          onClose();
+        }, 2500);
+      } catch (err: any) {
+        console.error(
+          'Create appointment error:',
+          err
+        );
+
+        setError(
+          err?.message ||
+          'فشل إرسال طلب الحجز.'
+        );
+      } finally {
+        setIsLoading(false);
+      }
+
+      return;
+    }
+
+    // ==========================================================
+    // PAYMENT
+    //
+    // DO NOT create appointment yet.
+    // Keep the entire payload INCLUDING attachmentFiles.
+    // ==========================================================
+
+    const tempRef =
+      `REF-APT-${Date.now()}`;
+
+    setCheckoutRef(tempRef);
+
+    setPendingAppointmentPayload(
+      payload
+    );
+
+    setShowPaymentCheckout(true);
+  };
+
+  // ============================================================
+  // PAYMENT SUCCESS
+  // ============================================================
+
+  const handlePaymentSuccess = async (
+    payment: Payment
+  ) => {
+    if (
+      !pendingAppointmentPayload
+    ) {
+      return;
+    }
+
+    setShowPaymentCheckout(false);
     setIsLoading(true);
+    setError(null);
 
     try {
-      const created = await api.createAppointment(
-        payload
-      );
+      // ========================================================
+      // IMPORTANT:
+      // pendingAppointmentPayload still contains attachmentFiles
+      // so api.createAppointment() can upload them NOW.
+      // ========================================================
 
-      setCreatedAppointmentData(created);
+      await api.createAppointment({
+        ...pendingAppointmentPayload,
+
+        paymentId:
+          payment.id,
+
+        paymentStatus:
+          'PAYMENT_SUCCESS',
+
+        transactionReference:
+          payment.transactionReference,
+
+        isPaid:
+          true
+      });
+
       setIsSubmitted(true);
-      setShowPaymentInstructions(true);
+
+      setTimeout(() => {
+        onSuccess();
+        onClose();
+      }, 2500);
     } catch (err: any) {
       console.error(
-        'Create appointment error:',
+        'Appointment confirmation after payment error:',
         err
       );
 
       setError(
-        err?.message ||
-        'فشل إرسال طلب الحجز.'
+        'تم السداد بنجاح ولكن تعذر تأكيد الموعد: ' +
+        (
+          err?.message ||
+          'يرجى مراجعة الدعم'
+        )
       );
     } finally {
       setIsLoading(false);
@@ -518,27 +621,6 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
   // ============================================================
   // RENDER
   // ============================================================
-
-  if (showPaymentInstructions) {
-    return (
-      <ManualPaymentInstructionModal
-        isOpen={true}
-        onClose={() => {
-          setShowPaymentInstructions(false);
-          onSuccess();
-          onClose();
-        }}
-        type="APPOINTMENT"
-        patientName={patientProfile?.fullName || user?.fullName || 'المريض'}
-        doctorName={selectedDoctor?.fullName || 'طبيب العيادة'}
-        amount={calculatedFee}
-        currency="YER"
-        referenceNumber={createdAppointmentData?.id || createdAppointmentData?.appointment?.id}
-        targetDate={preferredDate}
-        targetTime={preferredPeriod === 'MORNING' ? 'الفترة الصباحية' : 'الفترة المسائية'}
-      />
-    );
-  }
 
   return (
     <>
@@ -560,11 +642,11 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
 
               <div>
                 <h3 className="font-extrabold text-base sm:text-lg">
-                  حجز موعد عيادي
+                  حجز موعد وسداد إلكتروني فوري
                 </h3>
 
                 <p className="text-xs text-blue-100 font-medium">
-                  تسجيل طلب موعد كشف مباشر في العيادة
+                  حجز مباشر ومؤكد عبر بوابات الدفع الرسمية المعتمدة
                 </p>
               </div>
             </div>
@@ -590,22 +672,20 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
               </div>
 
               <h4 className="font-extrabold text-xl text-slate-900 dark:text-slate-100">
-                تم تسجيل طلب حجز الموعد بنجاح!
+                تم تأكيد حجز الموعد وسداده بنجاح!
               </h4>
 
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
-                تم تسجيل طلب موعد الكشف لعيادة{' '}
+                تم اعتماد دفع رسوم الكشف لعيادة{' '}
                 <strong>
                   {selectedDoctor?.fullName}
                 </strong>{' '}
-                بنجاح. تم إدراج الموعد ومرفقاتك في جدول العيادة وسيصلك إشعار تأكيد الموعد.
+                بنجاح. تم تسجيل الموعد ومرفقات الأشعة في جدول العيادة وسيصلك تذكير آلي قبل الموعد.
               </p>
 
               <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-xs text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800 flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-4 h-4" />
-                {calculatedFee > 0 
-                  ? `سداد رسوم الكشف (${calculatedFee} ر.ي) يتم عند الحضور لاستقبال المستشفى.`
-                  : 'الموعد معتمد مجاناً ضمن العروض الطبية المتاحة.'}
+                <Receipt className="w-4 h-4" />
+                تم إرسال سند القبض الإلكتروني الضريبي ورسالة التذكير إلى هاتفك.
               </div>
             </div>
           ) : (
@@ -1143,15 +1223,15 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                       <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
 
                       <span>
-                        جارٍ تسجيل الحجز...
+                        جارٍ المعالجة...
                       </span>
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-4 h-4" />
+                      <ShieldCheck className="w-4 h-4" />
 
                       <span>
-                        تأكيد حجز الموعد {calculatedFee > 0 ? `(${calculatedFee} ر.ي)` : '(مجاناً)'}
+                        متابعة السداد الإلكتروني وتأكيد الحجز ({calculatedFee} ر.ي)
                       </span>
                     </>
                   )}
@@ -1209,6 +1289,89 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
 
         </div>
       )}
+
+      {/* ======================================================= */}
+      {/* PAYMENT CHECKOUT */}
+      {/* ======================================================= */}
+
+      {showPaymentCheckout &&
+        pendingAppointmentPayload && (
+          <PaymentCheckoutModal
+            isOpen={
+              showPaymentCheckout
+            }
+
+            onClose={() => {
+              // Cancel checkout only.
+              // Appointment is NOT created.
+              setShowPaymentCheckout(
+                false
+              );
+            }}
+
+            onSuccess={
+              handlePaymentSuccess
+            }
+
+            serviceType="APPOINTMENT"
+
+            serviceReferenceId={
+              checkoutRef
+            }
+
+            serviceName={
+              selectedService?.nameAr ||
+              pendingAppointmentPayload.serviceName ||
+              'خدمة طبية عيادية'
+            }
+
+            amount={
+              calculatedFee
+            }
+
+            multiCurrencyPricing={
+              selectedService?.multiCurrencyPricing ||
+              selectedDoctor?.multiCurrencyPricing
+            }
+
+            initialCurrency="YER"
+
+            patientId={
+              patientProfile?.id ||
+              user?.id ||
+              'pat-1'
+            }
+
+            patientName={
+              patientProfile?.fullName ||
+              user?.fullName ||
+              'المريض'
+            }
+
+            patientPhone={
+              patientProfile?.phone ||
+              user?.phone ||
+              ''
+            }
+
+            patientMrn={
+              patientProfile?.mrn ||
+              'MRN-2026-8801'
+            }
+
+            doctorId={
+              selectedDoctorId
+            }
+
+            doctorName={
+              selectedDoctor?.fullName
+            }
+
+            doctorSpecialty={
+              selectedDoctor?.specialtyNameAr
+            }
+          />
+        )}
     </>
   );
 };

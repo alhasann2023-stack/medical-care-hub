@@ -25,10 +25,12 @@ export type CurrencyCode = 'YER' | 'USD' | 'SAR';
 
 export type PaymentProviderType = 
   | 'ONE_CASH'
+  | 'MAHFAZATI'
   | 'JEEB'
   | 'FLOOSAK'
   | 'JAWALI'
   | 'KURAIMI' 
+  | 'BANK_TRANSFER'
   | 'VISA_MASTERCARD' 
   | 'MADA' 
   | 'APPLE_PAY' 
@@ -59,15 +61,19 @@ export type PaymentStatus =
 
 export type PaymentMethod = 
   | 'ONE_CASH'
+  | 'MAHFAZATI'
   | 'JEEB'
   | 'FLOOSAK'
   | 'JAWALI'
   | 'KURAIMI'
   | 'KURAIMI_EXPRESS'
-  | 'HASEB_PAY'
+  | 'KURAIMI_HASEB'
+  | 'KURAIMI_PAY'
+  | 'BANK_TRANSFER_NOTICE'
   | 'VISA'
   | 'MASTERCARD'
   | 'CREDIT_CARD'
+  | 'VISA_MASTERCARD'
   | 'MADA'
   | 'APPLE_PAY'
   | 'STC_PAY'
@@ -231,15 +237,33 @@ export interface CardGatewayConfig {
   allowedCurrencies: CurrencyCode[];
 }
 
-export interface ManualPaymentAccounts {
-  kuraimiAccount: string;
-  jawwaliAccount: string;
-  oneCashAccount: string;
-  jeebAccount: string;
-  floosakAccount: string;
-  beneficiaryName: string;
-  adminWhatsapp: string;
-  instructionsText?: string;
+export interface HospitalAccountConfig {
+  accountNumber: string;
+  accountName: string;
+  phone?: string;
+  providerNameAr?: string;
+  isActive: boolean;
+  notes?: string;
+}
+
+export interface KuraimiHospitalAccountConfig {
+  accountNumber: string;
+  accountName: string;
+  merchantId?: string;
+  terminalId?: string;
+  enableHasebPay?: boolean;
+  enableExpressPay?: boolean;
+  enableKuraimiJawwal?: boolean;
+  isActive: boolean;
+  notes?: string;
+}
+
+export interface HospitalPaymentAccounts {
+  kuraimi: KuraimiHospitalAccountConfig;
+  oneCash: HospitalAccountConfig;
+  mahfazati: HospitalAccountConfig;
+  jeeb: HospitalAccountConfig;
+  floosak: HospitalAccountConfig;
 }
 
 export interface PaymentSettings {
@@ -247,7 +271,7 @@ export interface PaymentSettings {
   supportedCurrencies: CurrencyConfig[];
   kuraimi: KuraimiMerchantConfig;
   cardGateway: CardGatewayConfig;
-  manualAccounts?: ManualPaymentAccounts;
+  hospitalAccounts?: HospitalPaymentAccounts;
   enableCashOnArrival: boolean;
   enableWaiverOption: boolean;
   vatPercentage: number;
@@ -321,7 +345,6 @@ export interface Payment {
   refundAmount?: number;
   paymentProvider?: PaymentProviderType;
   paymentMethod: PaymentMethod;
-  kuraimiAccount?: string;
   kuraimiDetails?: {
     channel?: KuraimiPaymentChannel;
     customerAccount?: string;
@@ -330,6 +353,16 @@ export interface Payment {
     terminalId?: string;
     authCode?: string;
     statusDescription?: string;
+  };
+  kuraimiAccount?: string;
+  bankTransferDetails?: {
+    bankName: string;
+    senderName: string;
+    transferNoticeNumber: string;
+    transferDate?: string;
+    receiptImageUrl?: string;
+    senderPhone?: string;
+    notes?: string;
   };
   cardBrand?: string;
   last4?: string;
@@ -373,6 +406,7 @@ export interface Appointment {
   // Payment Integration Fields
   paymentId?: string;
   paymentStatus?: PaymentStatus;
+  isPaid?: boolean;
   paymentAmount?: number;
   currency?: string;
   paymentMethod?: PaymentMethod;
@@ -450,6 +484,7 @@ export interface Consultation {
   currency?: string;
   paymentId?: string;
   paymentStatus?: PaymentStatus;
+  isPaid?: boolean;
   paymentMethod?: PaymentMethod;
   transactionReference?: string;
   paymentTransactionRef?: string;

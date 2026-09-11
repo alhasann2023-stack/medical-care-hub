@@ -67,7 +67,7 @@ export const PrintableTestResultModal: React.FC<PrintableTestResultModalProps> =
                 />
               </div>
               <div>
-                <h1 className="font-black text-lg text-slate-900 leading-tight">عيادة الدكتور وهاج المقطري</h1>
+                <h1 className="font-black text-lg text-slate-900 leading-tight">مستشفى الرعاية الطبية الحديث</h1>
                 <p className="text-xs font-bold text-emerald-700">قسم المختبر المركزي والتحاليل التشخيصية المتطورة</p>
                 <p className="text-[11px] text-slate-500 font-mono">Central Medical Diagnostic Laboratory Report</p>
               </div>

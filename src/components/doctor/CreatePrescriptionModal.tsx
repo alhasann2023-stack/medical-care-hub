@@ -33,14 +33,17 @@ export const CreatePrescriptionModal: React.FC<CreatePrescriptionModalProps> = (
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState<string>(targetPatientId || '');
   
-  const [diagnosis, setDiagnosis] = useState<string>('');
-  const [instructions, setInstructions] = useState<string>('');
+  const [diagnosis, setDiagnosis] = useState<string>('متابعة ارتفاع ضغط الدم والدهون');
+  const [instructions, setInstructions] = useState<string>('تناول الأدوية بانتظام بعد الإفطار، والالتزام بحمية قليلة الملح.');
   const [medications, setMedications] = useState<PrescriptionItem[]>([
     {
+      medicationName: 'Concor (Bisoprolol)',
       dosage: '5mg',
       form: 'Tablet',
-      
-      
+      frequency: 'مرة واحدة يومياً صباحاً',
+      duration: '30 يوماً',
+      strength: '5mg',
+      instructions: 'بعد الإفطار مباشرة مع كوب ماء'
     }
   ]);
   

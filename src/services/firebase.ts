@@ -8,7 +8,6 @@ import {
   getDocFromServer,
   getDocs, 
   setDoc,
-  deleteDoc,
   collection, 
   query, 
   where, 
@@ -382,39 +381,6 @@ export async function getSettingsDoc<T>(settingId: string): Promise<T | null> {
 }
 
 /**
- * Generic Save Document helper with merge support
- */
-export async function saveDocument<T extends Record<string, any>>(collectionName: string, docId: string, data: T): Promise<boolean> {
-  if (!collectionName || !docId || !data) return false;
-  try {
-    const docRef = doc(db, collectionName.trim(), docId.trim());
-    await setDoc(docRef, {
-      ...data,
-      updatedAt: new Date().toISOString()
-    }, { merge: true });
-    return true;
-  } catch (err) {
-    console.warn(`[Firestore] saveDocument error in ${collectionName}/${docId}:`, err);
-    return false;
-  }
-}
-
-/**
- * Generic Delete Document helper
- */
-export async function deleteDocument(collectionName: string, docId: string): Promise<boolean> {
-  if (!collectionName || !docId) return false;
-  try {
-    const docRef = doc(db, collectionName.trim(), docId.trim());
-    await deleteDoc(docRef);
-    return true;
-  } catch (err) {
-    console.warn(`[Firestore] deleteDocument error in ${collectionName}/${docId}:`, err);
-    return false;
-  }
-}
-
-/**
  * Retrieve all doctors with optional filters
  */
 export async function getDoctorsWithFilter(options?: { specialtyId?: string; activeOnly?: boolean }): Promise<Doctor[]> {
@@ -507,44 +473,6 @@ export async function getConsultationsWithFilter(filter?: {
     return list;
   } catch (err) {
     console.warn('[Firestore] getConsultationsWithFilter error:', err);
-    return [];
-  }
-}
-
-/**
- * Retrieve payments directly from Firestore with optional filter constraints
- */
-export async function getPaymentsWithFilter(filter?: {
-  patientId?: string;
-  doctorId?: string;
-  status?: string;
-  search?: string;
-}): Promise<Payment[]> {
-  try {
-    const all = await fetchDocsWithFilter<Payment>(FIRESTORE_COLLECTIONS.PAYMENTS);
-    let list = all;
-    if (filter?.patientId) {
-      list = list.filter(p => p.patientId === filter.patientId || (p as any).patientUserId === filter.patientId);
-    }
-    if (filter?.doctorId) {
-      list = list.filter(p => p.doctorId === filter.doctorId);
-    }
-    if (filter?.status) {
-      list = list.filter(p => p.paymentStatus === filter.status || p.status === filter.status);
-    }
-    if (filter?.search) {
-      const q = filter.search.toLowerCase();
-      list = list.filter(p => 
-        (p.patientName && p.patientName.toLowerCase().includes(q)) ||
-        (p.receiptNumber && p.receiptNumber.toLowerCase().includes(q)) ||
-        (p.transactionReference && p.transactionReference.toLowerCase().includes(q)) ||
-        (p.serviceName && p.serviceName.toLowerCase().includes(q))
-      );
-    }
-    list.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
-    return list;
-  } catch (err) {
-    console.warn('[Firestore] getPaymentsWithFilter error:', err);
     return [];
   }
 }
@@ -769,21 +697,6 @@ export function subscribeToFollowUps(
 }
 
 /**
- * Realtime subscription to staff (secretaries, customer service, technicians)
- */
-export function subscribeToStaff(
-  callback: (staff: Staff[]) => void
-): Unsubscribe {
-  return subscribeToCollection<Staff>(
-    FIRESTORE_COLLECTIONS.STAFF,
-    (allStaff) => {
-      const list = [...allStaff].sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
-      callback(list);
-    }
-  );
-}
-
-/**
  * Realtime subscription to notifications by user ID
  */
 export function subscribeToNotifications(
@@ -882,10 +795,6 @@ export default {
   createFirebaseAuthAccount,
   fetchDocById,
   fetchDocsWithFilter,
-  saveSettingsDoc,
-  getSettingsDoc,
-  saveDocument,
-  deleteDocument,
   getUserByUid,
   getUserByEmailOrPhone,
   getPatientByUserId,
@@ -893,7 +802,6 @@ export default {
   getDoctorsWithFilter,
   getAppointmentsWithFilter,
   getConsultationsWithFilter,
-  getPaymentsWithFilter,
   subscribeToCollection,
   subscribeToDoc,
   subscribeToUser,
@@ -901,7 +809,6 @@ export default {
   subscribeToAppointments,
   subscribeToConsultations,
   subscribeToPayments,
-  subscribeToStaff,
   subscribeToFollowUps,
   subscribeToNotifications
 };

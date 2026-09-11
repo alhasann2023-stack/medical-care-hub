@@ -1012,31 +1012,6 @@ export const firebaseDb = {
           }
         }
 
-        // ------------------------------------------------------
-        // 8. Financial Transactions & Payments
-        // ------------------------------------------------------
-
-        const existingPayments =
-          await fetchDocsWithFilter<Payment>(
-            COLLECTIONS.PAYMENTS
-          );
-
-        if (
-          existingPayments.length === 0
-        ) {
-          console.log(
-            '[Firestore] Seeding initial payments and transactions...'
-          );
-
-          for (
-            const pay of INITIAL_PAYMENTS
-          ) {
-            await firebaseDb.createPayment(
-              pay
-            );
-          }
-        }
-
         return true;
 
       } catch (error) {
@@ -1204,10 +1179,8 @@ export const firebaseDb = {
   ): Promise<Payment[]> => {
 
     try {
-
       if (patientId?.trim()) {
-
-        return await fetchDocsWithFilter<Payment>(
+        const filtered = await fetchDocsWithFilter<Payment>(
           COLLECTIONS.PAYMENTS,
           [
             where(
@@ -1217,6 +1190,8 @@ export const firebaseDb = {
             )
           ]
         );
+        if (filtered.length > 0) return filtered;
+        return INITIAL_PAYMENTS.filter(p => p.patientId === patientId.trim());
       }
 
       const snapshot =
@@ -1227,21 +1202,34 @@ export const firebaseDb = {
           )
         );
 
-      return snapshot.docs.map(
-        (paymentDoc) => ({
-          id: paymentDoc.id,
-          ...paymentDoc.data()
-        } as Payment)
-      );
+      if (!snapshot.empty) {
+        const docs = snapshot.docs.map(
+          (paymentDoc) => ({
+            id: paymentDoc.id,
+            ...paymentDoc.data()
+          } as Payment)
+        );
+        return docs.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+      }
 
+      // If Firestore payments collection is completely empty, seed initial documented payments to Firestore
+      if (INITIAL_PAYMENTS.length > 0) {
+        for (const p of INITIAL_PAYMENTS) {
+          firebaseDb.saveDocument(COLLECTIONS.PAYMENTS, p.id, p).catch(() => {});
+        }
+        return INITIAL_PAYMENTS;
+      }
+
+      return [];
     } catch (error) {
-
       console.warn(
         '[Firestore] getPayments fallback:',
         error
       );
 
-      return INITIAL_PAYMENTS;
+      return patientId?.trim() 
+        ? INITIAL_PAYMENTS.filter(p => p.patientId === patientId.trim())
+        : INITIAL_PAYMENTS;
     }
   },
 
@@ -1308,35 +1296,6 @@ export const firebaseDb = {
       );
 
       return payment;
-    }
-  },
-
-  updatePayment: async (
-    id: string,
-    updates: Partial<Payment>
-  ): Promise<Payment | null> => {
-    try {
-      const cleanId = normalizeId(id);
-      if (!cleanId) return null;
-
-      const existing = await firebaseDb.getPayment(cleanId);
-      const merged: Payment = {
-        ...(existing || {}),
-        ...updates,
-        id: cleanId,
-        updatedAt: new Date().toISOString()
-      } as Payment;
-
-      await firebaseDb.saveDocument(
-        COLLECTIONS.PAYMENTS,
-        cleanId,
-        merged
-      );
-
-      return merged;
-    } catch (error) {
-      console.warn('[Firestore] updatePayment fallback:', error);
-      return null;
     }
   },
 

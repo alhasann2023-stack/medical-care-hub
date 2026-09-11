@@ -20,9 +20,10 @@ import {
   RotateCcw,
   Landmark,
   Wallet,
-  RefreshCw
+  RefreshCw,
+  Copy
 } from 'lucide-react';
-import { Payment, PaymentMethod, CurrencyCode, MultiCurrencyPrice, PaymentProviderType } from '../../types/medical';
+import { Payment, PaymentMethod, CurrencyCode, MultiCurrencyPrice, PaymentProviderType, HospitalPaymentAccounts } from '../../types/medical';
 import { apiClient } from '../../services/api';
 import { notificationService } from '../../services/notificationService';
 import { 
@@ -31,7 +32,8 @@ import {
   convertCurrency,
   getLiveExchangeRates, 
   SUPPORTED_CURRENCIES,
-  LiveExchangeRates 
+  LiveExchangeRates,
+  DEFAULT_PAYMENT_SETTINGS 
 } from '../../utils/paymentUtils';
 
 interface PaymentCheckoutModalProps {
@@ -96,9 +98,22 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
   const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
   const [otpSentPhone, setOtpSentPhone] = useState<string>('');
 
-  // Yemeni Wallets Inputs (OneCash, Jeeb, Floosak, Jawali)
+  // Yemeni Wallets Inputs (OneCash, Mahfazati, Jeeb, Floosak, Jawali)
   const [walletPhone, setWalletPhone] = useState(patientPhone || '770000000');
   const [walletCustomerName, setWalletCustomerName] = useState(patientName || '');
+  const [transferNoticeNumber, setTransferNoticeNumber] = useState<string>('');
+
+  // Hospital Accounts Configured by Admin
+  const [hospitalAccounts, setHospitalAccounts] = useState<HospitalPaymentAccounts>(
+    DEFAULT_PAYMENT_SETTINGS.hospitalAccounts!
+  );
+  const [copiedAccount, setCopiedAccount] = useState<string | null>(null);
+
+  const handleCopyAccount = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedAccount(id);
+    setTimeout(() => setCopiedAccount(null), 2500);
+  };
 
   // STC Pay input
   const [stcPhone, setStcPhone] = useState(patientPhone || '05');
@@ -139,10 +154,23 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
       setCompletedPayment(null);
       setErrorMessage(null);
       setKuraimiOtp('');
+      setTransferNoticeNumber('');
+
+      // Fetch official hospital accounts configured by admin
+      apiClient.getPaymentSettings().then((res) => {
+        if (res && res.hospitalAccounts) {
+          setHospitalAccounts({
+            ...DEFAULT_PAYMENT_SETTINGS.hospitalAccounts!,
+            ...res.hospitalAccounts
+          });
+        }
+      }).catch((err) => {
+        console.warn('Could not fetch payment settings in modal, using defaults:', err);
+      });
       
       // Select appropriate default method based on currency
       if (selectedCurrency === 'YER') {
-        setSelectedMethod('ONE_CASH');
+        setSelectedMethod('KURAIMI_EXPRESS');
       } else if (selectedCurrency === 'USD') {
         setSelectedMethod('VISA_MASTERCARD');
       } else {
@@ -201,10 +229,11 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
     setIsProcessing(true);
 
     try {
-      // Yemeni Wallets Flow (OneCash, Jeeb, Floosak, Jawali)
-      if (selectedMethod === 'ONE_CASH' || selectedMethod === 'JEEB' || selectedMethod === 'FLOOSAK' || selectedMethod === 'JAWALI') {
+      // Yemeni Wallets Flow (OneCash, Mahfazati, Jeeb, Floosak, Jawali)
+      if (selectedMethod === 'ONE_CASH' || selectedMethod === 'MAHFAZATI' || selectedMethod === 'JEEB' || selectedMethod === 'FLOOSAK' || selectedMethod === 'JAWALI') {
         const walletNames: Record<string, string> = {
           ONE_CASH: 'ون كاش (OneCash)',
+          MAHFAZATI: 'محفظتي (Mahfazati - بنك اليمن الدولي)',
           JEEB: 'جيب (Jeeb - بنك التضامن)',
           FLOOSAK: 'فلوسك (Floosak - بنك اليمن والكويت)',
           JAWALI: 'جوالي (Jawali - كاك بنك)'
@@ -230,14 +259,16 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
           paymentProvider: selectedMethod as any
         });
 
-        setProcessingStep(`تم الخصم بنجاح من ${currentWalletName}! جارٍ إصدار سند القبض الرقمي...`);
+        setProcessingStep(`تم تأكيد السداد بنجاح من ${currentWalletName}! جارٍ إصدار سند القبض الرقمي...`);
         await new Promise(r => setTimeout(r, 400));
 
         const confirmedPayment: Payment = {
           ...intentRes.payment,
           paymentStatus: 'PAYMENT_SUCCESS',
           status: 'SUCCESS' as any,
-          transactionReference: `WAL-${selectedMethod}-${Date.now().toString().slice(-8)}`
+          transactionReference: transferNoticeNumber.trim()
+            ? `WAL-${selectedMethod}-${transferNoticeNumber.trim()}`
+            : `WAL-${selectedMethod}-${Date.now().toString().slice(-8)}`
         };
 
         setCompletedPayment(confirmedPayment);
@@ -593,6 +624,24 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                   </label>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {/* Kuraimi Option (Electronic Payment) - Shown first alongside wallets */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMethod('KURAIMI_EXPRESS')}
+                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all cursor-pointer relative ${
+                        selectedMethod === 'KURAIMI_EXPRESS' || selectedMethod === 'KURAIMI_HASEB' || selectedMethod === 'KURAIMI_PAY'
+                          ? 'border-emerald-500 bg-emerald-500/10 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                      }`}
+                    >
+                      <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-600 text-white leading-none">
+                        بوابة API
+                      </span>
+                      <Landmark className="w-6 h-6 text-emerald-600 dark:text-emerald-400 mb-1 mt-1" />
+                      <span className="text-xs font-black">بنك الكريمي</span>
+                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-0.5 font-bold">بوابة الدفع الإلكتروني</span>
+                    </button>
+
                     {/* Yemeni Wallets (shown when YER or all) */}
                     {selectedCurrency === 'YER' && (
                       <>
@@ -607,8 +656,23 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                           }`}
                         >
                           <Wallet className="w-6 h-6 text-amber-500 mb-1" />
-                          <span className="text-xs font-black">ون كاش (OneCash)</span>
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">محفظة الدفع الفوري</span>
+                          <span className="text-xs font-black">وان كاش (OneCash)</span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">حساب المحفظة المعتمد</span>
+                        </button>
+
+                        {/* Mahfazati */}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedMethod('MAHFAZATI')}
+                          className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                            selectedMethod === 'MAHFAZATI'
+                              ? 'border-purple-500 bg-purple-500/10 dark:bg-purple-950/40 text-purple-900 dark:text-purple-100 ring-2 ring-purple-500/20 shadow-xs'
+                              : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                          }`}
+                        >
+                          <Smartphone className="w-6 h-6 text-purple-600 mb-1" />
+                          <span className="text-xs font-black">محفظتي (Mahfazati)</span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">بنك اليمن الدولي</span>
                         </button>
 
                         {/* Jeeb */}
@@ -640,38 +704,8 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                           <span className="text-xs font-black">فلوسك (Floosak)</span>
                           <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">بنك اليمن والكويت</span>
                         </button>
-
-                        {/* Jawali */}
-                        <button
-                          type="button"
-                          onClick={() => setSelectedMethod('JAWALI')}
-                          className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                            selectedMethod === 'JAWALI'
-                              ? 'border-rose-500 bg-rose-500/10 dark:bg-rose-950/40 text-rose-900 dark:text-rose-100 ring-2 ring-rose-500/20 shadow-xs'
-                              : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
-                          }`}
-                        >
-                          <Smartphone className="w-6 h-6 text-rose-500 mb-1" />
-                          <span className="text-xs font-black">جوالي (Jawali)</span>
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">كاك بنك (CAC Bank)</span>
-                        </button>
                       </>
                     )}
-
-                    {/* Kuraimi Option */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMethod('KURAIMI_EXPRESS')}
-                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                        selectedMethod === 'KURAIMI_EXPRESS' || selectedMethod === 'KURAIMI_HASEB'
-                          ? 'border-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 ring-2 ring-emerald-500/20 shadow-xs'
-                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
-                      }`}
-                    >
-                      <Landmark className="w-6 h-6 text-emerald-600 dark:text-emerald-400 mb-1" />
-                      <span className="text-xs font-black">بنك الكريمي (API)</span>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">حاسب / إكسبرس</span>
-                    </button>
 
                     {/* Visa / Mastercard */}
                     <button
@@ -725,84 +759,187 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                 </div>
 
                 {/* Form Fields according to method */}
-                <form onSubmit={handlePaySubmit} className="space-y-2">
-                  {/* Yemeni Wallets Form (OneCash, Jeeb, Floosak, Jawali) */}
-                  {(selectedMethod === 'ONE_CASH' || selectedMethod === 'JEEB' || selectedMethod === 'FLOOSAK' || selectedMethod === 'JAWALI') ? (
-                    <div className="space-y-3 bg-gradient-to-br from-slate-50 to-slate-100/70 dark:from-slate-800/60 dark:to-slate-900/60 p-4 rounded-2xl border border-slate-300 dark:border-slate-700">
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700">
-                        <span className="text-xs font-black text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                          <Wallet className="w-4 h-4 text-emerald-600" />
-                          <span>
-                            {selectedMethod === 'ONE_CASH' && 'سداد عبر محفظة ون كاش (OneCash)'}
-                            {selectedMethod === 'JEEB' && 'سداد عبر محفظة جيب (Jeeb - بنك التضامن)'}
-                            {selectedMethod === 'FLOOSAK' && 'سداد عبر محفظة فلوسك (Floosak - بنك اليمن والكويت)'}
-                            {selectedMethod === 'JAWALI' && 'سداد عبر محفظة جوالي (Jawali - كاك بنك)'}
+                <form onSubmit={handlePaySubmit} className="space-y-3">
+                  {/* Yemeni Wallets Form (OneCash, Mahfazati, Jeeb, Floosak, Jawali) */}
+                  {(selectedMethod === 'ONE_CASH' || selectedMethod === 'MAHFAZATI' || selectedMethod === 'JEEB' || selectedMethod === 'FLOOSAK' || selectedMethod === 'JAWALI') ? (
+                    <div className="space-y-3">
+                      {/* Official Hospital Account Box (Configured by Admin) */}
+                      <div className={`p-4 rounded-2xl border space-y-2 ${
+                        selectedMethod === 'ONE_CASH'
+                          ? 'border-amber-300 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/30'
+                          : selectedMethod === 'MAHFAZATI'
+                          ? 'border-purple-300 dark:border-purple-800 bg-purple-50/70 dark:bg-purple-950/30'
+                          : selectedMethod === 'JEEB'
+                          ? 'border-sky-300 dark:border-sky-800 bg-sky-50/70 dark:bg-sky-950/30'
+                          : 'border-indigo-300 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/30'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black flex items-center gap-1.5 text-slate-900 dark:text-slate-100">
+                            <Building2 className="w-4 h-4 text-emerald-600" />
+                            <span>حساب المستشفى الرسمي المعتمد للتحصيل (المضاف من الإدارة)</span>
                           </span>
-                        </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                          خصم مباشر فوري
-                        </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700">
+                            {selectedMethod === 'ONE_CASH' && 'وان كاش (OneCash)'}
+                            {selectedMethod === 'MAHFAZATI' && 'محفظتي (بنك اليمن الدولي)'}
+                            {selectedMethod === 'JEEB' && 'جيب (بنك التضامن)'}
+                            {selectedMethod === 'FLOOSAK' && 'فلوسك (بنك اليمن والكويت)'}
+                            {selectedMethod === 'JAWALI' && 'جوالي (كاك بنك)'}
+                          </span>
+                        </div>
+
+                        {/* Account Number & Copy */}
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                          <div>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-bold">
+                              رقم حساب / هاتف المحفظة للمستشفى:
+                            </span>
+                            <span className="font-mono text-base font-black text-slate-900 dark:text-slate-100">
+                              {selectedMethod === 'ONE_CASH' && (hospitalAccounts?.oneCash?.accountNumber || '777123456')}
+                              {selectedMethod === 'MAHFAZATI' && (hospitalAccounts?.mahfazati?.accountNumber || '778901234')}
+                              {selectedMethod === 'JEEB' && (hospitalAccounts?.jeeb?.accountNumber || '773456789')}
+                              {selectedMethod === 'FLOOSAK' && (hospitalAccounts?.floosak?.accountNumber || '774567890')}
+                              {selectedMethod === 'JAWALI' && '770998811'}
+                            </span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                              اسم الحساب:{' '}
+                              <strong className="text-slate-800 dark:text-slate-200 font-bold">
+                                {selectedMethod === 'ONE_CASH' && (hospitalAccounts?.oneCash?.accountName || 'مستشفى وهج الطبي التخصصي')}
+                                {selectedMethod === 'MAHFAZATI' && (hospitalAccounts?.mahfazati?.accountName || 'مستشفى وهج الطبي التخصصي')}
+                                {selectedMethod === 'JEEB' && (hospitalAccounts?.jeeb?.accountName || 'مستشفى وهج الطبي التخصصي')}
+                                {selectedMethod === 'FLOOSAK' && (hospitalAccounts?.floosak?.accountName || 'مستشفى وهج الطبي التخصصي')}
+                                {selectedMethod === 'JAWALI' && 'مستشفى وهج الطبي التخصصي'}
+                              </strong>
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const acc = selectedMethod === 'ONE_CASH'
+                                ? (hospitalAccounts?.oneCash?.accountNumber || '777123456')
+                                : selectedMethod === 'MAHFAZATI'
+                                ? (hospitalAccounts?.mahfazati?.accountNumber || '778901234')
+                                : selectedMethod === 'JEEB'
+                                ? (hospitalAccounts?.jeeb?.accountNumber || '773456789')
+                                : (hospitalAccounts?.floosak?.accountNumber || '774567890');
+                              handleCopyAccount(acc, selectedMethod);
+                            }}
+                            className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700 shrink-0"
+                          >
+                            {copiedAccount === selectedMethod ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="text-emerald-700 dark:text-emerald-400 font-bold">تم النسخ!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>نسخ الرقم</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Admin Notes */}
+                        {((selectedMethod === 'ONE_CASH' && hospitalAccounts?.oneCash?.notes) ||
+                          (selectedMethod === 'MAHFAZATI' && hospitalAccounts?.mahfazati?.notes) ||
+                          (selectedMethod === 'JEEB' && hospitalAccounts?.jeeb?.notes) ||
+                          (selectedMethod === 'FLOOSAK' && hospitalAccounts?.floosak?.notes)) && (
+                          <div className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                            {selectedMethod === 'ONE_CASH' && hospitalAccounts?.oneCash?.notes}
+                            {selectedMethod === 'MAHFAZATI' && hospitalAccounts?.mahfazati?.notes}
+                            {selectedMethod === 'JEEB' && hospitalAccounts?.jeeb?.notes}
+                            {selectedMethod === 'FLOOSAK' && hospitalAccounts?.floosak?.notes}
+                          </div>
+                        )}
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                            رقم الهاتف المسجل بالمحفظة <span className="text-rose-500">*</span>
-                          </label>
-                          <input
-                            type="tel"
-                            required
-                            value={walletPhone}
-                            onChange={(e) => setWalletPhone(e.target.value)}
-                            placeholder="770000000"
-                            className="w-full px-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none"
-                          />
+                      {/* Patient Wallet Input Form */}
+                      <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                              رقم هاتف محفظة المريض <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="tel"
+                              required
+                              value={walletPhone}
+                              onChange={(e) => setWalletPhone(e.target.value)}
+                              placeholder="770000000"
+                              className="w-full px-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                              اسم صاحب المحفظة <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={walletCustomerName}
+                              onChange={(e) => setWalletCustomerName(e.target.value)}
+                              placeholder="الاسم الثلاثي المعتمد"
+                              className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none"
+                            />
+                          </div>
                         </div>
 
                         <div>
                           <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                            اسم صاحب المحفظة <span className="text-rose-500">*</span>
+                            رقم إشعار أو مرجع التحويل (اختياري / للتوثيق)
                           </label>
                           <input
                             type="text"
-                            required
-                            value={walletCustomerName}
-                            onChange={(e) => setWalletCustomerName(e.target.value)}
-                            placeholder="الاسم الثلاثي المعتمد"
-                            className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none"
+                            value={transferNoticeNumber}
+                            onChange={(e) => setTransferNoticeNumber(e.target.value)}
+                            placeholder="مثال: TRX-88492014"
+                            className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 outline-none"
                           />
                         </div>
-                      </div>
 
-                      <div className="p-3 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-900 dark:text-emerald-200 flex items-center justify-between">
-                        <span>المبلغ المستحق خصمه من المحفظة:</span>
-                        <strong className="font-mono text-xs font-black text-emerald-700 dark:text-emerald-300">
-                          {formatPaymentAmount(resolvedAmount, 'YER')}
-                        </strong>
+                        <div className="p-3 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-900 dark:text-emerald-200 flex items-center justify-between">
+                          <span>المبلغ المستحق سداده:</span>
+                          <strong className="font-mono text-xs font-black text-emerald-700 dark:text-emerald-300">
+                            {formatPaymentAmount(resolvedAmount, 'YER')}
+                          </strong>
+                        </div>
                       </div>
                     </div>
                   ) : selectedMethod === 'KURAIMI_EXPRESS' || selectedMethod === 'KURAIMI_HASEB' || selectedMethod === 'KURAIMI_PAY' ? (
-                    <div className="space-y-2 bg-emerald-50/70 dark:bg-emerald-950/20 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/40">
-                      <div className="flex items-center justify-between pb-2 border-b border-emerald-200/60 dark:border-emerald-800/40">
-                        <span className="text-xs font-black text-emerald-950 dark:text-emerald-100 flex items-center gap-1.5">
-                          <Landmark className="w-4 h-4 text-emerald-700" />
-                          <span>بوابة بنك الكريمي الرسمية للدفع المباشر</span>
-                        </span>
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-md">
-                          Kuraimi Live API
-                        </span>
+                    <div className="space-y-3 bg-emerald-50/70 dark:bg-emerald-950/30 p-4 rounded-2xl border border-emerald-300 dark:border-emerald-800/60">
+                      <div className="pb-3 border-b border-emerald-200 dark:border-emerald-800/60">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-2.5 rounded-xl bg-emerald-600 text-white shrink-0">
+                            <Landmark className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-xs sm:text-sm font-black text-emerald-950 dark:text-emerald-100">
+                                تكامل بنك الكريمي للتمويل الأصغر الإسلامي (Kuraimi API)
+                              </h4>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                مزود الدفع المحلي المعتمد
+                              </span>
+                            </div>
+                            <p className="text-xs text-emerald-800 dark:text-emerald-300 mt-1 font-medium">
+                              الربط المباشر مع خدمات حاسب، إكسبرس، والكريمي جوال للدفع الفوري بالريال اليمني والدولار والريال السعودي.
+                            </p>
+                          </div>
+                        </div>
                       </div>
 
                       {/* Channel */}
                       <div>
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                          قناة الدفع عبر الكريمي
+                          قناة الدفع الإلكتروني عبر الكريمي
                         </label>
                         <div className="grid grid-cols-3 gap-2">
                           {[
                             { id: 'KURAIMI_JAWWAL', label: 'الكريمي جوال' },
-                            { id: 'KURAIMI_ACCOUNT', label: 'حساب بنكي' },
-                            { id: 'KURAIMI_CARD', label: 'بطاقة الكريمي' }
+                            { id: 'KURAIMI_ACCOUNT', label: 'خدمة حاسب' },
+                            { id: 'KURAIMI_CARD', label: 'حساب / بطاقة' }
                           ].map((ch) => (
                             <button
                               key={ch.id}
@@ -834,7 +971,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                           className="w-full px-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none"
                         />
                         <span className="text-[10px] text-slate-500 mt-1 block">
-                          لا يتم حفظ كلمات المرور أو الأرقام السرية على المتصفح؛ سيتم إرسال رمز OTP للتحقق عبر API بنك الكريمي.
+                          * سيتم إرسال رمز التحقق OTP لهاتفك عبر بنك الكريمي لإتمام عملية الدفع الإلكتروني بأمان.
                         </span>
                       </div>
                     </div>
@@ -935,7 +1072,18 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                       <>
                         <ShieldCheck className="w-5 h-5" />
                         <span className="text-sm">
-                          {selectedMethod.startsWith('KURAIMI') ? 'متابعة الدفع عبر الكريمي' : 'سداد وتأكيد الحجز الآن'} ({formatPaymentAmount(resolvedAmount, selectedCurrency)})
+                          {selectedMethod.startsWith('KURAIMI')
+                            ? 'إتمام عملية الدفع الإلكتروني عبر الكريمي'
+                            : selectedMethod === 'ONE_CASH'
+                            ? 'تأكيد السداد عبر ون كاش'
+                            : selectedMethod === 'MAHFAZATI'
+                            ? 'تأكيد السداد عبر محفظتي'
+                            : selectedMethod === 'JEEB'
+                            ? 'تأكيد السداد عبر جيب'
+                            : selectedMethod === 'FLOOSAK'
+                            ? 'تأكيد السداد عبر فلوسك'
+                            : 'سداد وتأكيد الحجز الآن'}{' '}
+                          ({formatPaymentAmount(resolvedAmount, selectedCurrency)})
                         </span>
                       </>
                     )}

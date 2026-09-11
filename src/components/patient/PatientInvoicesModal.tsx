@@ -39,7 +39,13 @@ export const PatientInvoicesModal: React.FC<PatientInvoicesModalProps> = ({
     try {
       setLoading(true);
       const list = await apiClient.getPayments({ patientId });
-      setPayments(list);
+      // Strict privacy and confidentiality guard: strictly filter only this patient's invoices and payments
+      const strictlyFiltered = (list || []).filter(p => 
+        (p.patientId && p.patientId === patientId) || 
+        ((p as any).patientUserId && (p as any).patientUserId === patientId) ||
+        (patientName && p.patientName && p.patientName.trim().toLowerCase() === patientName.trim().toLowerCase())
+      );
+      setPayments(strictlyFiltered);
     } catch (err) {
       console.error('Error fetching payments:', err);
     } finally {
@@ -119,10 +125,10 @@ export const PatientInvoicesModal: React.FC<PatientInvoicesModalProps> = ({
 
           <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
             <div>
-              <span className="text-xs text-slate-500 dark:text-slate-400">إجمالي العمليات</span>
-              <div className="text-lg font-black text-slate-800 dark:text-slate-200">{payments.length} <span className="text-xs">عملية</span></div>
+              <span className="text-xs text-slate-500 dark:text-slate-400">الخصوصية والسرية المصرفية</span>
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">معاملاتك الخاصة فقط ✓</div>
             </div>
-            <div className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 rounded-lg">
+            <div className="p-2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 rounded-lg">
               <CreditCard className="w-5 h-5" />
             </div>
           </div>
@@ -177,9 +183,10 @@ export const PatientInvoicesModal: React.FC<PatientInvoicesModalProps> = ({
             </div>
           ) : (
             filtered.map(payment => {
-              const isSuccess = payment.status === 'PAYMENT_SUCCESS' || payment.paymentStatus === 'PAYMENT_SUCCESS';
-              const isPending = payment.status === 'PAYMENT_REQUIRED' || payment.paymentStatus === 'PAYMENT_REQUIRED';
+              const isSuccess = payment.status === 'PAYMENT_SUCCESS' || payment.paymentStatus === 'PAYMENT_SUCCESS' || payment.status === 'PAID' || payment.isPaid;
+              const isPending = payment.status === 'PENDING' || payment.status === 'PAYMENT_REQUIRED' || payment.paymentStatus === 'PAYMENT_REQUIRED' || payment.paymentStatus === 'PENDING';
               const isRefunded = payment.status === 'REFUNDED' || payment.paymentStatus === 'REFUNDED';
+              const isTransferNotice = payment.paymentMethod === 'BANK_TRANSFER_NOTICE' || !!(payment as any).bankTransferDetails;
 
               return (
                 <div 
@@ -191,11 +198,12 @@ export const PatientInvoicesModal: React.FC<PatientInvoicesModalProps> = ({
                       <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm">{payment.serviceName}</h4>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         isSuccess ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300' :
+                        isPending && isTransferNotice ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200 border border-amber-300' :
                         isPending ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300' :
                         isRefunded ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300' :
                         'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
                       }`}>
-                        {isSuccess ? 'مدفوع ومؤكد ✓' : isPending ? 'بانتظار السداد' : isRefunded ? 'مسترد' : payment.status}
+                        {isSuccess ? 'تم التسديد ✓' : isPending && isTransferNotice ? 'إشعار مرسل (بانتظار اعتماد الإدارة)' : isPending ? 'بانتظار السداد' : isRefunded ? 'مسترد' : payment.status}
                       </span>
                     </div>
 
@@ -203,7 +211,13 @@ export const PatientInvoicesModal: React.FC<PatientInvoicesModalProps> = ({
                       {payment.doctorName && <span>الطبيب: <strong className="text-slate-700 dark:text-slate-200">{payment.doctorName}</strong></span>}
                       <span>رقم المعاملة: <span className="font-mono text-slate-700 dark:text-slate-300">{payment.transactionReference}</span></span>
                       <span>التاريخ: <span className="font-mono">{new Date(payment.paidAt || payment.createdAt).toLocaleDateString('ar-SA')}</span></span>
-                      {payment.paymentMethod && <span>وسيلة الدفع: <span className="font-semibold">{payment.paymentMethod}</span></span>}
+                      <span>وسيلة الدفع: <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                        {payment.paymentMethod === 'KURAIMI_EXPRESS' || payment.paymentProvider === 'KURAIMI'
+                          ? 'بنك الكريمي (سداد إلكتروني)'
+                          : payment.paymentMethod === 'BANK_TRANSFER_NOTICE'
+                          ? 'إشعار تحويل بنكي'
+                          : payment.paymentMethod || 'بطاقة بنكية'}
+                      </span></span>
                     </div>
                   </div>
 

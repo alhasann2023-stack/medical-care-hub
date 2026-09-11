@@ -34,7 +34,7 @@ export const ScheduleFollowUpModal: React.FC<ScheduleFollowUpModalProps> = ({
   doctorId,
   doctorName,
   doctorSpecialty = 'العيادات التخصصية',
-  initialReason = ''
+  initialReason = 'متابعة استجابة المريض للخطة العلاجية ونتائج الفحوصات'
 }) => {
   // Default date to 7 days from now
   const defaultDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];

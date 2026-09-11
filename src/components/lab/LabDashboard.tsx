@@ -45,8 +45,8 @@ const TEST_TEMPLATES: Record<string, {
 }> = {
   'أشعة سينية للصدر (Chest X-Ray)': {
     category: 'RADIOLOGY',
-    sampleType: '',
-    summary: '',
+    sampleType: 'صورة أشعة سينية رقمية (Digital X-Ray)',
+    summary: 'حقول الرئة صافية، حجم وشكل القلب سليم وضمن المعدل الطبيعي، الحجاب الحاجز والزوايا الضلعية الحجابية سليمة وخالية من أي ارتشاح.',
     items: [
       { parameter: 'Lung Fields & Parenchyma', value: 'Clear', unit: '-', referenceRange: 'Clear bilateral', flag: 'NORMAL' },
       { parameter: 'Cardiothoracic Ratio (CTR)', value: '46%', unit: '%', referenceRange: '< 50%', flag: 'NORMAL' },
@@ -56,8 +56,8 @@ const TEST_TEMPLATES: Record<string, {
   },
   'أشعة تلفزيونية للبطن والحوض (Abdominal Ultrasound)': {
     category: 'RADIOLOGY',
-    sampleType: '',
-    summary: '',
+    sampleType: 'موجات فوق صوتية (Ultrasound)',
+    summary: 'فحص الموجات الصوتية يظهر الكبد والطحال والكليتين والبنكرياس بحجم وصدى سليم، والمرارة خالية من الحصوات.',
     items: [
       { parameter: 'Liver Size & Echotexture', value: 'Normal', unit: '-', referenceRange: 'Normal homogeneic', flag: 'NORMAL' },
       { parameter: 'Gallbladder', value: 'Calculus Free', unit: '-', referenceRange: 'Thin-walled, no stones', flag: 'NORMAL' },
@@ -67,8 +67,8 @@ const TEST_TEMPLATES: Record<string, {
   },
   'أشعة مقطعية محورية (CT Scan)': {
     category: 'RADIOLOGY',
-    sampleType: '',
-    summary: '',
+    sampleType: 'تصوير مقطعي محوري (CT Scan)',
+    summary: 'التصوير الطبقي المقطعي سليم ولا يظهر أي كتل غير طبيعية أو ارتشاح أو نزيف.',
     items: [
       { parameter: 'Structural Morphology', value: 'Normal', unit: '-', referenceRange: 'Normal anatomy', flag: 'NORMAL' },
       { parameter: 'Focal Lesions', value: 'None', unit: '-', referenceRange: 'Negative', flag: 'NORMAL' }
@@ -76,8 +76,8 @@ const TEST_TEMPLATES: Record<string, {
   },
   'رنين مغناطيسي (MRI Scan)': {
     category: 'RADIOLOGY',
-    sampleType: '',
-    summary: ' ',
+    sampleType: 'تصوير رنين مغناطيسي (MRI)',
+    summary: 'فحص الرنين المغناطيسي عالي الدقة يوضح سلامة الأنسجة والفقرات والأعصاب دون أي انزلاق غضروفي أو ضغط عصبي.',
     items: [
       { parameter: 'Signal Intensity', value: 'Normal', unit: '-', referenceRange: 'Isointense', flag: 'NORMAL' },
       { parameter: 'Disc Alignment', value: 'Preserved', unit: '-', referenceRange: 'Intact lordosis', flag: 'NORMAL' }
@@ -85,8 +85,8 @@ const TEST_TEMPLATES: Record<string, {
   },
   'صورة الدم الكاملة (CBC)': {
     category: 'LABORATORY',
-    sampleType: '',
-    summary: '',
+    sampleType: 'عينة دم وريدي (EDTA)',
+    summary: 'تعداد عناصر الدم الكاملة ضمن الحدود المعيارية الطبيعية، لا توجد مؤشرات فقر دم حاد أو التهاب.',
     items: [
       { parameter: 'Hemoglobin (Hb)', value: '14.5', unit: 'g/dL', referenceRange: '13.0 - 17.5', flag: 'NORMAL' },
       { parameter: 'RBC (Red Blood Cells)', value: '4.8', unit: 'x10^12/L', referenceRange: '4.5 - 5.9', flag: 'NORMAL' },
@@ -97,8 +97,8 @@ const TEST_TEMPLATES: Record<string, {
   },
   'فحص السكر التراكمي (HbA1c)': {
     category: 'LABORATORY',
-    sampleType: '',
-    summary: '',
+    sampleType: 'عينة دم وريدي (EDTA)',
+    summary: 'مستوى السكر التراكمي في الدم للأشهر الثلاثة الماضية يشير إلى مستوى سكر دم منضبط.',
     items: [
       { parameter: 'HbA1c (Glycated Hemoglobin)', value: '5.6', unit: '%', referenceRange: '4.0 - 5.6', flag: 'NORMAL' },
       { parameter: 'Estimated Avg Glucose (eAG)', value: '114', unit: 'mg/dL', referenceRange: '70 - 126', flag: 'NORMAL' }
@@ -106,8 +106,8 @@ const TEST_TEMPLATES: Record<string, {
   },
   'فحص وظائف الكبد (LFT)': {
     category: 'LABORATORY',
-    sampleType: '',
-    summary: '',
+    sampleType: 'مصل دم (Serum)',
+    summary: 'إنزيمات الكبد والبروتينات الكلية ومستوى البليروبين ضمن المستويات السليمة.',
     items: [
       { parameter: 'ALT (Alanine Aminotransferase)', value: '28', unit: 'U/L', referenceRange: '7 - 56', flag: 'NORMAL' },
       { parameter: 'AST (Aspartate Aminotransferase)', value: '24', unit: 'U/L', referenceRange: '10 - 40', flag: 'NORMAL' },
@@ -117,8 +117,8 @@ const TEST_TEMPLATES: Record<string, {
   },
   'فحص وظائف الكلى (RFT)': {
     category: 'LABORATORY',
-    sampleType: '',
-    summary: '',
+    sampleType: 'مصل دم (Serum)',
+    summary: 'مستويات الكرياتينين واليوريا ومعدل الترشيح الكبيبي طبيعية تماماً.',
     items: [
       { parameter: 'Creatinine', value: '0.9', unit: 'mg/dL', referenceRange: '0.6 - 1.2', flag: 'NORMAL' },
       { parameter: 'Blood Urea Nitrogen (BUN)', value: '14', unit: 'mg/dL', referenceRange: '7 - 20', flag: 'NORMAL' },
@@ -127,8 +127,8 @@ const TEST_TEMPLATES: Record<string, {
   },
   'فحص دهون الدم الشامل (Lipid Profile)': {
     category: 'LABORATORY',
-    sampleType: '',
-    summary: '',
+    sampleType: 'مصل دم (Serum - صائم 12 ساعة)',
+    summary: 'مستويات الكوليسترول الكلي والدهون الثلاثية ضمن المعدل المستهدف.',
     items: [
       { parameter: 'Total Cholesterol', value: '175', unit: 'mg/dL', referenceRange: '< 200', flag: 'NORMAL' },
       { parameter: 'Triglycerides', value: '130', unit: 'mg/dL', referenceRange: '< 150', flag: 'NORMAL' },
@@ -138,8 +138,8 @@ const TEST_TEMPLATES: Record<string, {
   },
   'فحص البول العام (Urinalysis)': {
     category: 'LABORATORY',
-    sampleType: '',
-    summary: '',
+    sampleType: 'عينة بول عشوائية نقية',
+    summary: 'الفحص المجهري والكيميائي للبول سلبي وخالٍ من البروتين والسكر والميكروبات.',
     items: [
       { parameter: 'Color & Appearance', value: 'Yellow / Clear', unit: '-', referenceRange: 'Yellow / Clear', flag: 'NORMAL' },
       { parameter: 'pH', value: '6.0', unit: '-', referenceRange: '4.6 - 8.0', flag: 'NORMAL' },

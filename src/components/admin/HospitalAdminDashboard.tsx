@@ -49,18 +49,16 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { AdminPaymentsManager } from './AdminPaymentsManager';
 import { Receipt, CreditCard } from 'lucide-react';
-import { INITIAL_DOCTORS, INITIAL_STAFF, INITIAL_SERVICES, INITIAL_PATIENTS } from '../../data/seedData';
 
 export const HospitalAdminDashboard: React.FC = () => {
   const { user } = useAuth();
   const [analytics, setAnalytics] = useState<any>(null);
-  const [doctors, setDoctors] = useState<Doctor[]>(INITIAL_DOCTORS);
-  const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
-  const [services, setServices] = useState<MedicalService[]>(INITIAL_SERVICES);
-  const [staffList, setStaffList] = useState<Staff[]>(INITIAL_STAFF);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [services, setServices] = useState<MedicalService[]>([]);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PAYMENTS' | 'DOCTORS' | 'STAFF' | 'SERVICES' | 'AUDIT_LOGS'>('OVERVIEW');
-  const [accountsSubTab, setAccountsSubTab] = useState<'DOCTORS' | 'CS' | 'SECRETARY' | 'ALL_STAFF'>('DOCTORS');
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [notificationMsg, setNotificationMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -91,7 +89,7 @@ export const HospitalAdminDashboard: React.FC = () => {
   const [docPassword, setDocPassword] = useState<string>('');
   const [showDocPassword, setShowDocPassword] = useState<boolean>(false);
   const [docPhone, setDocPhone] = useState<string>('');
-  const [docSpecialtyId, setDocSpecialtyId] = useState<string>('أمراض القلب والأوعية الدموية');
+  const [docSpecialtyId, setDocSpecialtyId] = useState<string>('spec-1');
   const [docTitle, setDocTitle] = useState<string>('استشاري أول');
 const [docFee, setDocFee] = useState<number | ''>(300);
   const [docRoom, setDocRoom] = useState<string>('عيادة 105');
@@ -105,7 +103,7 @@ const [docExperience, setDocExperience] = useState('10');
   const [editDocPassword, setEditDocPassword] = useState<string>('');
   const [showEditDocPassword, setShowEditDocPassword] = useState<boolean>(false);
   const [editDocPhone, setEditDocPhone] = useState<string>('');
-  const [editDocSpecialtyId, setEditDocSpecialtyId] = useState<string>('');
+  const [editDocSpecialtyId, setEditDocSpecialtyId] = useState<string>('spec-1');
   const [editDocTitle, setEditDocTitle] = useState<string>('استشاري أول');
 const [editDocFee, setEditDocFee] = useState<number | ''>(300);
   const [editDocRoom, setEditDocRoom] = useState<string>('عيادة 105');
@@ -316,16 +314,9 @@ const [editDocExperience, setEditDocExperience] = useState<string>("10");
       setFreePromo(promo);
     });
 
-    const unsubscribeStaff = api.subscribeStaff((liveStaff) => {
-      if (liveStaff && liveStaff.length > 0) {
-        setStaffList(liveStaff);
-      }
-    });
-
     return () => {
       unsubscribeDoctors();
       unsubscribePromo();
-      unsubscribeStaff();
     };
   }, []);
 
@@ -342,30 +333,12 @@ const [editDocExperience, setEditDocExperience] = useState<string>("10");
         api.getPatients().catch(() => [])
       ]);
       if (anlRes) setAnalytics(anlRes);
-      if (Array.isArray(docRes) && docRes.length > 0) {
-        setDoctors(docRes);
-      } else if (INITIAL_DOCTORS.length > 0) {
-        setDoctors(INITIAL_DOCTORS);
-      }
-
-      if (Array.isArray(srvRes) && srvRes.length > 0) {
-        setServices(srvRes);
-      } else if (INITIAL_SERVICES.length > 0) {
-        setServices(INITIAL_SERVICES);
-      }
-
+      if (Array.isArray(docRes)) setDoctors(docRes);
+      if (Array.isArray(srvRes)) setServices(srvRes);
       if (Array.isArray(logRes)) setAuditLogs(logRes);
-
-      if (Array.isArray(stfRes) && stfRes.length > 0) {
-        setStaffList(stfRes);
-      } else if (INITIAL_STAFF.length > 0) {
-        setStaffList(INITIAL_STAFF);
-      }
-
-      if (Array.isArray(patRes) && patRes.length > 0) {
+      if (Array.isArray(stfRes)) setStaffList(stfRes);
+      if (Array.isArray(patRes)) {
         setPatients(patRes);
-      } else if (INITIAL_PATIENTS.length > 0) {
-        setPatients(INITIAL_PATIENTS);
       }
       if (promoRes) {
         setFreePromo(promoRes);
@@ -518,8 +491,7 @@ const [editDocExperience, setEditDocExperience] = useState<string>("10");
         email: docEmail.trim() || undefined,
         phone: docPhone.trim(),
         password: docPassword.trim(),
-        specialtyId: docSpecialtyId.trim() || 'spec-general',
-        specialtyNameAr: docSpecialtyId.trim() || 'طب عام',
+        specialtyId: docSpecialtyId,
         title: docTitle,
 consultationFee: docFee === '' ? 0 : docFee,
         roomNumber: docRoom,
@@ -534,7 +506,6 @@ consultationFee: docFee === '' ? 0 : docFee,
       setDocEmail('');
       setDocPassword('');
       setDocPhone('');
-      setDocSpecialtyId('أمراض القلب والأوعية الدموية');
       await loadAdminData();
     } catch (err: any) {
       console.error(err);
@@ -549,7 +520,7 @@ consultationFee: docFee === '' ? 0 : docFee,
     setEditDocPassword('');
     setShowEditDocPassword(false);
     setEditDocPhone(doctor.phone || '');
-    setEditDocSpecialtyId(doctor.specialtyNameAr || doctor.specialtyId || '');
+    setEditDocSpecialtyId(doctor.specialtyId || 'spec-1');
     setEditDocTitle(doctor.title || 'استشاري أول');
     setEditDocFee(doctor.consultationFee || 300);
     setEditDocRoom(doctor.roomNumber || 'عيادة 105');
@@ -571,8 +542,7 @@ consultationFee: docFee === '' ? 0 : docFee,
         fullName: editDocFullName.trim(),
         password: editDocPassword.trim() ? editDocPassword.trim() : undefined,
         phone: editDocPhone.trim(),
-        specialtyId: editDocSpecialtyId.trim() || 'spec-general',
-        specialtyNameAr: editDocSpecialtyId.trim() || 'طب عام',
+        specialtyId: editDocSpecialtyId,
         title: editDocTitle,
 consultationFee: editDocFee === '' ? 0 : editDocFee,
         roomNumber: editDocRoom,
@@ -1549,7 +1519,7 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
         <AdminPaymentsManager onShowNotification={showNotification} />
       )}
 
-      {/* Tab 2: Doctors & Staff Accounts Management */}
+      {/* Tab 2: Doctors Management */}
       {activeTab === 'DOCTORS' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
           <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1558,7 +1528,7 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
                 <Stethoscope className="w-5 h-5 text-emerald-600" />
                 <span>إدارة حسابات الاستشاريين وصلاحيات الدخول</span>
               </h3>
-              <p className="text-xs text-slate-500">إدارة حسابات الأطباء الاستشاريين، موظفي خدمة العملاء، والسكرتارية والاستقبال</p>
+              <p className="text-xs text-slate-500">إضافة الطبيب مع البريد وكلمة المرور، وإمكانية تعديل البيانات أو الحذف بالكامل</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -1566,360 +1536,122 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder={accountsSubTab === 'DOCTORS' ? "بحث باسم الطبيب، البريد، التخصص..." : "بحث باسم الموظف، الهاتف، القسم..."}
+                  placeholder="بحث باسم الطبيب، البريد، التخصص..."
                   value={doctorSearchQuery}
                   onChange={(e) => setDoctorSearchQuery(e.target.value)}
                   className="pl-3 pr-8 py-1.5 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:bg-white focus:border-emerald-500 outline-none w-56 sm:w-64"
                 />
               </div>
 
-              {accountsSubTab === 'DOCTORS' ? (
-                <button
-                  type="button"
-                  onClick={() => setIsNewDoctorModalOpen(true)}
-                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>إضافة طبيب استشاري جديد</span>
-                </button>
-              ) : accountsSubTab === 'CS' ? (
-                <button
-                  type="button"
-                  onClick={handleOpenNewCSModal}
-                  className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <Headphones className="w-4 h-4" />
-                  <span>+ إنشاء حساب خدمة عملاء</span>
-                </button>
-              ) : accountsSubTab === 'SECRETARY' ? (
-                <button
-                  type="button"
-                  onClick={handleOpenNewSecretaryModal}
-                  className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <ClipboardList className="w-4 h-4" />
-                  <span>+ إنشاء حساب سكرتير واستقبال</span>
-                </button>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleOpenNewCSModal}
-                    className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shadow-xs"
-                  >
-                    <Headphones className="w-3.5 h-3.5" />
-                    <span>+ خدمة عملاء</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleOpenNewSecretaryModal}
-                    className="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shadow-xs"
-                  >
-                    <ClipboardList className="w-3.5 h-3.5" />
-                    <span>+ سكرتير</span>
-                  </button>
-                </div>
-              )}
+              <button
+                onClick={() => setIsNewDoctorModalOpen(true)}
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>إضافة طبيب استشاري جديد</span>
+              </button>
             </div>
           </div>
 
-          {/* Sub-Tabs bar to seamlessly switch between Doctors, Customer Service, and Secretary */}
-          <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setAccountsSubTab('DOCTORS')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                accountsSubTab === 'DOCTORS'
-                  ? 'bg-emerald-700 text-white shadow-xs'
-                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <Stethoscope className="w-3.5 h-3.5" />
-              <span>الأطباء الاستشاريون ({doctors.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setAccountsSubTab('CS')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                accountsSubTab === 'CS'
-                  ? 'bg-purple-700 text-white shadow-xs'
-                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <Headphones className="w-3.5 h-3.5 text-purple-500" />
-              <span>موظفو خدمة العملاء ({staffList.filter(s => !s.roleTitle?.includes('سكرتير') && !s.roleTitle?.includes('مختبر') && !s.roleTitle?.includes('تحاليل') && !s.roleTitle?.includes('أشعة') && !s.department?.includes('سكرتاريا') && !s.department?.includes('مختبر') && !s.department?.includes('أشعة')).length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setAccountsSubTab('SECRETARY')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                accountsSubTab === 'SECRETARY'
-                  ? 'bg-teal-700 text-white shadow-xs'
-                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <ClipboardList className="w-3.5 h-3.5 text-teal-500" />
-              <span>السكرتارية والاستقبال ({staffList.filter(s => s.roleTitle?.includes('سكرتير') || s.department?.includes('سكرتاريا')).length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setAccountsSubTab('ALL_STAFF')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                accountsSubTab === 'ALL_STAFF'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>جميع الكوادر والموظفين ({staffList.length})</span>
-            </button>
-          </div>
-
-          {/* Render Doctors Table */}
-          {accountsSubTab === 'DOCTORS' ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-start">
-                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-start">
+              <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                <tr>
+                  <th className="p-3.5">الطبيب الاستشاري</th>
+                  <th className="p-3.5">بيانات الدخول (رقم الهاتف)</th>
+                  <th className="p-3.5">التخصص / المسمى</th>
+                  <th className="p-3.5">العيادة والرسوم</th>
+                  <th className="p-3.5">الحالة والصلاحية</th>
+                  <th className="p-3.5 text-center">الإجراءات والتحكم</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredDoctors.length === 0 ? (
                   <tr>
-                    <th className="p-3.5">الطبيب الاستشاري</th>
-                    <th className="p-3.5">بيانات الدخول (رقم الهاتف)</th>
-                    <th className="p-3.5">التخصص / المسمى</th>
-                    <th className="p-3.5">العيادة والرسوم</th>
-                    <th className="p-3.5">الحالة والصلاحية</th>
-                    <th className="p-3.5 text-center">الإجراءات والتحكم</th>
+                    <td colSpan={6} className="p-8 text-center text-slate-400">
+                      لا يوجد أطباء مطابقين للبحث.
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredDoctors.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="p-8 text-center text-slate-400">
-                        لا يوجد أطباء مطابقين للبحث.
+                ) : (
+                  filteredDoctors.map((d) => (
+                    <tr key={d.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <img 
+                            src={d.avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80'} 
+                            alt={d.fullName} 
+                            className="w-10 h-10 rounded-full object-cover border border-slate-200" 
+                          />
+                          <div>
+                            <strong className="text-slate-900 text-xs block">{d.fullName}</strong>
+                            <span className="text-[10px] text-slate-500 font-medium">خبرة {d.experienceYears} سنوات</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3.5 font-mono text-[11px]">
+                        <div className="flex items-center gap-1.5 text-slate-900 font-bold">
+                          <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>{d.phone}</span>
+                        </div>
+                      </td>
+                      <td className="p-3.5 font-medium text-slate-700">
+                        <span className="font-bold text-slate-900 block">{d.specialtyNameAr}</span>
+                        <span className="text-[10px] text-emerald-700 font-medium">{d.title}</span>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="text-slate-900 font-medium">{d.roomNumber}</div>
+                        <span className="text-xs font-bold font-mono text-emerald-700">{d.consultationFee} ر.ي</span>
+                      </td>
+                      <td className="p-3.5">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
+                          d.isActive 
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                            : 'bg-rose-100 text-rose-800 border border-rose-200'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${d.isActive ? 'bg-emerald-600' : 'bg-rose-600'}`}></span>
+                          {d.isActive ? 'مفعل ومصرح' : 'معطل مؤقتاً'}
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {/* Edit Button */}
+                          <button
+                            onClick={() => handleOpenEditDoctor(d)}
+                            className="p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer"
+                            title="تعديل بيانات وحساب الطبيب"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+
+                          {/* Toggle Active Status */}
+                          <button
+                            onClick={() => handleToggleDoctorStatus(d)}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              d.isActive 
+                                ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' 
+                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                            }`}
+                            title={d.isActive ? 'تعطيل الحساب مؤقتاً' : 'تفعيل الحساب'}
+                          >
+                            <Power className="w-4 h-4" />
+                          </button>
+
+                          {/* Delete Button */}
+                          <button
+                            onClick={() => setDeletingDoctor(d)}
+                            className="p-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer"
+                            title="حذف حساب الطبيب نهائياً"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ) : (
-                    filteredDoctors.map((d) => (
-                      <tr key={d.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="p-3.5">
-                          <div className="flex items-center gap-2.5">
-                            <img 
-                              src={d.avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80'} 
-                              alt={d.fullName} 
-                              className="w-10 h-10 rounded-full object-cover border border-slate-200" 
-                            />
-                            <div>
-                              <strong className="text-slate-900 text-xs block">{d.fullName}</strong>
-                              <span className="text-[10px] text-slate-500 font-medium">خبرة {d.experienceYears} سنوات</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-3.5 font-mono text-[11px]">
-                          <div className="flex items-center gap-1.5 text-slate-900 font-bold">
-                            <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            <span>{d.phone}</span>
-                          </div>
-                        </td>
-                        <td className="p-3.5 font-medium text-slate-700">
-                          <span className="font-bold text-slate-900 block">{d.specialtyNameAr}</span>
-                          <span className="text-[10px] text-emerald-700 font-medium">{d.title}</span>
-                        </td>
-                        <td className="p-3.5">
-                          <div className="text-slate-900 font-medium">{d.roomNumber}</div>
-                          <span className="text-xs font-bold font-mono text-emerald-700">{d.consultationFee} ر.ي</span>
-                        </td>
-                        <td className="p-3.5">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
-                            d.isActive 
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                              : 'bg-rose-100 text-rose-800 border border-rose-200'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${d.isActive ? 'bg-emerald-600' : 'bg-rose-600'}`}></span>
-                            {d.isActive ? 'مفعل ومصرح' : 'معطل مؤقتاً'}
-                          </span>
-                        </td>
-                        <td className="p-3.5 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            {/* Edit Button */}
-                            <button
-                              onClick={() => handleOpenEditDoctor(d)}
-                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer"
-                              title="تعديل بيانات وحساب الطبيب"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-
-                            {/* Toggle Active Status */}
-                            <button
-                              onClick={() => handleToggleDoctorStatus(d)}
-                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                                d.isActive 
-                                  ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' 
-                                  : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                              }`}
-                              title={d.isActive ? 'تعطيل الحساب مؤقتاً' : 'تفعيل الحساب'}
-                            >
-                              <Power className="w-4 h-4" />
-                            </button>
-
-                            {/* Delete Button */}
-                            <button
-                              onClick={() => setDeletingDoctor(d)}
-                              className="p-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer"
-                              title="حذف حساب الطبيب نهائياً"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            /* Render Staff Table (Customer Service, Secretary, etc.) */
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-start">
-                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                  <tr>
-                    <th className="p-3.5">الموظف / الكادر</th>
-                    <th className="p-3.5">نوع الحساب والصلاحية</th>
-                    <th className="p-3.5">رقم الهاتف (بيانات الدخول)</th>
-                    <th className="p-3.5">المسمى والجهة التابعة</th>
-                    <th className="p-3.5">فترة العمل</th>
-                    <th className="p-3.5">الحالة</th>
-                    <th className="p-3.5 text-center">الإجراءات</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {staffList
-                    .filter(stf => {
-                      const isSec = stf.roleTitle?.includes('سكرتير') || stf.department?.includes('سكرتاريا');
-                      const isRad = stf.roleTitle?.includes('أشعة') || stf.department?.includes('أشعة');
-                      const isLab = !isRad && (stf.roleTitle?.includes('مختبر') || stf.roleTitle?.includes('تحاليل') || stf.department?.includes('مختبر'));
-                      const isCS = !isSec && !isLab && !isRad;
-
-                      if (accountsSubTab === 'CS' && !isCS) return false;
-                      if (accountsSubTab === 'SECRETARY' && !isSec) return false;
-
-                      if (!doctorSearchQuery.trim()) return true;
-                      const q = doctorSearchQuery.toLowerCase();
-                      return (
-                        stf.fullName.toLowerCase().includes(q) ||
-                        (stf.email && stf.email.toLowerCase().includes(q)) ||
-                        stf.phone.toLowerCase().includes(q) ||
-                        (stf.roleTitle && stf.roleTitle.toLowerCase().includes(q)) ||
-                        (stf.department && stf.department.toLowerCase().includes(q))
-                      );
-                    })
-                    .map((stf) => {
-                      const isSec = stf.roleTitle?.includes('سكرتير') || stf.department?.includes('سكرتاريا');
-                      const isRad = stf.roleTitle?.includes('أشعة') || stf.department?.includes('أشعة');
-                      const isLab = !isRad && (stf.roleTitle?.includes('مختبر') || stf.roleTitle?.includes('تحاليل') || stf.department?.includes('مختبر'));
-
-                      return (
-                        <tr key={stf.id} className="hover:bg-slate-50">
-                          <td className="p-3.5 font-bold text-slate-900">
-                            <div className="flex items-center gap-2">
-                              <img
-                                src={stf.avatar || (isRad ? 'https://images.unsplash.com/photo-1516549655169-df83a0774514?w=150&auto=format&fit=crop&q=80' : 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80')}
-                                alt={stf.fullName}
-                                className="w-8 h-8 rounded-lg object-cover border border-slate-200"
-                              />
-                              <div>
-                                <span>{stf.fullName}</span>
-                                <span className="block text-[10px] text-slate-400 font-mono">{stf.email}</span>
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="p-3.5">
-                            {isSec ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-teal-50 text-teal-800 border border-teal-200">
-                                <ClipboardList className="w-3 h-3" />
-                                <span>سكرتير طبي واستقبال</span>
-                              </span>
-                            ) : isRad ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-indigo-50 text-indigo-800 border border-indigo-200">
-                                <Scan className="w-3 h-3" />
-                                <span>قسم الأشعة والتصوير</span>
-                              </span>
-                            ) : isLab ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-cyan-50 text-cyan-800 border border-cyan-200">
-                                <FlaskConical className="w-3 h-3" />
-                                <span>فني وأخصائي مختبر</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-purple-50 text-purple-800 border border-purple-200">
-                                <Headphones className="w-3 h-3" />
-                                <span>خدمة عملاء وتنسيق</span>
-                              </span>
-                            )}
-                          </td>
-
-                          <td className="p-3.5 font-mono text-[11px]">
-                            <div className="flex items-center gap-1.5 text-slate-900 font-bold">
-                              <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                              <span>{stf.phone}</span>
-                            </div>
-                          </td>
-
-                          <td className="p-3.5 text-slate-700">
-                            <strong>{stf.roleTitle}</strong>
-                            <span className="block text-[10px] text-slate-400">{stf.department}</span>
-                          </td>
-
-                          <td className="p-3.5 text-slate-600">{stf.shift}</td>
-
-                          <td className="p-3.5">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              stf.isActive 
-                                ? 'bg-emerald-100 text-emerald-800' 
-                                : 'bg-rose-100 text-rose-800'
-                            }`}>
-                              {stf.isActive ? 'نشط ومصرح' : 'معطل'}
-                            </span>
-                          </td>
-
-                          <td className="p-3.5 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                onClick={() => handleOpenEditStaff(stf)}
-                                className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
-                                title="تعديل بيانات وصلاحيات الموظف"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleToggleStaffStatus(stf)}
-                                className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                                  stf.isActive 
-                                    ? 'text-amber-600 hover:bg-amber-50' 
-                                    : 'text-emerald-600 hover:bg-emerald-50'
-                                }`}
-                                title={stf.isActive ? 'تعطيل الحساب مؤقتاً' : 'تفعيل الحساب'}
-                              >
-                                <Power className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setDeletingStaff(stf)}
-                                className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                title="حذف حساب الموظف نهائياً"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -2554,36 +2286,19 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
               </div>
 
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  التخصص الطبي <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  list="doctor-specialties-options"
-                  required
-                  value={docSpecialtyId}
-                  onChange={(e) => setDocSpecialtyId(e.target.value)}
-                  placeholder="اختر أو اكتب التخصص الطبي (مثال: أمراض القلب، باطنية...)"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500 font-medium text-xs"
-                />
-                <datalist id="doctor-specialties-options">
-                  <option value="أمراض القلب والأوعية الدموية" />
-                  <option value="طب الباطنة والجهاز الهضمي" />
-                  <option value="طب وجراحة العيون" />
-                  <option value="طب الأطفال وحديثي الولادة" />
-                  <option value="جراحة العظام والمفاصل" />
-                  <option value="طب النساء والولادة" />
-                  <option value="طب وجراحة المسالك البولية" />
-                  <option value="طب وجراحة الأنف والأذن والحنجرة" />
-                  <option value="طب وجراحة الفم والأسنان" />
-                  <option value="الأمراض الجلدية والتناسلية" />
-                  <option value="طب وجراحة المخ والأعصاب" />
-                  <option value="الطب النفسي والعصبي" />
-                  <option value="الجراحة العامة وجراحة المناظير" />
-                  <option value="طب الأسرة والرعاية الأولية" />
-                </datalist>
-              </div>
+<div>
+  <label className="block font-bold text-slate-700 mb-1">
+    التخصص الطبي
+  </label>
+
+  <input
+    type="text"
+    value={docSpecialtyId}
+    onChange={(e) => setDocSpecialtyId(e.target.value)}
+    placeholder="اكتب التخصص الطبي"
+    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500"
+  />
+</div>
 
 
 
@@ -2757,36 +2472,19 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
               </div>
 
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  التخصص الطبي <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  list="edit-doctor-specialties-options"
-                  required
-                  value={editDocSpecialtyId}
-                  onChange={(e) => setEditDocSpecialtyId(e.target.value)}
-                  placeholder="اختر أو اكتب التخصص الطبي"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500 font-medium text-xs"
-                />
-                <datalist id="edit-doctor-specialties-options">
-                  <option value="أمراض القلب والأوعية الدموية" />
-                  <option value="طب الباطنة والجهاز الهضمي" />
-                  <option value="طب وجراحة العيون" />
-                  <option value="طب الأطفال وحديثي الولادة" />
-                  <option value="جراحة العظام والمفاصل" />
-                  <option value="طب النساء والولادة" />
-                  <option value="طب وجراحة المسالك البولية" />
-                  <option value="طب وجراحة الأنف والأذن والحنجرة" />
-                  <option value="طب وجراحة الفم والأسنان" />
-                  <option value="الأمراض الجلدية والتناسلية" />
-                  <option value="طب وجراحة المخ والأعصاب" />
-                  <option value="الطب النفسي والعصبي" />
-                  <option value="الجراحة العامة وجراحة المناظير" />
-                  <option value="طب الأسرة والرعاية الأولية" />
-                </datalist>
-              </div>
+<div>
+  <label className="block font-bold text-slate-700 mb-1">
+    التخصص الطبي
+  </label>
+
+  <input
+    type="text"
+    value={editDocSpecialtyId}
+    onChange={(e) => setEditDocSpecialtyId(e.target.value)}
+    placeholder="اكتب التخصص الطبي"
+    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500"
+  />
+</div>
 
               <div className="grid grid-cols-3 gap-2">
 <div>

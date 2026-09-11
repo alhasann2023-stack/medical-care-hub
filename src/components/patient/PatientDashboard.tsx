@@ -51,6 +51,7 @@ import { PrintablePrescriptionModal } from '../common/PrintablePrescriptionModal
 import { ConsultationReminderBanner } from './ConsultationReminderBanner';
 import { localReminderService, ReminderItem } from '../../services/localReminderService';
 import { PatientInvoicesModal } from './PatientInvoicesModal';
+import { PaymentCheckoutModal } from '../common/PaymentCheckoutModal';
 import { PatientMedicalProfileModal } from './PatientMedicalProfileModal';
 
 interface PatientDashboardProps {
@@ -97,6 +98,18 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
   // Free Consultation Promo State
   const [freePromo, setFreePromo] = useState<FreeConsultationPromo | null>(null);
+
+  // Checkout Modal State
+  const [checkoutData, setCheckoutData] = useState<{
+    isOpen: boolean;
+    serviceType: 'APPOINTMENT' | 'CONSULTATION' | 'LAB_TEST' | 'OTHER';
+    serviceReferenceId: string;
+    serviceName: string;
+    amount: number;
+    doctorId?: string;
+    doctorName?: string;
+    doctorSpecialty?: string;
+  } | null>(null);
 
   const patientId = patientProfile?.id || user?.id || 'pat-1';
 
@@ -1384,6 +1397,29 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
         <PatientInvoicesModal
           isOpen={isInvoiceModalOpen}
           onClose={() => setIsInvoiceModalOpen(false)}
+        />
+      )}
+
+      {/* Payment Checkout Modal */}
+      {checkoutData && checkoutData.isOpen && (
+        <PaymentCheckoutModal
+          isOpen={checkoutData.isOpen}
+          onClose={() => setCheckoutData(null)}
+          onSuccess={(payment) => {
+            setCheckoutData(null);
+            loadDashboardData();
+          }}
+          serviceType={checkoutData.serviceType}
+          serviceReferenceId={checkoutData.serviceReferenceId}
+          serviceName={checkoutData.serviceName}
+          amount={checkoutData.amount}
+          currency="YER"
+          patientId={patientId}
+          patientName={patientProfile?.fullName || user?.fullName || 'المريض'}
+          patientPhone={patientProfile?.phone || user?.phone || ''}
+          doctorId={checkoutData.doctorId}
+          doctorName={checkoutData.doctorName}
+          doctorSpecialty={checkoutData.doctorSpecialty}
         />
       )}
 

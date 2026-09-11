@@ -107,15 +107,50 @@ export class PaymentService {
       require3DSecure: true,
       allowedCurrencies: ['SAR', 'USD', 'YER']
     },
-    manualAccounts: {
-      kuraimiAccount: '3055489211',
-      jawwaliAccount: '778901234',
-      oneCashAccount: '733456789',
-      jeebAccount: '711234567',
-      floosakAccount: '770123456',
-      beneficiaryName: 'مستشفى العناية الطبية التخصصي',
-      adminWhatsapp: '967770000000',
-      instructionsText: 'انسخ رقم الحساب لإرسال قيمة الاستشارة أو الحجز لكي يتم تأكيده، ثم أرسل إشعار وسند التحويل عبر واتساب الإدارة.'
+    hospitalAccounts: {
+      kuraimi: {
+        accountNumber: '300889214',
+        accountName: 'مستشفى وهج الطبي التخصصي',
+        merchantId: 'KRM-HOSP-770921',
+        terminalId: 'POS-SANAA-01',
+        enableHasebPay: true,
+        enableExpressPay: true,
+        enableKuraimiJawwal: true,
+        isActive: true,
+        notes: 'حساب بنك الكريمي المعتمد للتحصيل والسداد الإلكتروني وحاسب وإكسبرس'
+      },
+      oneCash: {
+        accountNumber: '777123456',
+        accountName: 'مستشفى وهج الطبي التخصصي - وان كاش',
+        phone: '777123456',
+        providerNameAr: 'محفظة وان كاش (OneCash)',
+        isActive: true,
+        notes: 'التحويل المباشر لحساب ون كاش المعتمد'
+      },
+      mahfazati: {
+        accountNumber: '778901234',
+        accountName: 'مستشفى وهج الطبي التخصصي - محفظتي',
+        phone: '778901234',
+        providerNameAr: 'محفظة محفظتي (Mahfazati)',
+        isActive: true,
+        notes: 'التحويل المباشر لمحفظة محفظتي المعتمدة'
+      },
+      jeeb: {
+        accountNumber: '773456789',
+        accountName: 'مستشفى وهج الطبي التخصصي - جيب',
+        phone: '773456789',
+        providerNameAr: 'محفظة جيب (Jeeb - بنك التضامن)',
+        isActive: true,
+        notes: 'التحويل المباشر لمحفظة جيب المعتمدة'
+      },
+      floosak: {
+        accountNumber: '774567890',
+        accountName: 'مستشفى وهج الطبي التخصصي - فلوسك',
+        phone: '774567890',
+        providerNameAr: 'محفظة فلوسك (Floosak - بنك اليمن والكويت)',
+        isActive: true,
+        notes: 'التحويل المباشر لمحفظة فلوسك المعتمدة'
+      }
     },
     enableCashOnArrival: true,
     enableWaiverOption: true,
@@ -301,7 +336,7 @@ export class PaymentService {
 
     // If Kuraimi Express / Haseb pay with account number, generate 2FA OTP simulation
     let kuraimiOtpRequired = false;
-    if (req.paymentMethod === 'KURAIMI' || req.paymentMethod === 'KURAIMI_EXPRESS' || req.paymentMethod === 'HASEB_PAY') {
+    if ((req.paymentMethod as string) === 'KURAIMI' || (req.paymentMethod as string) === 'KURAIMI_EXPRESS' || (req.paymentMethod as string) === 'HASEB_PAY' || req.paymentMethod === 'KURAIMI_HASEB' || req.paymentMethod === 'KURAIMI_PAY') {
       if (req.kuraimiAccount) {
         kuraimiOtpRequired = true;
         // Generate a 6-digit OTP
@@ -399,8 +434,8 @@ export class PaymentService {
       cardBrand: paymentData.cardBrand || (paymentData.paymentMethod === 'MADA' ? 'Mada' : 'Visa / Mastercard'),
       last4: paymentData.last4 || '4242',
       cardHolderName: paymentData.cardHolderName,
-      paymentStatus: 'PAID',
-      status: 'PAID',
+      paymentStatus: 'SUCCESS',
+      status: 'SUCCESS',
       transactionReference,
       gatewayTransactionId: paymentData.gatewayTransactionId || `GW-${Math.floor(100000 + Math.random() * 900000)}`,
       gatewayProvider: paymentData.gatewayProvider || 'SECURE_BANK_HOST',
@@ -433,7 +468,7 @@ export class PaymentService {
       settlementStatus: 'SETTLED',
       createdAt: confirmedPayment.paidAt || new Date().toISOString(),
       settledAt: confirmedPayment.paidAt || new Date().toISOString(),
-      notes: `تم تأكيد السداد وإضافة المبلغ للإيرادات ودفتر الأستاذ العام بنجاح بعملة ${currency}`
+      notes: `تم السداد وتوثيق المعاملة بنجاح بعملة ${currency}`
     };
 
     this.ledgerEntries.set(ledgerEntry.id, ledgerEntry);
@@ -566,7 +601,7 @@ export class PaymentService {
       const cur = entry.currency || 'SAR';
       if (!summaries[cur]) continue;
 
-      if (entry.status === 'SUCCESS' || (entry.status as any) === 'PAID' || entry.settlementStatus === 'SETTLED') {
+      if (entry.status === 'SUCCESS') {
         summaries[cur].totalGross += entry.grossAmount;
         summaries[cur].totalGatewayFees += entry.gatewayFee;
         summaries[cur].totalVat += entry.vatAmount;
@@ -585,22 +620,6 @@ export class PaymentService {
     return summaries;
   }
 
-  public setLedgerEntry(entry: PaymentLedgerEntry): void {
-    if (entry && entry.id) {
-      this.ledgerEntries.set(entry.id, entry);
-    }
-  }
-
-  public loadLedgerEntries(entries: PaymentLedgerEntry[]): void {
-    if (Array.isArray(entries)) {
-      for (const entry of entries) {
-        if (entry && entry.id) {
-          this.ledgerEntries.set(entry.id, entry);
-        }
-      }
-    }
-  }
-
   public getAllLedgerEntries(): PaymentLedgerEntry[] {
     return Array.from(this.ledgerEntries.values()).sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -611,6 +630,9 @@ export class PaymentService {
     if (method === 'ONE_CASH') {
       return 'ONE_CASH';
     }
+    if (method === 'MAHFAZATI') {
+      return 'MAHFAZATI';
+    }
     if (method === 'JEEB') {
       return 'JEEB';
     }
@@ -620,7 +642,7 @@ export class PaymentService {
     if (method === 'JAWALI') {
       return 'JAWALI';
     }
-    if (method === 'KURAIMI' || method === 'KURAIMI_EXPRESS' || method === 'HASEB_PAY') {
+    if ((method as string) === 'KURAIMI' || (method as string) === 'KURAIMI_EXPRESS' || (method as string) === 'HASEB_PAY' || method === 'KURAIMI_HASEB' || method === 'KURAIMI_PAY') {
       return 'KURAIMI';
     }
     if (method === 'VISA' || method === 'MASTERCARD' || method === 'CREDIT_CARD') {

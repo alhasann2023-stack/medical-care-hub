@@ -1,6 +1,3 @@
-// React types are not available in this project; keep the runtime import while
-// preventing TypeScript from failing the file-level check.
-// @ts-ignore
 import React, { useState, useEffect } from 'react';
 import { 
   Headphones, 
@@ -146,13 +143,13 @@ export const CustomerServiceDashboard: React.FC = () => {
   };
 
   const getDocName = (docId: string) => {
-    const doc = doctors.find((d: Doctor) => d.id === docId || d.userId === docId);
+    const doc = doctors.find(d => d.id === docId || d.userId === docId);
     return doc?.fullName || appointments.find(a => a.doctorId === docId)?.doctorName || 'طبيب العيادة';
   };
 
   const getDoctorAppointmentsForDate = (docId: string, targetDate: string) => {
     const doc = doctors.find(d => d.id === docId || d.userId === docId);
-    return appointments.filter((a: Appointment) => {
+    return appointments.filter(a => {
       const matchDoc = a.doctorId === docId ||
         (doc && (a.doctorId === doc.id || a.doctorId === doc.userId || a.doctorName === doc.fullName));
       const matchDate = (a.confirmedDate === targetDate || a.preferredDate === targetDate);
@@ -469,10 +466,10 @@ export const CustomerServiceDashboard: React.FC = () => {
   const confirmedCount = appointments.filter(a => a.status === 'CONFIRMED').length;
 
   return (
-    <div className="space-y-3 text-start">
+    <div className="space-y-6 text-start">
       {/* Toast Notification */}
       {notificationMsg && (
-        <div className={`p-2 rounded-2xl border shadow-lg text-xs sm:text-sm font-bold flex items-center gap-3 animate-in fade-in ${
+        <div className={`p-4 rounded-2xl border shadow-lg text-xs sm:text-sm font-bold flex items-center gap-3 animate-in fade-in ${
           notificationMsg.type === 'success' 
             ? 'bg-emerald-50 border-emerald-300 text-emerald-900' 
             : 'bg-rose-50 border-rose-300 text-rose-900'
@@ -487,7 +484,7 @@ export const CustomerServiceDashboard: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-800 via-indigo-900 to-slate-900 rounded-3xl p-4 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-gradient-to-r from-purple-800 via-indigo-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center text-purple-300 border border-white/20">
             <Headphones className="w-9 h-9" />
@@ -526,7 +523,7 @@ export const CustomerServiceDashboard: React.FC = () => {
             onClick={() => setIsQuickRegisterOpen(true)}
             className="px-4 py-2.5 rounded-xl bg-purple-500 hover:bg-purple-400 text-slate-950 font-bold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
           >
-            <UserPlus className="w-2 h-4 text-slate-950" />
+            <UserPlus className="w-4 h-4 text-slate-950" />
             <span>فتح ملف مريض سريع</span>
           </button>
         </div>
@@ -534,7 +531,7 @@ export const CustomerServiceDashboard: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white p-2 rounded-2xl border border-blue-300 shadow-xs flex items-center gap-3">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
           <div className="p-3 rounded-xl bg-amber-50 text-amber-700">
             <Clock className="w-5 h-5" />
           </div>
@@ -544,7 +541,7 @@ export const CustomerServiceDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-2 rounded-2xl border border-blue-300 shadow-xs flex items-center gap-3">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
           <div className="p-3 rounded-xl bg-emerald-50 text-emerald-700">
             <CalendarCheck className="w-5 h-5" />
           </div>
@@ -554,7 +551,7 @@ export const CustomerServiceDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-2 rounded-2xl border border-blue-300 shadow-xs flex items-center gap-3">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
           <div className="p-3 rounded-xl bg-purple-50 text-purple-700">
             <Stethoscope className="w-5 h-5" />
           </div>
@@ -564,7 +561,7 @@ export const CustomerServiceDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-2 rounded-2xl border border-blue-300 shadow-xs flex items-center gap-3">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
           <div className="p-3 rounded-xl bg-blue-50 text-blue-700">
             <Phone className="w-5 h-5" />
           </div>
@@ -576,7 +573,7 @@ export const CustomerServiceDashboard: React.FC = () => {
       </div>
 
       {/* Main Tabs Navigation */}
-      <div className="flex items-center gap-2 border-b border-slate-300 pb-1">
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
         <button
           onClick={() => setActiveTab('APPOINTMENTS')}
           className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
@@ -604,9 +601,9 @@ export const CustomerServiceDashboard: React.FC = () => {
 
       {/* Tab 1: Appointments Coordination */}
       {activeTab === 'APPOINTMENTS' && (
-        <div className="space-y-2">
+        <div className="space-y-4">
           {/* Filters & Patient Phone Search */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-300 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
             {/* Status filters */}
             <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
               {[
@@ -643,8 +640,8 @@ export const CustomerServiceDashboard: React.FC = () => {
           </div>
 
           {/* Main Coordination Table */}
-          <div className="bg-white rounded-2xl border border-blue-300 shadow-xs overflow-hidden">
-            <div className="p-2 border-b border-slate-200 flex items-center justify-between">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
               <h3 className="font-extrabold text-slate-900 text-sm">
                 طابور طلبات حجز المواعيد وتنسيق العيادات
               </h3>
@@ -655,7 +652,7 @@ export const CustomerServiceDashboard: React.FC = () => {
 
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-start">
-                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-300">
+                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
                   <tr>
                     <th className="p-3.5">المريض / الهاتف</th>
                     <th className="p-3.5">الطبيب والعيادة</th>
@@ -676,8 +673,8 @@ export const CustomerServiceDashboard: React.FC = () => {
                     filteredAppointments.map((apt) => {
                       const patient = patients.find(p => p.id === apt.patientId);
                       return (
-                        <tr key={apt.id} className="hover:bg-green-100 transition-colors">
-                          <td className="p-2.5">
+                        <tr key={apt.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="p-3.5">
                             <strong className="text-slate-900 block text-xs sm:text-sm">{apt.patientName}</strong>
                             <span className="font-mono text-purple-700 font-bold block">{patient?.phone || '0501234567'}</span>
                             <span className="text-[10px] text-slate-400 font-mono">{apt.patientMrn}</span>
@@ -720,6 +717,21 @@ export const CustomerServiceDashboard: React.FC = () => {
                               }`}>
                                 {apt.status === 'CONFIRMED' ? 'مؤكد' : apt.status === 'CONTACTED' ? 'تم الاتصال' : apt.status === 'CANCELLED' ? 'ملغي' : 'طلب جديد'}
                               </span>
+
+                              {/* Payment status badge */}
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
+                                apt.paymentStatus === 'PAID' || apt.paymentStatus === 'PAYMENT_SUCCESS' || apt.isPaid
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                  : 'bg-amber-50 text-amber-800 border border-amber-200'
+                              }`}>
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>
+                                  {apt.paymentStatus === 'PAID' || apt.paymentStatus === 'PAYMENT_SUCCESS' || apt.isPaid
+                                    ? 'تم التسديد ✓'
+                                    : 'بانتظار السداد'}
+                                </span>
+                              </span>
+
                               {apt.isDoctorAbsent && (
                                 <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 flex items-center gap-1">
                                   <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
@@ -902,7 +914,7 @@ export const CustomerServiceDashboard: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveCoordination} className="p-6 space-y-4 text-start text-xs sm:text-sm">
-              {/* Call Prompt Strip */}
+              {/* Call Prompt Strip & Payment Status */}
               <div className="p-3.5 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-between">
                 <div>
                   <span className="text-[11px] text-purple-800 block">رقم هاتف المريض للاتصال والتأكيد:</span>
@@ -910,13 +922,24 @@ export const CustomerServiceDashboard: React.FC = () => {
                     {patients.find(p => p.id === coordinatingAppointment.patientId)?.phone || '0501234567'}
                   </strong>
                 </div>
-                <a
-                  href={`tel:${patients.find(p => p.id === coordinatingAppointment.patientId)?.phone}`}
-                  className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-bold flex items-center gap-1 hover:bg-purple-700"
-                >
-                  <Phone className="w-3.5 h-3.5" />
-                  <span>اتصال</span>
-                </a>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                    coordinatingAppointment.paymentStatus === 'PAID' || coordinatingAppointment.paymentStatus === 'PAYMENT_SUCCESS' || coordinatingAppointment.isPaid
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-amber-100 text-amber-800 border border-amber-300'
+                  }`}>
+                    {coordinatingAppointment.paymentStatus === 'PAID' || coordinatingAppointment.paymentStatus === 'PAYMENT_SUCCESS' || coordinatingAppointment.isPaid
+                      ? 'تم التسديد ✓'
+                      : 'بانتظار السداد'}
+                  </span>
+                  <a
+                    href={`tel:${patients.find(p => p.id === coordinatingAppointment.patientId)?.phone}`}
+                    className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-bold flex items-center gap-1 hover:bg-purple-700"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>اتصال</span>
+                  </a>
+                </div>
               </div>
 
               {/* Status Selector */}
@@ -929,8 +952,6 @@ export const CustomerServiceDashboard: React.FC = () => {
                   onChange={(e) => setActionStatus(e.target.value as AppointmentStatus)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-slate-900 font-bold"
                 >
-                                    <option value="CONFIRMED"> اختر حالة الموعد</option>
-
                   <option value="CONFIRMED">تأكيد الموعد (CONFIRMED)</option>
                   <option value="CONTACTED">تم الاتصال ولم يرد (CONTACTED)</option>
                   <option value="RESCHEDULED">إعادة جدولة (RESCHEDULED)</option>

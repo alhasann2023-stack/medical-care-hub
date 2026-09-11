@@ -31,9 +31,10 @@ import {
   ExternalLink,
   Shield,
   Layers,
-  Smartphone,
-  Send,
-  Phone
+  Building2,
+  Eye,
+  Loader2,
+  Smartphone
 } from 'lucide-react';
 import { 
   Payment, 
@@ -43,17 +44,17 @@ import {
   PaymentLedgerEntry, 
   PaymentProviderType,
   PaymentMethod,
-  ManualPaymentAccounts
+  HospitalPaymentAccounts,
+  HospitalAccountConfig,
+  KuraimiHospitalAccountConfig
 } from '../../types/medical';
 import { api } from '../../services/api';
 import { 
   formatPaymentAmount, 
   getProviderDisplayName, 
   SUPPORTED_CURRENCIES,
-  DEFAULT_PAYMENT_SETTINGS,
-  DEFAULT_MANUAL_ACCOUNTS
+  DEFAULT_PAYMENT_SETTINGS
 } from '../../utils/paymentUtils';
-import { INITIAL_PAYMENTS } from '../../data/seedData';
 
 interface AdminPaymentsManagerProps {
   onShowNotification?: (type: 'success' | 'error', text: string) => void;
@@ -88,10 +89,37 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
   const [isLedgerLoading, setIsLedgerLoading] = useState<boolean>(false);
 
   // Settings State
-  const [settings, setSettings] = useState<PaymentSettings>(DEFAULT_PAYMENT_SETTINGS);
+  const [settings, setSettings] = useState<PaymentSettings>({
+    ...DEFAULT_PAYMENT_SETTINGS,
+    hospitalAccounts: {
+      ...DEFAULT_PAYMENT_SETTINGS.hospitalAccounts!
+    }
+  });
   const [isSettingsLoading, setIsSettingsLoading] = useState<boolean>(false);
   const [isSavingSettings, setIsSavingSettings] = useState<boolean>(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  // Helper for updating hospital accounts
+  const updateHospitalAccount = <K extends keyof HospitalPaymentAccounts>(
+    provider: K,
+    field: string,
+    value: any
+  ) => {
+    setSettings((prev) => {
+      const currentAccounts = prev.hospitalAccounts || DEFAULT_PAYMENT_SETTINGS.hospitalAccounts!;
+      const currentProviderConfig = (currentAccounts[provider] || (DEFAULT_PAYMENT_SETTINGS.hospitalAccounts as any)[provider]) as any;
+      return {
+        ...prev,
+        hospitalAccounts: {
+          ...currentAccounts,
+          [provider]: {
+            ...currentProviderConfig,
+            [field]: value
+          }
+        }
+      };
+    });
+  };
 
   // Refund Modal State
   const [refundTarget, setRefundTarget] = useState<Payment | null>(null);
@@ -99,109 +127,72 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
   const [refundAmount, setRefundAmount] = useState<number>(0);
   const [isProcessingRefund, setIsProcessingRefund] = useState<boolean>(false);
 
-  // Mark As Paid & Copy Account States
-  const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
-  const [copiedPatientAccount, setCopiedPatientAccount] = useState<string | null>(null);
-
   // Selected Receipt for Viewing/Printing
   const [selectedReceipt, setSelectedReceipt] = useState<Payment | null>(null);
+
+  // Manual Payment Approval State (Bank Transfer Notice / Pending)
+  const [approvingPaymentId, setApprovingPaymentId] = useState<string | null>(null);
+  const [selectedNoticePayment, setSelectedNoticePayment] = useState<Payment | null>(null);
+
+  const handleApprovePayment = async (payment: Payment) => {
+    setApprovingPaymentId(payment.id);
+    try {
+      await api.approvePayment(payment.id, 'الإدارة المالية والمحاسبة');
+      if (onShowNotification) {
+        onShowNotification(
+          'success',
+          `تم اعتماد السداد بنجاح للعملية (${payment.transactionReference || payment.id}) للمريض ${payment.patientName}. تم تحديث الحالة في واجهات الطبيب وخدمة العملاء إلى "تم التسديد ✓".`
+        );
+      }
+      if (selectedNoticePayment?.id === payment.id) {
+        setSelectedNoticePayment(null);
+      }
+      await loadPayments();
+      await loadLedger();
+    } catch (err: any) {
+      console.error('Failed to approve payment:', err);
+      if (onShowNotification) {
+        onShowNotification('error', err.message || 'فشل اعتماد السداد، يرجى إعادة المحاولة.');
+      }
+    } finally {
+      setApprovingPaymentId(null);
+    }
+  };
 
   useEffect(() => {
     loadPayments();
     loadLedger();
     loadSettings();
 
-    // Subscribe to real-time payments directly from Firestore
-    const unsubscribe = api.subscribePayments({}, (livePayments) => {
-      if (Array.isArray(livePayments) && livePayments.length > 0) {
-        setPayments(livePayments);
-        setIsLoading(false);
+    // Real-time synchronization from Firebase and events
+    const unsubscribe = api.subscribePayments({}, (updatedPayments) => {
+      if (updatedPayments && updatedPayments.length > 0) {
+        setPayments(updatedPayments);
       }
     });
 
-    // Continuous automatic sync from Firestore every 4 seconds to guarantee permanent fresh data
-    const syncInterval = setInterval(() => {
-      loadPayments(false);
+    const handlePaymentsUpdated = () => {
+      loadPayments();
       loadLedger();
-    }, 4000);
+    };
+
+    window.addEventListener('mch_payments_updated', handlePaymentsUpdated);
 
     return () => {
-      unsubscribe();
-      clearInterval(syncInterval);
+      if (typeof unsubscribe === 'function') unsubscribe();
+      window.removeEventListener('mch_payments_updated', handlePaymentsUpdated);
     };
   }, []);
 
-  // Helper to extract patient's account number / wallet / phone
-  const getPatientRefundAccount = (payment: Payment): string => {
-    return payment.kuraimiAccount || 
-           payment.kuraimiDetails?.customerAccount || 
-           (payment as any).patientAccount || 
-           (payment as any).patientBankAccount || 
-           (payment as any).accountNumber || 
-           payment.patientPhone || 
-           '';
-  };
-
-  const handleCopyPatientAccount = (account: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    if (!account) return;
-    navigator.clipboard.writeText(account);
-    setCopiedPatientAccount(account);
-    if (onShowNotification) {
-      onShowNotification('info', `تم نسخ رقم حساب المريض (${account}) بنجاح لتحويل واسترداد المبلغ.`);
-    }
-    setTimeout(() => setCopiedPatientAccount(null), 3000);
-  };
-
-  const handleMarkAsPaid = async (payment: Payment) => {
-    setMarkingPaidId(payment.id);
+  const loadPayments = async () => {
+    setIsLoading(true);
     try {
-      await api.markPaymentAsPaid(payment.id, 'تم تأكيد السداد وإرسال رسوم الاستشارة والحجز من قبل إدارة المستشفى');
-      if (onShowNotification) {
-        onShowNotification('success', `تم تأكيد سداد رسوم الاستشارة والحجز بنجاح للعملية (${payment.receiptNumber || payment.id}).`);
-      }
-      await loadPayments();
-      await loadLedger();
-    } catch (err: any) {
-      console.error('Failed to mark payment as paid:', err);
-      if (onShowNotification) {
-        onShowNotification('error', err.message || 'فشل تأكيد عملية السداد.');
-      }
-    } finally {
-      setMarkingPaidId(null);
-    }
-  };
-
-  const loadPayments = async (showLoading = true) => {
-    if (showLoading) setIsLoading(true);
-    try {
-      // 1. Direct fetch from Firestore first as primary authoritative source
-      const directFs = await api.getFirestorePayments().catch(() => []);
-      if (directFs && directFs.length > 0) {
-        setPayments(directFs);
-      }
-
-      // 2. Fetch from API endpoint to ensure complete synchronized ledger state
       const res = await api.getPayments();
-      if (res && res.length > 0) {
-        setPayments(res);
-      } else if (!directFs || directFs.length === 0) {
-        if (INITIAL_PAYMENTS && INITIAL_PAYMENTS.length > 0) {
-          setPayments(INITIAL_PAYMENTS);
-        } else {
-          setPayments([]);
-        }
-      }
+      setPayments(res || []);
     } catch (err) {
       console.error('Failed to load payments for admin:', err);
-      const directFs = await api.getFirestorePayments().catch(() => []);
-      if (directFs && directFs.length > 0) {
-        setPayments(directFs);
-      } else if (INITIAL_PAYMENTS && INITIAL_PAYMENTS.length > 0) {
-        setPayments(INITIAL_PAYMENTS);
-      }
     } finally {
-      if (showLoading) setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -225,10 +216,11 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
       const res = await api.getPaymentSettings();
       if (res && res.defaultCurrency) {
         setSettings({
+          ...DEFAULT_PAYMENT_SETTINGS,
           ...res,
-          manualAccounts: {
-            ...DEFAULT_MANUAL_ACCOUNTS,
-            ...(res.manualAccounts || {})
+          hospitalAccounts: {
+            ...DEFAULT_PAYMENT_SETTINGS.hospitalAccounts!,
+            ...(res.hospitalAccounts || {})
           }
         });
       }
@@ -243,15 +235,6 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
     setRefundTarget(payment);
     setRefundAmount(payment.amount);
     setRefundReason('إلغاء الموعد / استرداد الرسوم بموجب اللائحة الإدارية');
-    const account = getPatientRefundAccount(payment);
-    if (account) {
-      navigator.clipboard.writeText(account);
-      setCopiedPatientAccount(account);
-      if (onShowNotification) {
-        onShowNotification('info', `تم نسخ رقم حساب المريض (${account}) تلقائياً لرد وتحويل المبلغ إليه.`);
-      }
-      setTimeout(() => setCopiedPatientAccount(null), 3500);
-    }
   };
 
   const handleExecuteRefund = async (e: React.FormEvent) => {
@@ -310,37 +293,30 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
   };
 
   // Calculations for Metrics across Currencies
-  const isPaymentPaid = (p: Payment) => 
-    p.status === 'PAID' || 
-    p.status === 'PAYMENT_SUCCESS' || 
-    p.status === 'SUCCESS' || 
-    p.paymentStatus === 'PAID' || 
-    p.paymentStatus === 'PAYMENT_SUCCESS' || 
-    p.paymentStatus === 'SUCCESS';
-
   const yerRevenue = payments
-    .filter(p => isPaymentPaid(p) && (p.currency === 'YER' || !p.currency))
-    .reduce((sum, p) => sum + p.amount, 0);
+    .filter(p => (p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS' || p.paymentStatus === 'PAID' || p.paymentStatus === 'PAYMENT_SUCCESS') && (p.currency === 'YER' || !p.currency))
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
 
   const usdRevenue = payments
-    .filter(p => isPaymentPaid(p) && p.currency === 'USD')
-    .reduce((sum, p) => sum + p.amount, 0);
+    .filter(p => (p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS' || p.paymentStatus === 'PAID' || p.paymentStatus === 'PAYMENT_SUCCESS') && p.currency === 'USD')
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
 
   const sarRevenue = payments
-    .filter(p => isPaymentPaid(p) && p.currency === 'SAR')
-    .reduce((sum, p) => sum + p.amount, 0);
+    .filter(p => (p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS' || p.paymentStatus === 'PAID' || p.paymentStatus === 'PAYMENT_SUCCESS') && p.currency === 'SAR')
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
 
-  const paidCount = payments.filter(p => isPaymentPaid(p)).length;
+  const paidCount = payments.filter(p => p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS' || p.paymentStatus === 'PAID' || p.paymentStatus === 'PAYMENT_SUCCESS').length;
   const pendingCount = payments.filter(p => p.status === 'PENDING' || p.status === 'PAYMENT_REQUIRED' || p.paymentStatus === 'PENDING' || p.paymentStatus === 'PAYMENT_REQUIRED').length;
   const refundedCount = payments.filter(p => p.status === 'REFUNDED' || p.paymentStatus === 'REFUNDED').length;
 
   const filteredPayments = payments.filter(p => {
     // Status Filter
+    const effectiveStatus = p.status || p.paymentStatus || 'PAYMENT_SUCCESS';
     if (statusFilter !== 'ALL') {
-      if (statusFilter === 'PAID' && !isPaymentPaid(p)) return false;
-      if (statusFilter === 'PENDING' && p.status !== 'PENDING' && p.status !== 'PAYMENT_REQUIRED' && p.paymentStatus !== 'PENDING' && p.paymentStatus !== 'PAYMENT_REQUIRED') return false;
-      if (statusFilter === 'REFUNDED' && p.status !== 'REFUNDED' && p.paymentStatus !== 'REFUNDED') return false;
-      if (statusFilter === 'WAIVED' && p.status !== 'WAIVED' && p.paymentStatus !== 'WAIVED') return false;
+      if (statusFilter === 'PAID' && effectiveStatus !== 'PAID' && effectiveStatus !== 'PAYMENT_SUCCESS') return false;
+      if (statusFilter === 'PENDING' && effectiveStatus !== 'PENDING' && effectiveStatus !== 'PAYMENT_REQUIRED') return false;
+      if (statusFilter === 'REFUNDED' && effectiveStatus !== 'REFUNDED') return false;
+      if (statusFilter === 'WAIVED' && effectiveStatus !== 'WAIVED') return false;
     }
 
     // Currency Filter
@@ -429,7 +405,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
       {/* Multi-Currency Revenue Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* YER Revenue */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-emerald-300 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
               <span>🇾🇪</span>
@@ -449,7 +425,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
         </div>
 
         {/* USD Revenue */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-emerald-300 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
               <span>🇺🇸</span>
@@ -469,7 +445,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
         </div>
 
         {/* SAR Revenue */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-emerald-300 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
               <span>🇸🇦</span>
@@ -489,7 +465,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
         </div>
 
         {/* System Operations Status */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-emerald-300 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-500">حالة الربط والعمليات</span>
             <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 flex items-center justify-center">
@@ -513,6 +489,32 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
       {/* ========================================================= */}
       {subTab === 'TRANSACTIONS' && (
         <div className="space-y-4">
+          {/* Pending Transfer Notices Alert Banner */}
+          {payments.some(p => (p.status === 'PENDING' || p.paymentStatus === 'PENDING' || p.status === 'PAYMENT_REQUIRED') && (p.paymentMethod === 'BANK_TRANSFER_NOTICE' || (p as any).bankTransferDetails)) && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700/60 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-100 dark:bg-amber-900/60 rounded-xl text-amber-700 dark:text-amber-300">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-amber-950 dark:text-amber-100">
+                    تنبيه إشعارات الحوالات البنكية المعلقة (بحاجة للاعتماد المالي)
+                  </h4>
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5">
+                    يوجد {payments.filter(p => (p.status === 'PENDING' || p.paymentStatus === 'PENDING' || p.status === 'PAYMENT_REQUIRED') && (p.paymentMethod === 'BANK_TRANSFER_NOTICE' || (p as any).bankTransferDetails)).length} إشعار تحويل بنكي مرسل من المرضى بحاجة لمراجعة السداد والضغط على "اعتماد (تم السداد ✓)".
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('PENDING')}
+                className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-colors shrink-0 cursor-pointer shadow-xs"
+              >
+                عرض الإشعارات المعلقة فقط
+              </button>
+            </div>
+          )}
+
           {/* Control Bar: Filters & Search */}
           <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -571,36 +573,20 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
           </div>
 
           {/* Transactions Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-xs overflow-hidden">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
                 <Receipt className="w-5 h-5 text-emerald-600" />
                 <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100">سجل المعاملات والعمليات المالية الموثقة</h3>
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-200/60 dark:border-emerald-800/60">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  جلب تلقائي ودائم من فايربيس
-                </span>
               </div>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => loadPayments(true)}
-                  disabled={isLoading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 rounded-xl border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer"
-                  title="تحديث المعاملات فورياً من قاعدة بيانات فايربيس"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-                  <span>تحديث فوري</span>
-                </button>
-                <span className="text-xs font-mono font-bold text-slate-500">
-                  إجمالي النتائج: {filteredPayments.length}
-                </span>
-              </div>
+              <span className="text-xs font-mono font-bold text-slate-500">
+                إجمالي النتائج: {filteredPayments.length}
+              </span>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-start">
-                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-300 dark:border-slate-700">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-700">
                   <tr>
                     <th className="p-3.5">رقم السند والمعاملة</th>
                     <th className="p-3.5">المريض</th>
@@ -627,26 +613,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
 
                         <td className="p-3.5">
                           <strong className="block text-slate-900 dark:text-slate-100">{p.patientName || 'المريض'}</strong>
-                          {p.patientPhone && <span className="text-[10px] text-slate-400 font-mono block">{p.patientPhone}</span>}
-                          {getPatientRefundAccount(p) && (
-                            <div className="mt-1 flex items-center gap-1">
-                              <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-mono font-bold bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-200/50">
-                                حساب: {getPatientRefundAccount(p)}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={(e) => handleCopyPatientAccount(getPatientRefundAccount(p), e)}
-                                className="p-1 hover:bg-emerald-100 dark:hover:bg-emerald-900 rounded text-emerald-600 dark:text-emerald-300 transition-colors cursor-pointer"
-                                title="نسخ رقم حساب المريض لرد المبلغ"
-                              >
-                                {copiedPatientAccount === getPatientRefundAccount(p) ? (
-                                  <Check className="w-3 h-3 text-emerald-600" />
-                                ) : (
-                                  <Copy className="w-3 h-3 text-slate-400" />
-                                )}
-                              </button>
-                            </div>
-                          )}
+                          {p.patientPhone && <span className="text-[10px] text-slate-400 font-mono">{p.patientPhone}</span>}
                         </td>
 
                         <td className="p-3.5">
@@ -666,7 +633,12 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                         <td className="p-3.5">
                           <div className="space-y-0.5">
                             <span className="px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 font-bold text-[11px] inline-flex items-center gap-1 text-slate-800 dark:text-slate-200">
-                              {p.paymentProvider === 'KURAIMI' || p.paymentMethod?.includes('KURAIMI') ? (
+                              {p.paymentMethod === 'BANK_TRANSFER_NOTICE' || (p as any).bankTransferDetails ? (
+                                <>
+                                  <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                                  <span>إشعار تحويل بنكي</span>
+                                </>
+                              ) : p.paymentProvider === 'KURAIMI' || p.paymentMethod?.includes('KURAIMI') ? (
                                 <>
                                   <Landmark className="w-3.5 h-3.5 text-emerald-600" />
                                   <span>بنك الكريمي</span>
@@ -683,6 +655,11 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                                 </>
                               )}
                             </span>
+                            {p.bankTransferDetails?.transferNoticeNumber && (
+                              <span className="text-[10px] text-blue-700 dark:text-blue-300 font-mono block font-medium">
+                                إشعار #{p.bankTransferDetails.transferNoticeNumber} ({p.bankTransferDetails.bankName || 'بنك'})
+                              </span>
+                            )}
                             {p.kuraimiAccount && (
                               <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-mono block">
                                 حساب: {p.kuraimiAccount}
@@ -702,93 +679,77 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
 
                         <td className="p-3.5">
                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-black inline-flex items-center gap-1 ${
-                            p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS' || p.status === 'SUCCESS'
+                            p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS'
                               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                               : p.status === 'REFUNDED'
                               ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
                               : p.status === 'WAIVED'
                               ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                              : (p.status === 'PENDING' || p.status === 'PAYMENT_REQUIRED') && (p.paymentMethod === 'BANK_TRANSFER_NOTICE' || (p as any).bankTransferDetails)
+                              ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800'
                               : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                           }`}>
-                            {(p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS' || p.status === 'SUCCESS') && <><Check className="w-3 h-3" /> تم الدفع بنجاح</>}
+                            {(p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS') && <><Check className="w-3 h-3" /> تم الدفع بنجاح (تم التسديد ✓)</>}
                             {p.status === 'REFUNDED' && <><RotateCcw className="w-3 h-3" /> مسترد ({formatPaymentAmount(p.refundAmount || p.amount, p.currency as CurrencyCode)})</>}
                             {p.status === 'WAIVED' && <><CheckCircle2 className="w-3 h-3" /> إعفاء خيري</>}
-                            {(p.status === 'PENDING' || p.status === 'PAYMENT_REQUIRED') && <><Clock className="w-3 h-3" /> بانتظار السداد</>}
+                            {(p.status === 'PENDING' || p.status === 'PAYMENT_REQUIRED') && (
+                              p.paymentMethod === 'BANK_TRANSFER_NOTICE' || (p as any).bankTransferDetails ? (
+                                <><Clock className="w-3 h-3 text-amber-700" /> إشعار بانتظار الاعتماد</>
+                              ) : (
+                                <><Clock className="w-3 h-3" /> بانتظار السداد</>
+                              )
+                            )}
                             {p.status === 'FAILED' && <><X className="w-3 h-3" /> فشل الدفع</>}
                           </span>
                         </td>
 
                         <td className="p-3.5 text-center">
-                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                            {/* زر تم السداد: بعد إرسال رسوم الاستشارة والحجز */}
-                            {p.status !== 'PAID' && p.status !== 'PAYMENT_SUCCESS' && p.status !== 'SUCCESS' && p.status !== 'REFUNDED' ? (
+                          <div className="flex items-center justify-center gap-1.5">
+                            {/* Action: Approve Manual / Bank Transfer Notice */}
+                            {(p.status === 'PENDING' || p.status === 'PAYMENT_REQUIRED' || p.paymentStatus === 'PENDING') && (
                               <button
-                                onClick={() => handleMarkAsPaid(p)}
-                                disabled={markingPaidId === p.id}
-                                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer whitespace-nowrap active:scale-95 disabled:opacity-50"
-                                title="تأكيد تم السداد بعد إرسال رسوم الاستشارة والحجز"
+                                onClick={() => handleApprovePayment(p)}
+                                disabled={approvingPaymentId === p.id}
+                                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[11px] inline-flex items-center gap-1 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                                title="اعتماد استلام الحوالة وتأكيد (تم السداد ✓)"
                               >
-                                {markingPaidId === p.id ? (
-                                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                {approvingPaymentId === p.id ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                 ) : (
                                   <CheckCircle2 className="w-3.5 h-3.5" />
                                 )}
-                                <span>تم السداد</span>
+                                <span>اعتماد (تم السداد ✓)</span>
                               </button>
-                            ) : (
-                              (p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS' || p.status === 'SUCCESS') && (
-                                <span className="px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[11px] font-bold inline-flex items-center gap-1">
-                                  <Check className="w-3 h-3 text-emerald-600" />
-                                  <span>تم السداد</span>
-                                </span>
-                              )
                             )}
 
-                            {/* زر استرداد المبلغ لكي ينسخ رقم حساب المريض الذي سوف ترد إليه المبلغ */}
-                            {(p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS' || p.status === 'SUCCESS') && (
+                            {/* View Notice Details Button */}
+                            {(p.bankTransferDetails || p.paymentMethod === 'BANK_TRANSFER_NOTICE') && (
                               <button
-                                onClick={() => handleOpenRefundModal(p)}
-                                className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap border border-rose-200 dark:border-rose-800/50"
-                                title="استرداد المبلغ ونسخ رقم حساب المريض لرد المبلغ إليه"
+                                onClick={() => setSelectedNoticePayment(p)}
+                                className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 transition-colors cursor-pointer"
+                                title="عرض تفاصيل إشعار التحويل البنكي"
                               >
-                                <RotateCcw className="w-3.5 h-3.5" />
-                                <span>استرداد المبلغ</span>
+                                <Eye className="w-4 h-4" />
                               </button>
                             )}
 
-                            {/* زر سريع لنسخ رقم حساب المريض */}
-                            {getPatientRefundAccount(p) && (
-                              <button
-                                onClick={(e) => handleCopyPatientAccount(getPatientRefundAccount(p), e)}
-                                className={`px-2 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 border ${
-                                  copiedPatientAccount === getPatientRefundAccount(p)
-                                    ? 'bg-emerald-100 border-emerald-300 text-emerald-800 dark:bg-emerald-900 dark:border-emerald-700 dark:text-emerald-200'
-                                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
-                                }`}
-                                title={`نسخ رقم حساب المريض (${getPatientRefundAccount(p)}) لرد المبلغ إليه`}
-                              >
-                                {copiedPatientAccount === getPatientRefundAccount(p) ? (
-                                  <>
-                                    <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span className="text-[10px]">تم نسخ الحساب</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy className="w-3.5 h-3.5 text-slate-500" />
-                                    <span className="text-[10px]">نسخ الحساب</span>
-                                  </>
-                                )}
-                              </button>
-                            )}
-
-                            {/* معاينة وطباعة الفاتورة وسند القبض */}
                             <button
                               onClick={() => setSelectedReceipt(p)}
-                              className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
+                              className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 transition-colors cursor-pointer"
                               title="معاينة وطباعة الفاتورة وسند القبض"
                             >
                               <Printer className="w-4 h-4" />
                             </button>
+
+                            {(p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS') && (
+                              <button
+                                onClick={() => handleOpenRefundModal(p)}
+                                className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 transition-colors cursor-pointer"
+                                title="استرداد المبلغ (Refund)"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -880,7 +841,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
 
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-start">
-                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-400 dark:border-slate-700">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-700">
                   <tr>
                     <th className="p-3.5">رقم القيد والتاريخ</th>
                     <th className="p-3.5">نوع القيد</th>
@@ -962,202 +923,607 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
       {/* SUB-TAB 3: PAYMENT SETTINGS & PROVIDER GATEWAYS */}
       {/* ========================================================= */}
       {subTab === 'SETTINGS' && (
-        <form onSubmit={handleSaveSettings} className="space-y-2">
-          {/* Manual Payment Accounts for Appointments & Consultations */}
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-emerald-500/30 dark:border-emerald-500/20 shadow-xs space-y-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
-                  <Landmark className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100">
-                    أرقام حسابات التحويل والمحافظ الإلكترونية (للمرضى بعد طلب استشارة أو حجز موعد)
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    هذه الأرقام تظهر مباشرة للمريض لنسخها وسداد الرسوم وإرسال إشعار الدفع عبر واتساب الإدارة
-                  </p>
-                </div>
-              </div>
-              <span className="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-xs self-start sm:self-auto">
-                إشعار تأكيد الدفع الفوري
-              </span>
+        <form onSubmit={handleSaveSettings} className="space-y-6">
+          {/* General Currency & VAT Configurations */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <Layers className="w-5 h-5 text-emerald-600" />
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100">
+                إعدادات العملات والسياسات المالية للمنصة
+              </h3>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Kuraimi */}
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5">
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                  رقم حساب الكريمي (بنك الكريمي) *
-                </label>
-                <input
-                  type="text"
-                  value={settings.manualAccounts?.kuraimiAccount ?? DEFAULT_MANUAL_ACCOUNTS.kuraimiAccount}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    manualAccounts: {
-                      ...DEFAULT_MANUAL_ACCOUNTS,
-                      ...(settings.manualAccounts || {}),
-                      kuraimiAccount: e.target.value
-                    }
-                  })}
-                  placeholder="مثال: 3055489211"
-                  className="w-full px-3 py-2 rounded-lg border border-blue-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              {/* Jawwali */}
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5">
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                  رقم حساب جوالي (Jawwali) *
-                </label>
-                <input
-                  type="text"
-                  value={settings.manualAccounts?.jawwaliAccount ?? DEFAULT_MANUAL_ACCOUNTS.jawwaliAccount}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    manualAccounts: {
-                      ...DEFAULT_MANUAL_ACCOUNTS,
-                      ...(settings.manualAccounts || {}),
-                      jawwaliAccount: e.target.value
-                    }
-                  })}
-                  placeholder="مثال: 778901234"
-                  className="w-full px-3 py-2 rounded-lg border border-blue-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              {/* OneCash */}
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5">
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                  رقم حساب وان كاش (OneCash) *
-                </label>
-                <input
-                  type="text"
-                  value={settings.manualAccounts?.oneCashAccount ?? DEFAULT_MANUAL_ACCOUNTS.oneCashAccount}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    manualAccounts: {
-                      ...DEFAULT_MANUAL_ACCOUNTS,
-                      ...(settings.manualAccounts || {}),
-                      oneCashAccount: e.target.value
-                    }
-                  })}
-                  placeholder="مثال: 733456789"
-                  className="w-full px-3 py-2 rounded-lg border border-blue-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              {/* Jeeb */}
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5">
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                  رقم حساب جيب (Jeeb) *
-                </label>
-                <input
-                  type="text"
-                  value={settings.manualAccounts?.jeebAccount ?? DEFAULT_MANUAL_ACCOUNTS.jeebAccount}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    manualAccounts: {
-                      ...DEFAULT_MANUAL_ACCOUNTS,
-                      ...(settings.manualAccounts || {}),
-                      jeebAccount: e.target.value
-                    }
-                  })}
-                  placeholder="مثال: 711234567"
-                  className="w-full px-3 py-2 rounded-lg border border-blue-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              {/* Floosak */}
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5">
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                  رقم حساب فلوسك (Floosak) *
-                </label>
-                <input
-                  type="text"
-                  value={settings.manualAccounts?.floosakAccount ?? DEFAULT_MANUAL_ACCOUNTS.floosakAccount}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    manualAccounts: {
-                      ...DEFAULT_MANUAL_ACCOUNTS,
-                      ...(settings.manualAccounts || {}),
-                      floosakAccount: e.target.value
-                    }
-                  })}
-                  placeholder="مثال: 770123456"
-                  className="w-full px-3 py-2 rounded-lg border border-blue-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              {/* Admin WhatsApp */}
-              <div className="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-1.5">
-                <label className="block text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
-                  <Send className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>رقم واتساب الإدارة لاستلام السند *</span>
-                </label>
-                <input
-                  type="text"
-                  value={settings.manualAccounts?.adminWhatsapp ?? DEFAULT_MANUAL_ACCOUNTS.adminWhatsapp}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    manualAccounts: {
-                      ...DEFAULT_MANUAL_ACCOUNTS,
-                      ...(settings.manualAccounts || {}),
-                      adminWhatsapp: e.target.value
-                    }
-                  })}
-                  placeholder="مثال: 967770000000"
-                  className="w-full px-3 py-2 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              {/* Beneficiary Name */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  اسم المستفيد المعتمد على الحسابات
+                  العملة الافتراضية للمنصة (Default Currency)
+                </label>
+                <select
+                  value={settings.defaultCurrency}
+                  onChange={(e) => setSettings({ ...settings, defaultCurrency: e.target.value as CurrencyCode })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-600"
+                >
+                  <option value="YER">YER — الريال اليمني (الرسمي)</option>
+                  <option value="USD">USD — الدولار الأمريكي</option>
+                  <option value="SAR">SAR — الريال السعودي</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  نسبة ضريبة القيمة المضافة (VAT %)
                 </label>
                 <input
-                  type="text"
-                  value={settings.manualAccounts?.beneficiaryName ?? DEFAULT_MANUAL_ACCOUNTS.beneficiaryName}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    manualAccounts: {
-                      ...DEFAULT_MANUAL_ACCOUNTS,
-                      ...(settings.manualAccounts || {}),
-                      beneficiaryName: e.target.value
-                    }
-                  })}
-                  placeholder="مثال: مستشفى العناية الطبية التخصصي"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
+                  type="number"
+                  value={settings.vatPercentage}
+                  onChange={(e) => setSettings({ ...settings, vatPercentage: Number(e.target.value) })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold font-mono outline-none"
                 />
               </div>
 
-              {/* Instruction Text */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  نص التوجيه والتعليمات المعروض للمريض
+                  عمولة بوابات الدفع التقديرية (Fee %)
                 </label>
                 <input
-                  type="text"
-                  value={settings.manualAccounts?.instructionsText ?? DEFAULT_MANUAL_ACCOUNTS.instructionsText}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    manualAccounts: {
-                      ...DEFAULT_MANUAL_ACCOUNTS,
-                      ...(settings.manualAccounts || {}),
-                      instructionsText: e.target.value
-                    }
-                  })}
-                  placeholder="انسخ رقم الحساب لإرسال قيمة الاستشارة أو الحجز لكي يتم تأكيده..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
+                  type="number"
+                  step="0.1"
+                  value={settings.gatewayFeePercentage}
+                  onChange={(e) => setSettings({ ...settings, gatewayFeePercentage: Number(e.target.value) })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold font-mono outline-none"
                 />
               </div>
             </div>
           </div>
 
+          {/* Provider 1: Al-Kuraimi Payment Integration (بنك الكريمي) */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300">
+                  <Landmark className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <span>تكامل بنك الكريمي للتمويل الأصغر الإسلامي (Kuraimi API)</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                      مزود الدفع المحلي المعتمد
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    الربط المباشر مع خدمات حاسب، إكسبرس، والكريمي جوال للدفع الفوري بالريال اليمني والدولار والريال السعودي.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">البيئة:</span>
+                <select
+                  value={settings.kuraimi.environment}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    kuraimi: { ...settings.kuraimi, environment: e.target.value as any }
+                  })}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold bg-slate-50 dark:bg-slate-800 outline-none"
+                >
+                  <option value="LIVE">الإنتاج المباشر (Production LIVE)</option>
+                  <option value="SANDBOX">بيئة الاختبار (Sandbox Test)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  رمز التاجر لدى بنك الكريمي (Merchant Service Code / ID)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={settings.kuraimi.merchantId}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    kuraimi: { ...settings.kuraimi, merchantId: e.target.value }
+                  })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  معرف نقطة البيع / الطرفية (Terminal ID)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={settings.kuraimi.terminalId}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    kuraimi: { ...settings.kuraimi, terminalId: e.target.value }
+                  })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  مفتاح الخدمة العام (API Service Key)
+                </label>
+                <input
+                  type="text"
+                  value={settings.kuraimi.serviceKey}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    kuraimi: { ...settings.kuraimi, serviceKey: e.target.value }
+                  })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  المفتاح السري المشفر (Secret Token - Server Only)
+                </label>
+                <input
+                  type="password"
+                  value={settings.kuraimi.serviceSecret}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    kuraimi: { ...settings.kuraimi, serviceSecret: e.target.value }
+                  })}
+                  placeholder="••••••••••••••••••••••••••••••"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono outline-none"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  * يتم حفظ المفاتيح الحساسة في طبقة الخادم فقط دون كشفها للمتصفح.
+                </span>
+              </div>
+            </div>
+
+            {/* Webhook notification URL preview */}
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                  رابط الاستجابة والإشعارات الفورية (Webhook Callback Endpoint)
+                </span>
+                <span className="text-xs text-emerald-700 dark:text-emerald-300 font-mono break-all">
+                  {window.location.origin}/api/payments/webhook/KURAIMI
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleCopyWebhook(`${window.location.origin}/api/payments/webhook/KURAIMI`, 'kuraimi_webhook')}
+                className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                {copiedKey === 'kuraimi_webhook' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedKey === 'kuraimi_webhook' ? 'تم النسخ!' : 'نسخ الرابط'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Dedicated Section: Hospital Official Collection Accounts (Kuraimi, OneCash, Mahfazati, Jeeb, Floosak) */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border-2 border-emerald-500/40 dark:border-emerald-600/40 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/20">
+                  <Wallet className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <span>حسابات ومحافظ التحصيل الإلكتروني المعتمدة للمستشفى</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                      تظهر للمرضى عند الحجز والاستشارة
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    أرقام حسابات المستشفى الرسمية التي يدخلها الأدمين وتظهر مباشرة للمرضى عند حجز موعد أو طلب استشارة للسداد عبر المحافظ (وان كاش، محفظتي، جيب، وفلوسك)، بينما يعمل بنك الكريمي عبر بوابة الدفع الإلكتروني المباشر (Kuraimi API).
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* 1. OneCash Hospital Account */}
+              <div className="p-5 rounded-2xl border border-amber-300 dark:border-amber-800/80 bg-amber-50/40 dark:bg-amber-950/20 space-y-3.5">
+                <div className="flex items-center justify-between pb-2 border-b border-amber-200 dark:border-amber-800/60">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-amber-500 text-white">
+                      <Wallet className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-amber-950 dark:text-amber-100">
+                        1. محفظة وان كاش (OneCash)
+                      </h4>
+                      <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">
+                        محفظة التحصيل السريع
+                      </span>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-amber-800 dark:text-amber-300">
+                    <input
+                      type="checkbox"
+                      checked={settings.hospitalAccounts?.oneCash?.isActive ?? true}
+                      onChange={(e) => updateHospitalAccount('oneCash', 'isActive', e.target.checked)}
+                      className="rounded text-amber-500 focus:ring-amber-400 w-4 h-4 cursor-pointer"
+                    />
+                    <span>مفعّل للمرضى</span>
+                  </label>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      رقم حساب / هاتف وان كاش للمستشفى <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={settings.hospitalAccounts?.oneCash?.accountNumber || ''}
+                      onChange={(e) => updateHospitalAccount('oneCash', 'accountNumber', e.target.value)}
+                      placeholder="مثال: 777123456"
+                      className="w-full px-3.5 py-2 text-xs font-mono font-bold rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      اسم الحساب المعتمد لدى وان كاش
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.hospitalAccounts?.oneCash?.accountName || ''}
+                      onChange={(e) => updateHospitalAccount('oneCash', 'accountName', e.target.value)}
+                      placeholder="مثال: مستشفى وهج الطبي التخصصي"
+                      className="w-full px-3.5 py-2 text-xs font-bold rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      ملاحظات وتوجيهات التحويل للمريض
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.hospitalAccounts?.oneCash?.notes || ''}
+                      onChange={(e) => updateHospitalAccount('oneCash', 'notes', e.target.value)}
+                      placeholder="التحويل المباشر من تطبيق وان كاش لرقم المحفظة"
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Mahfazati Hospital Account */}
+              <div className="p-5 rounded-2xl border border-purple-300 dark:border-purple-800/80 bg-purple-50/40 dark:bg-purple-950/20 space-y-3.5">
+                <div className="flex items-center justify-between pb-2 border-b border-purple-200 dark:border-purple-800/60">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-purple-600 text-white">
+                      <Smartphone className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-purple-950 dark:text-purple-100">
+                        2. محفظة محفظتي (Mahfazati)
+                      </h4>
+                      <span className="text-[10px] text-purple-700 dark:text-purple-400 font-bold">
+                        محفظة بنك اليمن الدولي
+                      </span>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-purple-800 dark:text-purple-300">
+                    <input
+                      type="checkbox"
+                      checked={settings.hospitalAccounts?.mahfazati?.isActive ?? true}
+                      onChange={(e) => updateHospitalAccount('mahfazati', 'isActive', e.target.checked)}
+                      className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                    />
+                    <span>مفعّل للمرضى</span>
+                  </label>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      رقم حساب / هاتف محفظتي للمستشفى <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={settings.hospitalAccounts?.mahfazati?.accountNumber || ''}
+                      onChange={(e) => updateHospitalAccount('mahfazati', 'accountNumber', e.target.value)}
+                      placeholder="مثال: 778901234"
+                      className="w-full px-3.5 py-2 text-xs font-mono font-bold rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-purple-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      اسم الحساب المعتمد لدى محفظتي
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.hospitalAccounts?.mahfazati?.accountName || ''}
+                      onChange={(e) => updateHospitalAccount('mahfazati', 'accountName', e.target.value)}
+                      placeholder="مثال: مستشفى وهج الطبي التخصصي"
+                      className="w-full px-3.5 py-2 text-xs font-bold rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-purple-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      ملاحظات وتوجيهات التحويل للمريض
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.hospitalAccounts?.mahfazati?.notes || ''}
+                      onChange={(e) => updateHospitalAccount('mahfazati', 'notes', e.target.value)}
+                      placeholder="التحويل المباشر من تطبيق محفظتي إلى حساب المستشفى"
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Jeeb Hospital Account */}
+              <div className="p-5 rounded-2xl border border-sky-300 dark:border-sky-800/80 bg-sky-50/40 dark:bg-sky-950/20 space-y-3.5">
+                <div className="flex items-center justify-between pb-2 border-b border-sky-200 dark:border-sky-800/60">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-sky-600 text-white">
+                      <Smartphone className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-sky-950 dark:text-sky-100">
+                        3. محفظة جيب (Jeeb)
+                      </h4>
+                      <span className="text-[10px] text-sky-700 dark:text-sky-400 font-bold">
+                        محفظة بنك التضامن
+                      </span>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-sky-800 dark:text-sky-300">
+                    <input
+                      type="checkbox"
+                      checked={settings.hospitalAccounts?.jeeb?.isActive ?? true}
+                      onChange={(e) => updateHospitalAccount('jeeb', 'isActive', e.target.checked)}
+                      className="rounded text-sky-600 focus:ring-sky-500 w-4 h-4 cursor-pointer"
+                    />
+                    <span>مفعّل للمرضى</span>
+                  </label>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      رقم حساب / هاتف محفظة جيب للمستشفى <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={settings.hospitalAccounts?.jeeb?.accountNumber || ''}
+                      onChange={(e) => updateHospitalAccount('jeeb', 'accountNumber', e.target.value)}
+                      placeholder="مثال: 773456789"
+                      className="w-full px-3.5 py-2 text-xs font-mono font-bold rounded-xl border border-sky-300 dark:border-sky-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-sky-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      اسم الحساب المعتمد لدى جيب
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.hospitalAccounts?.jeeb?.accountName || ''}
+                      onChange={(e) => updateHospitalAccount('jeeb', 'accountName', e.target.value)}
+                      placeholder="مثال: مستشفى وهج الطبي التخصصي"
+                      className="w-full px-3.5 py-2 text-xs font-bold rounded-xl border border-sky-300 dark:border-sky-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-sky-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      ملاحظات وتوجيهات التحويل للمريض
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.hospitalAccounts?.jeeb?.notes || ''}
+                      onChange={(e) => updateHospitalAccount('jeeb', 'notes', e.target.value)}
+                      placeholder="التحويل المباشر من تطبيق جيب (بنك التضامن)"
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Floosak Hospital Account */}
+              <div className="p-5 rounded-2xl border border-indigo-300 dark:border-indigo-800/80 bg-indigo-50/40 dark:bg-indigo-950/20 space-y-3.5 md:col-span-2">
+                <div className="flex items-center justify-between pb-2 border-b border-indigo-200 dark:border-indigo-800/60">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-indigo-600 text-white">
+                      <Wallet className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-indigo-950 dark:text-indigo-100">
+                        4. محفظة فلوسك (Floosak)
+                      </h4>
+                      <span className="text-[10px] text-indigo-700 dark:text-indigo-400 font-bold">
+                        محفظة بنك اليمن والكويت
+                      </span>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-indigo-800 dark:text-indigo-300">
+                    <input
+                      type="checkbox"
+                      checked={settings.hospitalAccounts?.floosak?.isActive ?? true}
+                      onChange={(e) => updateHospitalAccount('floosak', 'isActive', e.target.checked)}
+                      className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                    />
+                    <span>مفعّل للمرضى</span>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      رقم حساب / هاتف فلوسك للمستشفى <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={settings.hospitalAccounts?.floosak?.accountNumber || ''}
+                      onChange={(e) => updateHospitalAccount('floosak', 'accountNumber', e.target.value)}
+                      placeholder="مثال: 774567890"
+                      className="w-full px-3.5 py-2 text-xs font-mono font-bold rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      اسم الحساب المعتمد لدى فلوسك
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.hospitalAccounts?.floosak?.accountName || ''}
+                      onChange={(e) => updateHospitalAccount('floosak', 'accountName', e.target.value)}
+                      placeholder="مثال: مستشفى وهج الطبي التخصصي"
+                      className="w-full px-3.5 py-2 text-xs font-bold rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      ملاحظات وتوجيهات التحويل للمريض
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.hospitalAccounts?.floosak?.notes || ''}
+                      onChange={(e) => updateHospitalAccount('floosak', 'notes', e.target.value)}
+                      placeholder="التحويل من تطبيق فلوسك (بنك اليمن والكويت)"
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Provider 2: Mastercard & Visa Payment Gateway */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300">
+                  <CreditCard className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <span>بوابة البطاقات البنكية الدولية (Mastercard / Visa / Mada)</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                      Payment Gateway & Acquirer
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    دعم الدفع الآمن عبر شبكات فيزا وماستركارد العالمية ومدى بنظام التشفير 3D Secure.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">البيئة:</span>
+                <select
+                  value={settings.cardGateway.environment}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    cardGateway: { ...settings.cardGateway, environment: e.target.value as any }
+                  })}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold bg-slate-50 dark:bg-slate-800 outline-none"
+                >
+                  <option value="LIVE">الإنتاج المباشر (Production LIVE)</option>
+                  <option value="SANDBOX">بيئة الاختبار (Sandbox Test)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  مزود بوابة البطاقات (Acquirer / Gateway)
+                </label>
+                <input
+                  type="text"
+                  value={settings.cardGateway.gatewayProvider}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    cardGateway: { ...settings.cardGateway, gatewayProvider: e.target.value }
+                  })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  معرف التاجر المصرفي (Merchant ID)
+                </label>
+                <input
+                  type="text"
+                  value={settings.cardGateway.merchantId}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    cardGateway: { ...settings.cardGateway, merchantId: e.target.value }
+                  })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  المفتاح العام (Publishable Key)
+                </label>
+                <input
+                  type="text"
+                  value={settings.cardGateway.publishableKey}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    cardGateway: { ...settings.cardGateway, publishableKey: e.target.value }
+                  })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  المفتاح السري للبوابة (Secret API Key)
+                </label>
+                <input
+                  type="password"
+                  value={settings.cardGateway.secretKey}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    cardGateway: { ...settings.cardGateway, secretKey: e.target.value }
+                  })}
+                  placeholder="••••••••••••••••••••••••••••••"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Webhook */}
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                  رابط استلام نتائج المعاملات (Cards Webhook Endpoint)
+                </span>
+                <span className="text-xs text-blue-700 dark:text-blue-300 font-mono break-all">
+                  {window.location.origin}/api/payments/webhook/STRIPE_MASTERCARD_VISA
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleCopyWebhook(`${window.location.origin}/api/payments/webhook/STRIPE_MASTERCARD_VISA`, 'card_webhook')}
+                className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                {copiedKey === 'card_webhook' ? <Check className="w-3.5 h-3.5 text-blue-600" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedKey === 'card_webhook' ? 'تم النسخ!' : 'نسخ الرابط'}</span>
+              </button>
+            </div>
+          </div>
 
           {/* Submit Button */}
           <div className="flex items-center justify-end gap-3 pt-2">
@@ -1207,50 +1573,6 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
             </div>
 
             <form onSubmit={handleExecuteRefund} className="p-6 space-y-4">
-              {/* بطاقة رقم حساب المريض للاسترداد مع زر النسخ المباشر */}
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/80 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-emerald-950 dark:text-emerald-200 flex items-center gap-1.5">
-                    <Landmark className="w-4 h-4 text-emerald-600" />
-                    <span>رقم حساب المريض لتحويل ورد المبلغ:</span>
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold">
-                    {refundTarget.kuraimiAccount ? 'حساب بنك الكريمي' : 'رقم حساب / هاتف العميل'}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded-xl border border-emerald-300 dark:border-emerald-800 shadow-xs">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] text-slate-400 block font-bold">رقم الحساب / المحفظة المعتمد:</span>
-                    <span className="font-mono text-base font-black text-emerald-700 dark:text-emerald-300 tracking-wider">
-                      {getPatientRefundAccount(refundTarget) || 'غير مسجل في العملية'}
-                    </span>
-                  </div>
-                  {getPatientRefundAccount(refundTarget) && (
-                    <button
-                      type="button"
-                      onClick={() => handleCopyPatientAccount(getPatientRefundAccount(refundTarget))}
-                      className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-95"
-                    >
-                      {copiedPatientAccount === getPatientRefundAccount(refundTarget) ? (
-                        <>
-                          <Check className="w-4 h-4" />
-                          <span>تم النسخ بنجاح!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-4 h-4" />
-                          <span>نسخ رقم الحساب</span>
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400">
-                  يرجى نسخ رقم حساب المريض أعلاه لتحويل وإرجاع المبلغ إليه مباشرة عبر تطبيق الكريمي أو المحفظة.
-                </p>
-              </div>
-
               <div className="p-4 bg-rose-50 dark:bg-rose-950/30 rounded-xl border border-rose-200 dark:border-rose-800/60 space-y-2 text-xs">
                 <div className="flex justify-between">
                   <span className="text-slate-500">المريض:</span>
@@ -1408,6 +1730,127 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                   إغلاق
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Bank Transfer Notice Inspection Modal */}
+      {selectedNoticePayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm text-slate-900 dark:text-slate-100">
+                    تفاصيل إشعار التحويل البنكي
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    مراجعة إشعار السداد المرسل من المريض لحسابات المستشفى
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedNoticePayment(null)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/60 space-y-2.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500">اسم المريض:</span>
+                <strong className="text-slate-900 dark:text-slate-100">{selectedNoticePayment.patientName}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">الخدمة الطبية:</span>
+                <strong className="text-slate-900 dark:text-slate-100">{selectedNoticePayment.serviceName}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">المبلغ والعملة:</span>
+                <strong className="font-mono text-emerald-600 dark:text-emerald-400 font-black">
+                  {formatPaymentAmount(selectedNoticePayment.amount, selectedNoticePayment.currency as CurrencyCode)}
+                </strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">البنك / وسيلة التحويل:</span>
+                <strong className="text-blue-600 dark:text-blue-400">
+                  {selectedNoticePayment.bankTransferDetails?.bankName || 'حساب بنكي'}
+                </strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">اسم المودع / المرسل:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {selectedNoticePayment.bankTransferDetails?.senderName || selectedNoticePayment.patientName}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">رقم الإشعار / المرجع:</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                  {selectedNoticePayment.bankTransferDetails?.transferNoticeNumber || selectedNoticePayment.transactionReference}
+                </span>
+              </div>
+              {selectedNoticePayment.bankTransferDetails?.senderPhone && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">هاتف المودع:</span>
+                  <span className="font-mono text-slate-700 dark:text-slate-300">
+                    {selectedNoticePayment.bankTransferDetails.senderPhone}
+                  </span>
+                </div>
+              )}
+              {selectedNoticePayment.bankTransferDetails?.transferDate && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">تاريخ التحويل:</span>
+                  <span className="font-mono text-slate-700 dark:text-slate-300">
+                    {selectedNoticePayment.bankTransferDetails.transferDate}
+                  </span>
+                </div>
+              )}
+              {selectedNoticePayment.bankTransferDetails?.notes && (
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <span className="text-slate-500 block mb-1">ملاحظات المريض:</span>
+                  <p className="p-2 bg-white dark:bg-slate-900 rounded-xl text-slate-700 dark:text-slate-300 text-[11px]">
+                    {selectedNoticePayment.bankTransferDetails.notes}
+                  </p>
+                </div>
+              )}
+              <div className="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500">حالة السداد الحالية:</span>
+                <span className="font-black text-amber-600 dark:text-amber-400">
+                  {selectedNoticePayment.status === 'PAYMENT_SUCCESS' || selectedNoticePayment.paymentStatus === 'PAYMENT_SUCCESS'
+                    ? 'معتمد (تم التسديد ✓)'
+                    : 'بانتظار الاعتماد المالي'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {(selectedNoticePayment.status === 'PENDING' || selectedNoticePayment.paymentStatus === 'PENDING' || selectedNoticePayment.status === 'PAYMENT_REQUIRED') && (
+                <button
+                  type="button"
+                  onClick={() => handleApprovePayment(selectedNoticePayment)}
+                  disabled={approvingPaymentId === selectedNoticePayment.id}
+                  className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/20 disabled:opacity-50"
+                >
+                  {approvingPaymentId === selectedNoticePayment.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  <span>اعتماد السداد وتأكيد (تم السداد ✓)</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedNoticePayment(null)}
+                className="py-3 px-5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
+              >
+                إغلاق
+              </button>
             </div>
           </div>
         </div>

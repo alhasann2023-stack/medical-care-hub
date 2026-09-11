@@ -49,9 +49,7 @@ import {
   subscribeToConsultations,
   subscribeToNotifications,
   subscribeToPayments,
-  subscribeToStaff,
   subscribeToFollowUps,
-  getPaymentsWithFilter,
   FIRESTORE_COLLECTIONS
 } from './firebase';
 
@@ -269,6 +267,46 @@ async function fetchJson<T>(
   }
 }
 
+
+// Helper: Sync confirmed or updated payment and its linked service to Firestore
+async function syncPaymentAndServiceToFirestore(payment: Payment) {
+  try {
+    await firebaseDb.createPayment(payment);
+    if (payment.serviceType === 'CONSULTATION' && payment.serviceReferenceId) {
+      const cns = await fetchDocById<Consultation>(FIRESTORE_COLLECTIONS.CONSULTATIONS, payment.serviceReferenceId);
+      if (cns) {
+        await firebaseDb.saveConsultation({
+          ...cns,
+          paymentStatus: 'PAID',
+          isPaid: true,
+          status: cns.status === 'ANSWERED' ? 'ANSWERED' : 'PENDING',
+          paymentId: payment.id,
+          transactionReference: payment.transactionReference || cns.transactionReference,
+          paymentMethod: payment.paymentMethod || cns.paymentMethod,
+          paymentAmount: payment.amount || cns.paymentAmount,
+          paymentDate: payment.paidAt || new Date().toISOString()
+        });
+      }
+    } else if (payment.serviceType === 'APPOINTMENT' && payment.serviceReferenceId) {
+      const apt = await fetchDocById<Appointment>(FIRESTORE_COLLECTIONS.APPOINTMENTS, payment.serviceReferenceId);
+      if (apt) {
+        await firebaseDb.saveAppointment({
+          ...apt,
+          paymentStatus: 'PAID',
+          isPaid: true,
+          status: 'CONFIRMED',
+          paymentId: payment.id,
+          transactionReference: payment.transactionReference || apt.paymentTransactionRef || apt.transactionReference,
+          paymentMethod: payment.paymentMethod || apt.paymentMethod,
+          paymentAmount: payment.amount || apt.paymentAmount,
+          paymentDate: payment.paidAt || new Date().toISOString()
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('[Sync] Failed to sync payment status to Firestore:', err);
+  }
+}
 
 // ============================================================
 // API
@@ -2230,18 +2268,7 @@ export const api = {
         }
 
 
-        if (apiDoctors && apiDoctors.length > 0) {
-          return apiDoctors;
-        }
-
-        let docs = [...INITIAL_DOCTORS];
-        if (specialtyId) {
-          docs = docs.filter((d) => d.specialtyId === specialtyId);
-        }
-        if (activeOnly) {
-          docs = docs.filter((d) => d.isActive);
-        }
-        return docs;
+        return apiDoctors;
 
       } catch {
 
@@ -3454,6 +3481,15 @@ const newCns: Consultation = {
 
   transactionReference:
     data.transactionReference,
+
+  isPaid:
+    Boolean(data.isPaid || data.paymentId || data.isWaived || data.fee === 0 || data.consultationFee === 0),
+
+  paymentStatus:
+    data.isWaived ? 'WAIVED' : (Boolean(data.isPaid || data.paymentId || data.fee === 0 || data.consultationFee === 0) ? 'PAID' : ((data as any).paymentStatus || 'PENDING')),
+
+  paymentMethod:
+    (data as any).paymentMethod || (data.paymentId ? 'KURAIMI_EXPRESS' : undefined),
 
   isWaived:
     Boolean(data.isWaived),
@@ -5483,11 +5519,7 @@ return newCns;
         }
 
 
-        if (apiStaff && apiStaff.length > 0) {
-          return apiStaff;
-        }
-
-        return INITIAL_STAFF;
+        return apiStaff;
 
       } catch {
 
@@ -6022,17 +6054,46 @@ createStaff: async (
         doctorId?: string;
         status?: string;
       },
-
       callback:
         (
           apts: Appointment[]
         ) => void
-    ) =>
-      subscribeToAppointments(
-        filter,
-        callback
-      ),
+    ) => {
+      // 1. Fetch latest from backend
+      const fetchLatest = () => {
+        api.getAppointments(filter).then((apts) => {
+          if (Array.isArray(apts)) callback(apts);
+        }).catch(() => {});
+      };
+      fetchLatest();
 
+      // 2. Fast reactive polling
+      const pollInterval = setInterval(fetchLatest, 3000);
+
+      // 3. Intra-window event listener for immediate zero-latency updates
+      const onDataUpdated = () => fetchLatest();
+      if (typeof window !== 'undefined') {
+        window.addEventListener('mch_appointments_updated', onDataUpdated);
+        window.addEventListener('mch_payments_updated', onDataUpdated);
+      }
+
+      // 4. Firestore onSnapshot if available
+      let unsubFirestore: (() => void) | null = null;
+      try {
+        unsubFirestore = subscribeToAppointments(filter, (apts) => {
+          if (Array.isArray(apts) && apts.length > 0) callback(apts);
+        });
+      } catch {}
+
+      return () => {
+        clearInterval(pollInterval);
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('mch_appointments_updated', onDataUpdated);
+          window.removeEventListener('mch_payments_updated', onDataUpdated);
+        }
+        if (unsubFirestore) unsubFirestore();
+      };
+    },
 
   subscribeConsultations:
     (
@@ -6043,16 +6104,42 @@ createStaff: async (
         doctorId?: string;
         status?: string;
       },
-
       callback:
         (
           cns: Consultation[]
         ) => void
-    ) =>
-      subscribeToConsultations(
-        filter,
-        callback
-      ),
+    ) => {
+      const fetchLatest = () => {
+        api.getConsultations(filter).then((cns) => {
+          if (Array.isArray(cns)) callback(cns as unknown as Consultation[]);
+        }).catch(() => {});
+      };
+      fetchLatest();
+
+      const pollInterval = setInterval(fetchLatest, 3000);
+
+      const onDataUpdated = () => fetchLatest();
+      if (typeof window !== 'undefined') {
+        window.addEventListener('mch_consultations_updated', onDataUpdated);
+        window.addEventListener('mch_payments_updated', onDataUpdated);
+      }
+
+      let unsubFirestore: (() => void) | null = null;
+      try {
+        unsubFirestore = subscribeToConsultations(filter, (cns) => {
+          if (Array.isArray(cns) && cns.length > 0) callback(cns);
+        });
+      } catch {}
+
+      return () => {
+        clearInterval(pollInterval);
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('mch_consultations_updated', onDataUpdated);
+          window.removeEventListener('mch_payments_updated', onDataUpdated);
+        }
+        if (unsubFirestore) unsubFirestore();
+      };
+    },
 
 
   subscribeNotifications:
@@ -6080,6 +6167,16 @@ createStaff: async (
     status?: string;
     search?: string;
   }): Promise<Payment[]> => {
+    // 1. Always fetch from Firestore so transactions are retrieved from Firebase
+    let fsPayments: Payment[] = [];
+    try {
+      fsPayments = (await firebaseDb.getPayments(params?.patientId)) || [];
+    } catch (err) {
+      console.warn('Firestore getPayments error:', err);
+    }
+
+    // 2. Fetch from backend API
+    let apiPayments: Payment[] = [];
     try {
       const q = new URLSearchParams();
       if (params?.patientId) q.set('patientId', params.patientId);
@@ -6087,61 +6184,45 @@ createStaff: async (
       if (params?.serviceType) q.set('serviceType', params.serviceType);
       if (params?.status) q.set('status', params.status);
       if (params?.search) q.set('search', params.search);
-
-      const apiPayments = await fetchJson<Payment[]>(`/api/payments?${q.toString()}`).catch(() => []);
-      const fsPayments = await firebaseDb.getPayments(params?.patientId).catch(() => []);
-      const fsDirectPayments = await getPaymentsWithFilter({
-        patientId: params?.patientId,
-        doctorId: params?.doctorId,
-        status: params?.status,
-        search: params?.search
-      }).catch(() => []);
-
-      const map = new Map<string, Payment>();
-      (apiPayments || []).forEach(p => map.set(p.id, p));
-      (fsPayments || []).forEach(p => map.set(p.id, { ...map.get(p.id), ...p }));
-      (fsDirectPayments || []).forEach(p => map.set(p.id, { ...map.get(p.id), ...p }));
-
-      let combined = Array.from(map.values());
-      if (params?.doctorId) {
-        combined = combined.filter(p => p.doctorId === params.doctorId);
-      }
-      if (params?.serviceType) {
-        combined = combined.filter(p => p.serviceType === params.serviceType);
-      }
-      if (params?.status) {
-        const targetStatus = params.status;
-        if (targetStatus === 'PAID') {
-          combined = combined.filter(p => p.status === 'PAID' || p.paymentStatus === 'PAID' || p.status === 'SUCCESS' || p.paymentStatus === 'SUCCESS' || p.status === 'PAYMENT_SUCCESS' || p.paymentStatus === 'PAYMENT_SUCCESS');
-        } else {
-          combined = combined.filter(p => p.status === targetStatus || p.paymentStatus === targetStatus);
-        }
-      }
-      if (params?.search) {
-        const s = params.search.toLowerCase();
-        combined = combined.filter(p => 
-          (p.patientName && p.patientName.toLowerCase().includes(s)) ||
-          (p.receiptNumber && p.receiptNumber.toLowerCase().includes(s)) ||
-          (p.transactionReference && p.transactionReference.toLowerCase().includes(s))
-        );
-      }
-
-      if (combined.length > 0) {
-        return combined.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
-      }
-      return [];
-    } catch {
-      return (await firebaseDb.getPayments(params?.patientId)) || [];
+      apiPayments = await fetchJson<Payment[]>(`/api/payments?${q.toString()}`);
+    } catch (err) {
+      console.warn('API getPayments fetch error:', err);
     }
-  },
 
-  getFirestorePayments: async (filter?: {
-    patientId?: string;
-    doctorId?: string;
-    status?: string;
-    search?: string;
-  }): Promise<Payment[]> => {
-    return getPaymentsWithFilter(filter);
+    // 3. Merge: API payments + Firestore payments (Firestore verified data takes precedence)
+    const mergedMap = new Map<string, Payment>();
+    apiPayments.forEach(p => mergedMap.set(p.id, p));
+    fsPayments.forEach(p => {
+      const existing = mergedMap.get(p.id);
+      mergedMap.set(p.id, existing ? { ...existing, ...p } : p);
+    });
+
+    let result = Array.from(mergedMap.values());
+
+    if (params?.doctorId) {
+      result = result.filter(p => p.doctorId === params.doctorId);
+    }
+    if (params?.serviceType) {
+      result = result.filter(p => p.serviceType === params.serviceType);
+    }
+    if (params?.status) {
+      result = result.filter(p => p.status === params.status || p.paymentStatus === params.status);
+    }
+    if (params?.search) {
+      const q = params.search.toLowerCase();
+      result = result.filter(p =>
+        p.patientName?.toLowerCase().includes(q) ||
+        p.receiptNumber?.toLowerCase().includes(q) ||
+        p.serviceName?.toLowerCase().includes(q) ||
+        p.id.toLowerCase().includes(q) ||
+        p.gatewayTransactionId?.toLowerCase().includes(q) ||
+        p.kuraimiAccount?.toLowerCase().includes(q) ||
+        p.doctorName?.toLowerCase().includes(q)
+      );
+    }
+
+    result.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+    return result;
   },
 
   getPaymentById: async (id: string): Promise<Payment | null> => {
@@ -6215,13 +6296,17 @@ createStaff: async (
     transactionReference?: string;
     customerAccount?: string;
   }): Promise<{ success: boolean; payment?: Payment; ledgerEntry?: PaymentLedgerEntry; message?: string }> => {
-    return await fetchJson<{ success: boolean; payment?: Payment; ledgerEntry?: PaymentLedgerEntry; message?: string }>(
+    const res = await fetchJson<{ success: boolean; payment?: Payment; ledgerEntry?: PaymentLedgerEntry; message?: string }>(
       '/api/payments/kuraimi/verify-otp',
       {
         method: 'POST',
         body: JSON.stringify(data)
       }
     );
+    if (res && res.payment) {
+      await syncPaymentAndServiceToFirestore(res.payment);
+    }
+    return res;
   },
 
   getPaymentSettings: async (): Promise<PaymentSettings> => {
@@ -6259,13 +6344,17 @@ createStaff: async (
     gatewayResponseCode?: string;
   }): Promise<{ success: boolean; payment: Payment; message: string }> => {
     try {
-      return await fetchJson<{ success: boolean; payment: Payment; message: string }>(
+      const res = await fetchJson<{ success: boolean; payment: Payment; message: string }>(
         '/api/payments/confirm',
         {
           method: 'POST',
           body: JSON.stringify(data)
         }
       );
+      if (res && res.payment) {
+        await syncPaymentAndServiceToFirestore(res.payment);
+      }
+      return res;
     } catch {
       const pay: Payment = {
         id: data.paymentId || `pay-${Date.now()}`,
@@ -6290,48 +6379,12 @@ createStaff: async (
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      await firebaseDb.createPayment(pay);
+      await syncPaymentAndServiceToFirestore(pay);
       return {
         success: true,
         payment: pay,
         message: 'تم تأكيد الدفع بنجاح'
       };
-    }
-  },
-
-  markPaymentAsPaid: async (paymentId: string, notes?: string): Promise<{ success: boolean; payment: Payment; message: string }> => {
-    try {
-      const res = await fetchJson<{ success: boolean; payment: Payment; message: string }>(
-        `/api/payments/${paymentId}/mark-paid`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ notes })
-        }
-      );
-      if (res && res.payment) {
-        await firebaseDb.updatePayment(paymentId, res.payment).catch(() => {});
-      }
-      return res;
-    } catch {
-      const confirmed = await apiClient.confirmPayment({
-        paymentId,
-        gatewayResponseCode: '00_APPROVED_ADMIN'
-      });
-      if (confirmed && confirmed.payment) {
-        const paidObj = {
-          ...confirmed.payment,
-          status: 'PAID' as const,
-          paymentStatus: 'PAID' as const,
-          paidAt: new Date().toISOString()
-        };
-        await firebaseDb.updatePayment(paymentId, paidObj).catch(() => {});
-        return {
-          success: true,
-          payment: paidObj,
-          message: 'تم تأكيد سداد رسوم الاستشارة والحجز بنجاح.'
-        };
-      }
-      return confirmed;
     }
   },
 
@@ -6378,6 +6431,25 @@ createStaff: async (
       method: 'PATCH',
       body: JSON.stringify({ status })
     });
+  },
+
+  approvePayment: async (paymentId: string, adminName?: string): Promise<{ success: boolean; payment: Payment; message: string }> => {
+    const res = await fetchJson<{ success: boolean; payment: Payment; message: string }>(
+      `/api/payments/${paymentId}/approve`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ adminName })
+      }
+    );
+    if (res && res.payment) {
+      await syncPaymentAndServiceToFirestore(res.payment);
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('mch_payments_updated'));
+      window.dispatchEvent(new Event('mch_appointments_updated'));
+      window.dispatchEvent(new Event('mch_consultations_updated'));
+    }
+    return res;
   },
 
   waivePayment: async (data: {
@@ -6467,12 +6539,6 @@ createStaff: async (
   ) => {
     const filter = typeof filterOrPatientId === 'string' ? { patientId: filterOrPatientId } : (filterOrPatientId || {});
     return subscribeToPayments(filter, callback);
-  },
-
-  subscribeStaff: (
-    callback: (staff: Staff[]) => void
-  ) => {
-    return subscribeToStaff(callback);
   },
 
   subscribeFollowUps: (

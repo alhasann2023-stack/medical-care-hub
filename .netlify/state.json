@@ -1,5 +1,4 @@
 {
-	"siteId": "ec7dcc8a-440d-44de-a067-0ed44b78c9b0",
 	"geolocation": {
 		"data": {
 			"city": "Sanaa",
@@ -15,7 +14,8 @@
 			"latitude": 15.3522,
 			"longitude": 44.2095
 		},
-		"timestamp": 1788302580188
+		"timestamp": 1789042096502
 	},
-	"dbConnectionString": "postgres://localhost:60689/postgres"
+	"dbConnectionString": "postgres://localhost:60689/postgres",
+	"siteId": "3471591a-eea6-4f21-b797-c7f0c57c41e0"
 }

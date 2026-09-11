@@ -65,10 +65,7 @@ import {
   getUserCredentialDoc,
   saveUserCredentialDoc,
   saveSettingsDoc,
-  getSettingsDoc,
-  saveDocument,
-  deleteDocument,
-  FIRESTORE_COLLECTIONS
+  getSettingsDoc
 } from './src/services/firebase';
 import { paymentService } from './server/paymentService';
 import {
@@ -472,37 +469,20 @@ function isPasswordAlreadyUsed(password: string, excludeUserId?: string): boolea
 // IN-MEMORY STORAGE INITIALIZATION
 // ----------------------------------------------------
 function saveDatabase() {
-  // Database stored in memory and synchronized with Firebase Firestore as source of truth
+  // Database stored in memory and synchronized with Firebase Firestore
   if (freeConsultationPromo) {
     saveSettingsDoc('freeConsultationPromo', freeConsultationPromo).catch(() => {});
-  }
-  const paymentSettings = paymentService.getSettings();
-  if (paymentSettings) {
-    saveSettingsDoc('paymentSettings', paymentSettings).catch(() => {});
-  }
-  const allLedger = paymentService.getAllLedgerEntries();
-  if (allLedger && allLedger.length > 0) {
-    saveSettingsDoc('paymentLedger', { entries: allLedger }).catch(() => {});
   }
 }
 
 async function loadCredentialsAndUsersFromFirestore() {
   try {
-    const [fsUsers, fsCreds, fsPromo, fsPaymentSettings, fsDoctors, fsStaff, fsPayments, fsLedger] = await Promise.all([
-      fetchDocsWithFilter<User>(FIRESTORE_COLLECTIONS.USERS).catch(() => []),
-      fetchDocsWithFilter<{ userId: string; password?: string; email?: string; phone?: string }>(FIRESTORE_COLLECTIONS.USER_CREDENTIALS).catch(() => []),
-      getSettingsDoc<FreeConsultationPromo>('freeConsultationPromo').catch(() => null),
-      getSettingsDoc<PaymentSettings>('paymentSettings').catch(() => null),
-      fetchDocsWithFilter<Doctor>(FIRESTORE_COLLECTIONS.DOCTORS).catch(() => []),
-      fetchDocsWithFilter<Staff>(FIRESTORE_COLLECTIONS.STAFF).catch(() => []),
-      fetchDocsWithFilter<Payment>(FIRESTORE_COLLECTIONS.PAYMENTS).catch(() => []),
-      getSettingsDoc<{ entries: PaymentLedgerEntry[] }>('paymentLedger').catch(() => null)
+    const [fsUsers, fsCreds, fsPromo, fsPayments] = await Promise.all([
+      fetchDocsWithFilter<User>('users'),
+      fetchDocsWithFilter<{ userId: string; password?: string; email?: string; phone?: string }>('userCredentials'),
+      getSettingsDoc<FreeConsultationPromo>('freeConsultationPromo'),
+      fetchDocsWithFilter<Payment>('payments')
     ]);
-
-    if (fsPaymentSettings) {
-      paymentService.updateSettings(fsPaymentSettings, 'Firestore');
-      console.log('[Store] Loaded paymentSettings from Firestore.');
-    }
 
     if (fsPromo && fsPromo.id) {
       freeConsultationPromo = {
@@ -513,49 +493,18 @@ async function loadCredentialsAndUsersFromFirestore() {
       console.log(`[Store] Loaded freeConsultationPromo from Firestore: ${freeConsultationPromo.whitelistedPatients?.length || 0} whitelisted patients.`);
     }
 
-    // Load Doctors from Firestore as source of truth
-    if (fsDoctors && fsDoctors.length > 0) {
-      doctors = fsDoctors;
-      console.log(`[Store] Successfully loaded ${doctors.length} doctors directly from Firestore.`);
-    } else if (INITIAL_DOCTORS.length > 0) {
-      doctors = [...INITIAL_DOCTORS];
-      for (const docItem of INITIAL_DOCTORS) {
-        saveDocument(FIRESTORE_COLLECTIONS.DOCTORS, docItem.id, docItem).catch(() => {});
-      }
-      console.log(`[Store] Seeded ${doctors.length} doctors to Firestore.`);
-    }
-
-    // Load Staff (Secretaries & Customer Service) from Firestore as source of truth
-    if (fsStaff && fsStaff.length > 0) {
-      staffList = fsStaff;
-      console.log(`[Store] Successfully loaded ${staffList.length} staff directly from Firestore.`);
-    } else if (INITIAL_STAFF.length > 0) {
-      staffList = [...INITIAL_STAFF];
-      for (const staffItem of INITIAL_STAFF) {
-        saveDocument(FIRESTORE_COLLECTIONS.STAFF, staffItem.id, staffItem).catch(() => {});
-      }
-      console.log(`[Store] Seeded ${staffList.length} staff to Firestore.`);
-    }
-
-    // Load Payments & Financial Transactions from Firestore as source of truth
     if (fsPayments && fsPayments.length > 0) {
-      payments = fsPayments;
-      console.log(`[Store] Successfully loaded ${payments.length} payments/financial transactions directly from Firestore.`);
-    } else if (INITIAL_PAYMENTS.length > 0) {
-      payments = [...INITIAL_PAYMENTS];
-      for (const payItem of INITIAL_PAYMENTS) {
-        saveDocument(FIRESTORE_COLLECTIONS.PAYMENTS, payItem.id, payItem).catch(() => {});
+      for (const fp of fsPayments) {
+        const idx = payments.findIndex(p => p.id === fp.id);
+        if (idx >= 0) {
+          payments[idx] = { ...payments[idx], ...fp };
+        } else {
+          payments.push(fp);
+        }
       }
-      console.log(`[Store] Seeded ${payments.length} initial payments to Firestore.`);
+      console.log(`[Store] Loaded ${fsPayments.length} payments from Firestore.`);
     }
 
-    // Load General Ledger entries from Firestore
-    if (fsLedger && Array.isArray(fsLedger.entries) && fsLedger.entries.length > 0) {
-      paymentService.loadLedgerEntries(fsLedger.entries);
-      console.log(`[Store] Successfully loaded ${fsLedger.entries.length} ledger entries from Firestore.`);
-    }
-
-    // Load Users
     if (fsUsers && fsUsers.length > 0) {
       for (const fu of fsUsers) {
         const idx = users.findIndex(u => u.id === fu.id);
@@ -564,10 +513,6 @@ async function loadCredentialsAndUsersFromFirestore() {
         } else {
           users.push(fu);
         }
-      }
-    } else if (INITIAL_USERS.length > 0) {
-      for (const u of INITIAL_USERS) {
-        saveDocument(FIRESTORE_COLLECTIONS.USERS, u.id, u).catch(() => {});
       }
     }
 
@@ -585,32 +530,22 @@ async function loadCredentialsAndUsersFromFirestore() {
       }
     }
   } catch (e) {
-    console.warn('[Store] Notice loading data from Firestore:', e);
+    console.warn('[Store] Notice loading credentials from Firestore:', e);
   }
 }
 
 function loadDatabase() {
-  if (users.length === 0 && INITIAL_USERS.length > 0) users = [...INITIAL_USERS];
-  if (doctors.length === 0 && INITIAL_DOCTORS.length > 0) doctors = [...INITIAL_DOCTORS];
-  if (staffList.length === 0 && INITIAL_STAFF.length > 0) staffList = [...INITIAL_STAFF];
-  if (patients.length === 0 && INITIAL_PATIENTS.length > 0) patients = [...INITIAL_PATIENTS];
-  if (specialties.length === 0 && INITIAL_SPECIALTIES.length > 0) specialties = [...INITIAL_SPECIALTIES];
-  if (services.length === 0 && INITIAL_SERVICES.length > 0) services = [...INITIAL_SERVICES];
-  if (payments.length === 0 && INITIAL_PAYMENTS.length > 0) payments = [...INITIAL_PAYMENTS];
-
   // Seed default passwords
   if (!userPasswords['usr-doc-1']) userPasswords['usr-doc-1'] = 'doc#1234!';
   if (!userPasswords['usr-doc-2']) userPasswords['usr-doc-2'] = 'doc#2345!';
   if (!userPasswords['usr-doc-3']) userPasswords['usr-doc-3'] = 'doc#3456!';
   if (!userPasswords['usr-doc-4']) userPasswords['usr-doc-4'] = 'doc#4567!';
-  if (!userPasswords['usr-sec-1']) userPasswords['usr-sec-1'] = 'sec#1234!';
   if (!userPasswords['usr-cs-1']) userPasswords['usr-cs-1'] = 'staff#1234!';
-  if (!userPasswords['usr-lab-1']) userPasswords['usr-lab-1'] = 'lab#1234!';
   if (!userPasswords['usr-pat-1']) userPasswords['usr-pat-1'] = 'patient#1234!';
   if (!userPasswords['usr-admin-1']) userPasswords['usr-admin-1'] = 'admin#2026!Sec';
-  console.log(`[Store] Database active in memory and connected to Firebase Firestore: ${users.length} users, ${doctors.length} doctors, ${staffList.length} staff, ${patients.length} patients.`);
+  console.log(`[Store] Database active in memory and connected to Firebase Firestore: ${users.length} users, ${doctors.length} doctors, ${patients.length} patients.`);
   
-  // Sync doctors, staff, payments, ledger, users, and credentials from Firestore
+  // Sync users and credentials asynchronously
   loadCredentialsAndUsersFromFirestore().catch(() => {});
 }
 
@@ -2031,9 +1966,6 @@ export function createApiApp() {
 
   app.get('/api/doctors', (req: Request, res: Response) => {
     const { specialtyId, activeOnly } = req.query;
-    if (doctors.length === 0 && INITIAL_DOCTORS.length > 0) {
-      doctors = [...INITIAL_DOCTORS];
-    }
     let list = [...doctors];
     if (specialtyId) {
       list = list.filter(d => d.specialtyId === specialtyId);
@@ -2128,25 +2060,7 @@ export function createApiApp() {
       return res.status(400).json({ error: 'كلمة المرور هذه مستخدمة بالفعل لحساب آخر. يجب تعيين كلمة مرور فريدة لكل طبيب/مستخدم.' });
     }
 
-    const rawSpecialty = (req.body.specialtyNameAr || specialtyId || '').trim();
-    const existingSpec = specialties.find(s => s.id === specialtyId || s.nameAr === rawSpecialty);
-    const resolvedSpecialtyNameAr = rawSpecialty && rawSpecialty !== 'spec-1' && rawSpecialty !== 'spec-general'
-      ? (existingSpec ? existingSpec.nameAr : rawSpecialty)
-      : (existingSpec ? existingSpec.nameAr : (specialties[0]?.nameAr || 'طب عام'));
-    const resolvedSpecialtyId = existingSpec?.id || (specialtyId && specialtyId !== 'spec-1' ? specialtyId : `spec-${Date.now()}`);
-
-    if (!existingSpec && resolvedSpecialtyNameAr) {
-      specialties.push({
-        id: resolvedSpecialtyId,
-        nameAr: resolvedSpecialtyNameAr,
-        nameEn: resolvedSpecialtyNameAr,
-        descriptionAr: resolvedSpecialtyNameAr,
-        descriptionEn: resolvedSpecialtyNameAr,
-        iconName: 'Stethoscope',
-        code: `SPEC-${Date.now().toString().slice(-4)}`
-      });
-    }
-
+    const spec = specialties.find(s => s.id === specialtyId) || specialties[0];
     const doctorId = `doc-${Date.now()}`;
     const docAvatar = avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80';
 
@@ -2193,9 +2107,9 @@ export function createApiApp() {
       fullName: fullName.trim(),
       email: normalizedEmail,
       phone: normalizedPhone,
-      specialtyId: resolvedSpecialtyId,
-      specialtyNameAr: resolvedSpecialtyNameAr,
-      specialtyNameEn: resolvedSpecialtyNameAr,
+      specialtyId: specialtyId || spec?.id || 'spec-1',
+      specialtyNameAr: spec?.nameAr || 'تخصص عام',
+      specialtyNameEn: spec?.nameEn || 'General Specialty',
       title: title || 'استشاري أول',
       qualifications: Array.isArray(qualifications) && qualifications.length > 0
         ? qualifications
@@ -2217,10 +2131,6 @@ export function createApiApp() {
     doctors.push(newDoctor);
 
     logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'ADD_DOCTOR', 'DOCTOR', doctorId, `إضافة حساب استشاري جديد: ${fullName} بالبريد ${normalizedEmail}`, req);
-
-    saveDocument(FIRESTORE_COLLECTIONS.DOCTORS, newDoctor.id, newDoctor).catch(() => {});
-    saveDocument(FIRESTORE_COLLECTIONS.USERS, newUser.id, newUser).catch(() => {});
-    saveUserCredentialDoc({ userId, password: cleanPassword, email: normalizedEmail, phone: normalizedPhone }).catch(() => {});
 
     saveDatabase();
 
@@ -2319,27 +2229,12 @@ export function createApiApp() {
       if (user) user.avatar = avatar;
     }
 
-    if (specialtyId || req.body.specialtyNameAr) {
-      const rawSpecialty = (req.body.specialtyNameAr || specialtyId || '').trim();
-      const existingSpec = specialties.find(s => s.id === specialtyId || s.nameAr === rawSpecialty);
-      if (existingSpec) {
-        doc.specialtyId = existingSpec.id;
-        doc.specialtyNameAr = existingSpec.nameAr;
-        doc.specialtyNameEn = existingSpec.nameEn;
-      } else if (rawSpecialty && rawSpecialty !== 'spec-1') {
-        const newSpecId = `spec-${Date.now()}`;
-        doc.specialtyId = newSpecId;
-        doc.specialtyNameAr = rawSpecialty;
-        doc.specialtyNameEn = rawSpecialty;
-        specialties.push({
-          id: newSpecId,
-          nameAr: rawSpecialty,
-          nameEn: rawSpecialty,
-          descriptionAr: rawSpecialty,
-          descriptionEn: rawSpecialty,
-          iconName: 'Stethoscope',
-          code: `SPEC-${Date.now().toString().slice(-4)}`
-        });
+    if (specialtyId) {
+      const spec = specialties.find(s => s.id === specialtyId);
+      if (spec) {
+        doc.specialtyId = spec.id;
+        doc.specialtyNameAr = spec.nameAr;
+        doc.specialtyNameEn = spec.nameEn;
       }
     }
 
@@ -2355,9 +2250,6 @@ export function createApiApp() {
     if (isActive !== undefined) doc.isActive = Boolean(isActive);
 
     logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'UPDATE_DOCTOR', 'DOCTOR', doc.id, `تحديث بيانات الطبيب ${doc.fullName} (${doc.email})`, req);
-
-    saveDocument(FIRESTORE_COLLECTIONS.DOCTORS, doc.id, doc).catch(() => {});
-    if (user) saveDocument(FIRESTORE_COLLECTIONS.USERS, user.id, user).catch(() => {});
 
     saveDatabase();
 
@@ -2379,14 +2271,10 @@ export function createApiApp() {
     const deletedDocUserId = doc.userId;
     doctors = doctors.filter(d => d.id !== doc.id && d.userId !== doc.userId);
 
-    deleteDocument(FIRESTORE_COLLECTIONS.DOCTORS, doc.id).catch(() => {});
-
     if (deletedDocUserId) {
       await deleteFirebaseAuthUser(deletedDocUserId);
       users = users.filter(u => u.id !== deletedDocUserId);
       delete userPasswords[deletedDocUserId];
-      deleteDocument(FIRESTORE_COLLECTIONS.USERS, deletedDocUserId).catch(() => {});
-      deleteDocument(FIRESTORE_COLLECTIONS.USER_CREDENTIALS, deletedDocUserId).catch(() => {});
     }
 
     logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'DELETE_DOCTOR', 'DOCTOR', doc.id, `حذف حساب الطبيب ${deletedDocName} وإلغاء صلاحياته كلياً`, req);
@@ -2402,7 +2290,6 @@ export function createApiApp() {
     if (!doc) return res.status(404).json({ error: 'الطبيب غير موجود' });
     doc.isActive = !doc.isActive;
     logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'TOGGLE_DOCTOR_STATUS', 'DOCTOR', doc.id, `تغيير حالة الطبيب ${doc.fullName} إلى ${doc.isActive ? 'نشط' : 'معطل'}`, req);
-    saveDocument(FIRESTORE_COLLECTIONS.DOCTORS, doc.id, doc).catch(() => {});
     saveDatabase();
     res.json(doc);
   });
@@ -2444,8 +2331,7 @@ export function createApiApp() {
     }
 
     const updated = paymentService.updateSettings(newSettings, updatedBy);
-    saveSettingsDoc('paymentSettings', updated).catch(() => {});
-    logAudit('admin', updatedBy, 'HOSPITAL_ADMIN', 'UPDATE_PAYMENT_SETTINGS', 'SYSTEM', 'PAYMENT_CONFIG', `تحديث إعدادات بوابات الدفع والحسابات والعملات`, req);
+    logAudit('admin', updatedBy, 'HOSPITAL_ADMIN', 'UPDATE_PAYMENT_SETTINGS', 'SYSTEM', 'PAYMENT_CONFIG', `تحديث إعدادات بوابات الدفع والعملات المتعددة (YER, USD, SAR, Kuraimi, MPGS)`, req);
 
     res.json({
       success: true,
@@ -2509,9 +2395,30 @@ export function createApiApp() {
         kuraimiChannel
       });
 
+      // If manual bank transfer notice
+      if (paymentMethod === 'BANK_TRANSFER_NOTICE' && req.body.bankTransferDetails) {
+        result.payment.paymentMethod = 'BANK_TRANSFER_NOTICE';
+        result.payment.paymentProvider = 'BANK_TRANSFER';
+        result.payment.paymentStatus = 'PENDING';
+        result.payment.status = 'PENDING';
+        result.payment.transactionReference = req.body.bankTransferDetails.transferNoticeNumber || result.payment.transactionReference;
+        result.payment.bankTransferDetails = req.body.bankTransferDetails;
+
+        // Notify Staff/Admin & CS about pending transfer notice
+        staffList.forEach(stf => {
+          pushNotification(
+            [stf.userId, stf.id],
+            'إشعار تحويل بنكي جديد بانتظار الاعتماد',
+            `أرسل المريض ${result.payment.patientName} إشعار تحويل بنكي بمبلغ ${result.payment.amount} ${result.payment.currency} (${req.body.bankTransferDetails.bankName}). يرجى مراجعة الإشعار واعتماد السداد.`,
+            'PAYMENT',
+            result.payment.serviceReferenceId || result.payment.id,
+            { isNotice: true, transferRef: req.body.bankTransferDetails.transferNoticeNumber } as any
+          );
+        });
+      }
+
       // Save to memory array
       payments.unshift(result.payment);
-      saveDocument(FIRESTORE_COLLECTIONS.PAYMENTS, result.payment.id, result.payment).catch(() => {});
       saveDatabase();
 
       res.status(201).json({
@@ -2521,7 +2428,9 @@ export function createApiApp() {
         kuraimiOtpRequired: result.kuraimiOtpRequired,
         message: result.kuraimiOtpRequired 
           ? 'تم إنشاء جلسة الدفع وبانتظار إدخال رمز التحقق OTP لحساب بنك الكريمي.' 
-          : 'تم إنشاء جلسة الدفع بنجاح وبانتظار استكمال السداد.'
+          : (paymentMethod === 'BANK_TRANSFER_NOTICE'
+              ? 'تم إرسال إشعار التحويل البنكي بنجاح وهو قيد المراجعة والاعتماد المالي.'
+              : 'تم إنشاء جلسة الدفع بنجاح وبانتظار استكمال السداد.')
       });
     } catch (err: any) {
       console.error('Payment intent creation failed:', err);
@@ -2576,35 +2485,72 @@ export function createApiApp() {
     } else {
       payments.unshift(confirmed.payment);
     }
-    saveDocument(FIRESTORE_COLLECTIONS.PAYMENTS, confirmed.payment.id, confirmed.payment).catch(() => {});
 
     // Update appointment / consultation
     if (confirmed.payment.serviceType === 'APPOINTMENT') {
-      const apt = appointments.find(a => a.id === confirmed.payment.serviceReferenceId);
+      const apt = appointments.find(a => 
+        a.id === confirmed.payment.serviceReferenceId || 
+        a.paymentId === confirmed.payment.id ||
+        a.transactionReference === confirmed.payment.transactionReference
+      );
       if (apt) {
         apt.paymentStatus = 'PAYMENT_SUCCESS';
+        apt.isPaid = true;
         apt.paymentId = confirmed.payment.id;
         apt.paymentMethod = 'KURAIMI_EXPRESS';
         apt.paymentAmount = confirmed.payment.amount;
         apt.currency = confirmed.payment.currency;
         apt.paymentTransactionRef = confirmed.payment.transactionReference;
         apt.paymentDate = confirmed.payment.paidAt;
-        if (apt.status === 'PAYMENT_REQUIRED') apt.status = 'PENDING';
+        if (apt.status === 'PAYMENT_REQUIRED' || apt.status === 'PENDING') apt.status = 'CONFIRMED';
+        apt.coordinatorNotes = 'تم سداد الرسوم إلكترونياً بنجاح عبر بنك الكريمي (تم التسديد ✓).';
         apt.updatedAt = new Date().toISOString();
       }
     } else if (confirmed.payment.serviceType === 'CONSULTATION') {
-      const con = consultations.find(c => c.id === confirmed.payment.serviceReferenceId);
+      const con = consultations.find(c => 
+        c.id === confirmed.payment.serviceReferenceId || 
+        c.paymentId === confirmed.payment.id ||
+        c.transactionReference === confirmed.payment.transactionReference
+      );
       if (con) {
         con.paymentStatus = 'PAYMENT_SUCCESS';
+        con.isPaid = true;
         con.paymentId = confirmed.payment.id;
         con.paymentMethod = 'KURAIMI_EXPRESS';
         con.paymentAmount = confirmed.payment.amount;
         con.currency = confirmed.payment.currency;
         con.paymentTransactionRef = confirmed.payment.transactionReference;
         con.paymentDate = confirmed.payment.paidAt;
-        if (con.status === 'PAYMENT_REQUIRED') con.status = 'PAID_PENDING_DOCTOR';
+        if (con.status === 'PAYMENT_REQUIRED' || con.status === 'PENDING') con.status = 'PAID_PENDING_DOCTOR';
         con.updatedAt = new Date().toISOString();
       }
+    }
+
+    const doctorId = confirmed.payment.doctorId;
+    const doctor = doctorId ? doctors.find(d => d.id === doctorId || d.userId === doctorId) : null;
+
+    // Notify Customer Service
+    staffList.forEach(stf => {
+      pushNotification(
+        [stf.userId, stf.id],
+        'سداد إلكتروني عبر بنك الكريمي (تم التسديد ✓)',
+        `تم تسديد رسوم المريض ${confirmed.payment.patientName} عبر بنك الكريمي بمبلغ ${confirmed.payment.amount} ${confirmed.payment.currency} لـ ${confirmed.payment.serviceName}. الحالة الآن: تم التسديد ✓.`,
+        'PAYMENT',
+        confirmed.payment.serviceReferenceId || confirmed.payment.id,
+        { isPaid: true, amount: confirmed.payment.amount, currency: confirmed.payment.currency } as any
+      );
+    });
+
+    // Notify Doctor
+    if (doctor) {
+      pushNotification(
+        [doctor.userId, doctor.id],
+        'سداد معتمد عبر بنك الكريمي (تم التسديد ✓)',
+        `تم سداد رسوم ${confirmed.payment.serviceName} للمريض ${confirmed.payment.patientName} إلكترونياً عبر بنك الكريمي. الموعد/الاستشارة مسددة ومؤكدة (تم التسديد ✓).`,
+        'PAYMENT',
+        confirmed.payment.serviceReferenceId || confirmed.payment.id,
+        { isPaid: true, amount: confirmed.payment.amount, currency: confirmed.payment.currency } as any
+      );
     }
 
     logAudit(
@@ -2666,31 +2612,42 @@ export function createApiApp() {
 
     // Update target appointment or consultation
     if (confirmed.payment.serviceType === 'APPOINTMENT') {
-      const apt = appointments.find(a => a.id === confirmed.payment.serviceReferenceId);
+      const apt = appointments.find(a => 
+        a.id === confirmed.payment.serviceReferenceId || 
+        a.paymentId === confirmed.payment.id ||
+        a.transactionReference === confirmed.payment.transactionReference
+      );
       if (apt) {
         apt.paymentStatus = 'PAYMENT_SUCCESS';
+        apt.isPaid = true;
         apt.paymentId = confirmed.payment.id;
         apt.paymentMethod = confirmed.payment.paymentMethod;
         apt.paymentAmount = confirmed.payment.amount;
         apt.currency = confirmed.payment.currency;
         apt.paymentTransactionRef = confirmed.payment.transactionReference;
         apt.paymentDate = confirmed.payment.paidAt;
-        if (apt.status === 'PAYMENT_REQUIRED') {
-          apt.status = 'PENDING';
+        if (apt.status === 'PAYMENT_REQUIRED' || apt.status === 'PENDING') {
+          apt.status = 'CONFIRMED';
         }
+        apt.coordinatorNotes = 'تم تأكيد وسداد رسوم الحجز بنجاح (تم التسديد ✓).';
         apt.updatedAt = new Date().toISOString();
       }
     } else if (confirmed.payment.serviceType === 'CONSULTATION') {
-      const con = consultations.find(c => c.id === confirmed.payment.serviceReferenceId);
+      const con = consultations.find(c => 
+        c.id === confirmed.payment.serviceReferenceId || 
+        c.paymentId === confirmed.payment.id ||
+        c.transactionReference === confirmed.payment.transactionReference
+      );
       if (con) {
         con.paymentStatus = 'PAYMENT_SUCCESS';
+        con.isPaid = true;
         con.paymentId = confirmed.payment.id;
         con.paymentMethod = confirmed.payment.paymentMethod;
         con.paymentAmount = confirmed.payment.amount;
         con.currency = confirmed.payment.currency;
         con.paymentTransactionRef = confirmed.payment.transactionReference;
         con.paymentDate = confirmed.payment.paidAt;
-        if (con.status === 'PAYMENT_REQUIRED') {
+        if (con.status === 'PAYMENT_REQUIRED' || con.status === 'PENDING') {
           con.status = 'PAID_PENDING_DOCTOR';
         }
         con.updatedAt = new Date().toISOString();
@@ -2726,27 +2683,24 @@ export function createApiApp() {
     staffList.forEach(stf => {
       pushNotification(
         [stf.userId, stf.id],
-        'إشعار سداد مالي جديد',
-        `قام المريض ${confirmed.payment.patientName} بسداد مبلغ ${confirmed.payment.amount} ${confirmed.payment.currency} لخدمة ${confirmed.payment.serviceName} (${confirmed.payment.transactionReference}).`,
+        'إشعار سداد مالي جديد (تم التسديد ✓)',
+        `قام المريض ${confirmed.payment.patientName} بسداد مبلغ ${confirmed.payment.amount} ${confirmed.payment.currency} لخدمة ${confirmed.payment.serviceName} (${confirmed.payment.transactionReference}). تم التسديد ✓.`,
         'PAYMENT',
         confirmed.payment.serviceReferenceId || confirmed.payment.id,
-        { amount: confirmed.payment.amount, currency: confirmed.payment.currency, transactionReference: confirmed.payment.transactionReference }
+        { isPaid: true, amount: confirmed.payment.amount, currency: confirmed.payment.currency, transactionReference: confirmed.payment.transactionReference } as any
       );
     });
 
-    // If Consultation, notify Doctor now that it is paid
-    if (confirmed.payment.serviceType === 'CONSULTATION' && doctor) {
+    // Notify Doctor
+    if (doctor) {
       pushNotification(
         [doctor.userId, doctor.id],
-        'استشارة مدفوعة جديدة بانتظار ردك',
-        `استشارة طبية جديدة مدفوعة من المريض ${confirmed.payment.patientName} بخصوص "${confirmed.payment.serviceName}". يمكنك الآن الرد على الاستشارة.`,
-        'CONSULTATION',
+        confirmed.payment.serviceType === 'CONSULTATION' ? 'استشارة طبية مسددة بانتظار ردك (تم التسديد ✓)' : 'موعد فحص مسدد ومؤكد (تم التسديد ✓)',
+        `تم تأكيد سداد رسوم ${confirmed.payment.serviceName} للمريض ${confirmed.payment.patientName}. يمكنك الآن الاطلاع على الملف ومتابعة الحالة.`,
+        confirmed.payment.serviceType === 'CONSULTATION' ? 'CONSULTATION' : 'APPOINTMENT',
         confirmed.payment.serviceReferenceId
       );
     }
-
-    saveDocument(FIRESTORE_COLLECTIONS.PAYMENTS, confirmed.payment.id, confirmed.payment).catch(() => {});
-    saveSettingsDoc('paymentLedger', { entries: paymentService.getAllLedgerEntries() }).catch(() => {});
 
     saveDatabase();
 
@@ -2754,7 +2708,126 @@ export function createApiApp() {
       success: true,
       payment: confirmed.payment,
       ledgerEntry: confirmed.ledgerEntry,
-      message: 'تم تأكيد الدفع وتوثيق السجل المحاسبي بنجاح.'
+      message: 'تم تأكيد الدفع وتوثيق السجل المحاسبي بنجاح (تم التسديد ✓).'
+    });
+  });
+
+  // 6.5 Admin Approves Bank Transfer Notice / Pending Payment ("تم السداد")
+  app.post('/api/payments/:id/approve', (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { adminName = 'الإدارة المالية والمحاسبة' } = req.body;
+
+    const payment = payments.find(p => p.id === id || p.transactionReference === id);
+    if (!payment) {
+      return res.status(404).json({ error: 'سجل الدفع المطلوب غير موجود.' });
+    }
+
+    const now = new Date().toISOString();
+    payment.status = 'PAYMENT_SUCCESS';
+    payment.paymentStatus = 'PAYMENT_SUCCESS';
+    payment.paidAt = now;
+    payment.confirmedAt = now;
+    (payment as any).confirmedBy = adminName;
+    (payment as any).isApprovedByAdmin = true;
+    payment.updatedAt = now;
+
+    // Link/update appointment if any
+    const linkedApt = appointments.find(a => 
+      a.id === payment.serviceReferenceId || 
+      (payment.id && a.paymentId === payment.id) ||
+      (payment.transactionReference && (a.transactionReference === payment.transactionReference || a.paymentTransactionRef === payment.transactionReference)) ||
+      (payment.patientId && a.patientId === payment.patientId && a.paymentStatus !== 'PAYMENT_SUCCESS')
+    );
+
+    if (linkedApt) {
+      linkedApt.paymentStatus = 'PAYMENT_SUCCESS';
+      linkedApt.isPaid = true;
+      linkedApt.paymentDate = now;
+      linkedApt.paymentMethod = payment.paymentMethod || 'BANK_TRANSFER_NOTICE';
+      linkedApt.paymentAmount = payment.amount;
+      linkedApt.paymentTransactionRef = payment.transactionReference;
+      if (linkedApt.status === 'PAYMENT_REQUIRED' || linkedApt.status === 'PENDING') {
+        linkedApt.status = 'CONFIRMED';
+      }
+      linkedApt.coordinatorNotes = `تم اعتماد السداد (تم السداد ✓) بواسطة ${adminName} بتاريخ ${new Date().toLocaleDateString('ar-YE')}`;
+      linkedApt.updatedAt = now;
+    }
+
+    // Link/update consultation if any
+    const linkedCon = consultations.find(c => 
+      c.id === payment.serviceReferenceId || 
+      (payment.id && c.paymentId === payment.id) ||
+      (payment.transactionReference && (c.transactionReference === payment.transactionReference || c.paymentTransactionRef === payment.transactionReference)) ||
+      (payment.patientId && c.patientId === payment.patientId && c.paymentStatus !== 'PAYMENT_SUCCESS')
+    );
+
+    if (linkedCon) {
+      linkedCon.paymentStatus = 'PAYMENT_SUCCESS';
+      linkedCon.isPaid = true;
+      linkedCon.paymentDate = now;
+      linkedCon.paymentMethod = payment.paymentMethod || 'BANK_TRANSFER_NOTICE';
+      linkedCon.paymentAmount = payment.amount;
+      linkedCon.paymentTransactionRef = payment.transactionReference;
+      if (linkedCon.status === 'PAYMENT_REQUIRED' || linkedCon.status === 'PENDING') {
+        linkedCon.status = 'PAID_PENDING_DOCTOR';
+      }
+      linkedCon.updatedAt = now;
+    }
+
+    const patient = patients.find(p => p.id === payment.patientId || p.userId === payment.patientId);
+    const docId = payment.doctorId || linkedApt?.doctorId || linkedCon?.doctorId;
+    const doctor = docId ? doctors.find(d => d.id === docId || d.userId === docId) : null;
+
+    // Dispatches notification to Doctor:
+    if (doctor) {
+      pushNotification(
+        [doctor.userId, doctor.id],
+        'تم تأكيد واعتماد السداد (تم التسديد ✓)',
+        `تم تأكيد سداد رسوم ${payment.serviceName} للمريض ${payment.patientName} (${payment.amount} ${payment.currency}) بموجب إشعار تحويل معتمد من قِبل ${adminName}. يظهر الآن: تم التسديد ✓.`,
+        payment.serviceType === 'CONSULTATION' ? 'CONSULTATION' : 'APPOINTMENT',
+        payment.serviceReferenceId || payment.id,
+        { isPaid: true, amount: payment.amount, currency: payment.currency } as any
+      );
+    }
+
+    // Dispatches notification to Customer Service:
+    staffList.forEach(stf => {
+      pushNotification(
+        [stf.userId, stf.id],
+        'اعتماد سداد من الإدارة (تم التسديد ✓)',
+        `قام مسؤول الإدارة (${adminName}) باعتماد سداد إشعار المريض ${payment.patientName} لـ ${payment.serviceName}. تظهر الحالة الآن في لوحتكم: تم التسديد ✓.`,
+        'PAYMENT',
+        payment.serviceReferenceId || payment.id,
+        { isPaid: true, amount: payment.amount, currency: payment.currency } as any
+      );
+    });
+
+    // Notify Patient:
+    pushNotification(
+      [patient?.userId || payment.patientId, payment.patientId].filter(Boolean),
+      'تم اعتماد سدادك وتأكيد طلبك بنجاح',
+      `تمت مراجعة واعتماد إشعار السداد بنجاح لمبلغ ${payment.amount} ${payment.currency} لخدمة ${payment.serviceName}. شكراً لك.`,
+      'PAYMENT',
+      payment.serviceReferenceId || payment.id
+    );
+
+    logAudit(
+      'usr-admin-1',
+      adminName,
+      'HOSPITAL_ADMIN',
+      'PAYMENT_APPROVED_MANUALLY',
+      'PAYMENT',
+      payment.id,
+      `تم اعتماد سداد إشعار الحوالة/التحويل البنكي (تم السداد) بمبلغ ${payment.amount} ${payment.currency} للمريض ${payment.patientName} (رقم الإشعار: ${payment.transactionReference})`,
+      req
+    );
+
+    saveDatabase();
+
+    res.json({
+      success: true,
+      payment,
+      message: 'تم تأكيد واعتماد السداد بنجاح، وتحديث واجهات الطبيب وخدمة العملاء والمدير إلى (تم التسديد).'
     });
   });
 
@@ -2785,84 +2858,6 @@ export function createApiApp() {
       saveDatabase();
     }
     res.json({ success: true, message: 'تم تسجيل حالة الفشل.' });
-  });
-
-  // Mark Payment as Paid (Admin Consultation & Booking Fees Settle)
-  app.post('/api/payments/:id/mark-paid', (req: Request, res: Response) => {
-    const paymentId = req.params.id;
-    const { notes = 'تم السداد واعتماد رسوم الاستشارة والحجز' } = req.body;
-    let payment = payments.find(p => p.id === paymentId || p.transactionReference === paymentId);
-    if (!payment) {
-      return res.status(404).json({ error: 'سجل الدفع غير موجود.' });
-    }
-
-    const confirmed = paymentService.confirmPayment({
-      ...payment,
-      status: 'PAID',
-      paymentStatus: 'PAID',
-      paidAt: new Date().toISOString()
-    });
-
-    const pIdx = payments.findIndex(p => p.id === confirmed.payment.id);
-    if (pIdx !== -1) {
-      payments[pIdx] = confirmed.payment;
-    } else {
-      payments.unshift(confirmed.payment);
-    }
-
-    // Update target appointment or consultation
-    if (confirmed.payment.serviceType === 'APPOINTMENT') {
-      const apt = appointments.find(a => a.id === confirmed.payment.serviceReferenceId);
-      if (apt) {
-        apt.paymentStatus = 'PAYMENT_SUCCESS';
-        apt.paymentId = confirmed.payment.id;
-        apt.paymentAmount = confirmed.payment.amount;
-        apt.currency = confirmed.payment.currency;
-        apt.paymentDate = confirmed.payment.paidAt;
-        apt.status = 'CONFIRMED';
-        apt.coordinatorNotes = notes;
-        apt.updatedAt = new Date().toISOString();
-        saveDocument(FIRESTORE_COLLECTIONS.APPOINTMENTS, apt.id, apt).catch(() => {});
-      }
-    } else if (confirmed.payment.serviceType === 'CONSULTATION') {
-      const con = consultations.find(c => c.id === confirmed.payment.serviceReferenceId);
-      if (con) {
-        con.paymentStatus = 'PAYMENT_SUCCESS';
-        con.paymentId = confirmed.payment.id;
-        con.paymentAmount = confirmed.payment.amount;
-        con.currency = confirmed.payment.currency;
-        con.paymentDate = confirmed.payment.paidAt;
-        con.status = 'PAID_PENDING_DOCTOR';
-        con.updatedAt = new Date().toISOString();
-        saveDocument(FIRESTORE_COLLECTIONS.CONSULTATIONS, con.id, con).catch(() => {});
-      }
-    }
-
-    logAudit(
-      'usr-admin-1',
-      'إدارة المستشفى المالية',
-      'HOSPITAL_ADMIN',
-      'PAYMENT_CONFIRMED_BY_ADMIN',
-      'PAYMENT',
-      confirmed.payment.id,
-      `تم تأكيد سداد رسوم الاستشارة والحجز بمبلغ ${confirmed.payment.amount} ${confirmed.payment.currency} للمريض ${confirmed.payment.patientName}. (${notes})`,
-      req
-    );
-
-    // Persist payment and ledger directly to Firestore as source of truth
-    saveDocument(FIRESTORE_COLLECTIONS.PAYMENTS, confirmed.payment.id, confirmed.payment).catch((err) => {
-      console.warn('[Firestore] Failed to save marked-paid payment:', err);
-    });
-    saveSettingsDoc('paymentLedger', { entries: paymentService.getAllLedgerEntries() }).catch(() => {});
-
-    saveDatabase();
-
-    res.json({
-      success: true,
-      payment: confirmed.payment,
-      ledgerEntry: confirmed.ledgerEntry,
-      message: 'تم تأكيد السداد وإضافة المبلغ للإيرادات ودفتر الأستاذ العام بنجاح.'
-    });
   });
 
   // 8. Process Refund in Original Currency (Admin / Financial Manager)
@@ -2920,10 +2915,6 @@ export function createApiApp() {
       payment.serviceReferenceId || payment.id,
       { amount: result.refund.amount, currency: payment.currency, transactionReference: result.refund.transactionReference }
     );
-
-    saveDocument(FIRESTORE_COLLECTIONS.PAYMENTS, result.updatedPayment.id, result.updatedPayment).catch(() => {});
-    saveDocument(FIRESTORE_COLLECTIONS.REFUNDS, result.refund.id, result.refund).catch(() => {});
-    saveSettingsDoc('paymentLedger', { entries: paymentService.getAllLedgerEntries() }).catch(() => {});
 
     saveDatabase();
 
@@ -3026,22 +3017,7 @@ export function createApiApp() {
   });
 
   // 11. Payments & Refunds Query Endpoints
-  app.get('/api/payments', async (req: Request, res: Response) => {
-    try {
-      const fsPayments = await fetchDocsWithFilter<Payment>(FIRESTORE_COLLECTIONS.PAYMENTS);
-      if (fsPayments && fsPayments.length > 0) {
-        const map = new Map<string, Payment>();
-        payments.forEach(p => map.set(p.id, p));
-        fsPayments.forEach(p => map.set(p.id, { ...map.get(p.id), ...p }));
-        payments = Array.from(map.values());
-      }
-    } catch (err) {
-      console.warn('[API /api/payments] Error loading from Firestore:', err);
-    }
-
-    if (payments.length === 0 && INITIAL_PAYMENTS.length > 0) {
-      payments = [...INITIAL_PAYMENTS];
-    }
+  app.get('/api/payments', (req: Request, res: Response) => {
     const { patientId, doctorId, serviceType, status, currency, search, startDate, endDate } = req.query;
     let list = [...payments];
 
@@ -3290,7 +3266,7 @@ export function createApiApp() {
   });
 
   // Patient Request Appointment (Integrated with Payment Intent)
-  app.post('/api/appointments', async (req: Request, res: Response) => {
+  app.post('/api/appointments', (req: Request, res: Response) => {
     const patientId = req.body.patientId || req.body.patient_id || req.body.userId || req.body.uid;
     const doctorId = req.body.doctorId || req.body.doctor_id;
     const serviceId = req.body.serviceId || req.body.service_id;
@@ -3344,9 +3320,10 @@ export function createApiApp() {
 
     const aptId = req.body.id || `apt-2026-${Math.floor(100 + Math.random() * 900)}`;
 
-    const isPaid = Boolean(req.body.isPaid || req.body.paymentId);
-    const initialPaymentStatus = isWaived ? 'WAIVED' : (isPaid ? 'PAYMENT_SUCCESS' : 'PENDING');
-    const initialStatus = isWaived ? 'PENDING' : (isPaid ? 'CONFIRMED' : 'NEW');
+    const isNotice = req.body.paymentStatus === 'PENDING' || req.body.paymentMethod === 'BANK_TRANSFER_NOTICE';
+    const isPaid = !isNotice && Boolean(req.body.isPaid || (req.body.paymentId && req.body.paymentStatus === 'PAYMENT_SUCCESS'));
+    const initialPaymentStatus = isWaived ? 'WAIVED' : (isPaid ? 'PAYMENT_SUCCESS' : (isNotice ? 'PENDING' : 'PAYMENT_REQUIRED'));
+    const initialStatus = isWaived ? 'PENDING' : (isPaid ? 'CONFIRMED' : (isNotice ? 'PENDING' : 'PAYMENT_REQUIRED'));
     const attachments = req.body.attachments || [];
 
     const newAppointment: Appointment = {
@@ -3366,13 +3343,21 @@ export function createApiApp() {
       reason: reason || 'استشارة وفحص طبي',
       status: initialStatus,
       paymentStatus: initialPaymentStatus,
+      isPaid,
+      paymentMethod: req.body.paymentMethod || (isNotice ? 'BANK_TRANSFER_NOTICE' : (isPaid ? 'KURAIMI_EXPRESS' : undefined)),
       paymentId: req.body.paymentId,
       transactionReference: req.body.transactionReference || req.body.paymentTransactionRef,
       paymentAmount: fee,
       currency: 'YER',
       isWaived,
       waiverReason: isWaived ? (req.body.waiverReason || 'إعفاء مالي معتمد') : undefined,
-      coordinatorNotes: isWaived ? 'طلب جديد بإعفاء مالي - بانتظار اتصال منسق خدمة العملاء.' : (isPaid ? 'تم سداد رسوم الحجز إلكترونياً وتأكيد الموعد.' : 'طلب حجز جديد - سداد الرسوم عند الحضور للاستقبال.'),
+      coordinatorNotes: isWaived 
+        ? 'طلب جديد بإعفاء مالي - بانتظار اتصال منسق خدمة العملاء.' 
+        : (isPaid 
+            ? 'تم سداد رسوم الحجز إلكترونياً وتأكيد الموعد (تم التسديد ✓).' 
+            : (isNotice 
+                ? 'تم إرسال إشعار تحويل بنكي للمراجعة وتأكيد السداد من الإدارة المالية.' 
+                : 'طلب جديد بانتظار سداد الرسوم من المريض.')),
       patientNotes: patientNotes || '',
       attachments: attachments || [],
       createdAt: new Date().toISOString(),
@@ -3405,8 +3390,8 @@ export function createApiApp() {
         amount: fee,
         currency: 'YER',
         paymentMethod: 'KURAIMI_EXPRESS',
-        status: 'PENDING',
-        paymentStatus: 'PENDING',
+        status: 'PAYMENT_REQUIRED',
+        paymentStatus: 'PAYMENT_REQUIRED',
         transactionReference: `TXN-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(100000 + Math.random() * 900000)}`,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -3414,22 +3399,6 @@ export function createApiApp() {
       payments.unshift(paymentRecord);
       newAppointment.paymentId = paymentRecord.id;
     }
-
-    // Persist the payment transaction in Firestore so it appears in the Admin financial ledger.
-    if (paymentRecord) {
-      await saveDocument(
-        FIRESTORE_COLLECTIONS.PAYMENTS,
-        paymentRecord.id,
-        paymentRecord
-      );
-    }
-
-    // Persist the appointment itself in Firestore.
-    await saveDocument(
-      FIRESTORE_COLLECTIONS.APPOINTMENTS,
-      newAppointment.id,
-      newAppointment
-    );
 
     logAudit(patient.userId || 'guest', patient.fullName, 'PATIENT', 'CREATE_APPOINTMENT', 'APPOINTMENT', newAppointment.id, `تقديم طلب موعد جديد مع ${docName} (رسوم: ${fee} YER - الحالة: ${newAppointment.paymentStatus})`, req);
 
@@ -3727,7 +3696,7 @@ export function createApiApp() {
   });
 
   // Patient Create Consultation Request (Integrated with Payment Intent)
-  app.post('/api/consultations', async (req: Request, res: Response) => {
+  app.post('/api/consultations', (req: Request, res: Response) => {
     const patientId = req.body.patientId || req.body.patient_id || req.body.userId || req.body.uid;
     const doctorId = req.body.doctorId || req.body.doctor_id;
     const title = req.body.title || req.body.subject || req.body.reason || 'استشارة طبية جديدة';
@@ -3805,9 +3774,11 @@ export function createApiApp() {
     }
 
     const consultationId = req.body.id || `cns-2026-${Math.floor(100 + Math.random() * 900)}`;
-    const isPaid = Boolean(req.body.isPaid || req.body.paymentId);
-    const initialPaymentStatus = finalIsWaived ? 'WAIVED' : (isPaid ? 'PAYMENT_SUCCESS' : 'PENDING');
-    const initialStatus = 'PENDING';
+
+    const isNotice = req.body.paymentStatus === 'PENDING' || req.body.paymentMethod === 'BANK_TRANSFER_NOTICE';
+    const isPaid = !isNotice && Boolean(req.body.isPaid || (req.body.paymentId && req.body.paymentStatus === 'PAYMENT_SUCCESS'));
+    const initialPaymentStatus = finalIsWaived ? 'WAIVED' : (isPaid ? 'PAYMENT_SUCCESS' : (isNotice ? 'PENDING' : 'PAYMENT_REQUIRED'));
+    const initialStatus = finalIsWaived ? 'PENDING' : (isPaid ? 'PAID_PENDING_DOCTOR' : (isNotice ? 'PENDING' : 'PAYMENT_REQUIRED'));
 
     const newConsultation: Consultation = {
       id: consultationId,
@@ -3826,6 +3797,8 @@ export function createApiApp() {
       duration: duration || 'غير محدد',
       status: initialStatus,
       paymentStatus: initialPaymentStatus,
+      isPaid,
+      paymentMethod: req.body.paymentMethod || (isNotice ? 'BANK_TRANSFER_NOTICE' : (isPaid ? 'KURAIMI_EXPRESS' : undefined)),
       paymentId: req.body.paymentId,
       transactionReference: req.body.transactionReference || req.body.paymentTransactionRef,
       paymentAmount: fee,
@@ -3874,8 +3847,8 @@ export function createApiApp() {
         amount: fee,
         currency: 'YER',
         paymentMethod: 'KURAIMI_EXPRESS',
-        status: 'PENDING',
-        paymentStatus: 'PENDING',
+        status: 'PAYMENT_REQUIRED',
+        paymentStatus: 'PAYMENT_REQUIRED',
         transactionReference: `TXN-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(100000 + Math.random() * 900000)}`,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -3884,26 +3857,10 @@ export function createApiApp() {
       newConsultation.paymentId = paymentRecord.id;
     }
 
-    // Persist the payment transaction in Firestore so it appears in the Admin financial ledger.
-    if (paymentRecord) {
-      await saveDocument(
-        FIRESTORE_COLLECTIONS.PAYMENTS,
-        paymentRecord.id,
-        paymentRecord
-      );
-    }
-
-    // Persist the consultation itself in Firestore.
-    await saveDocument(
-      FIRESTORE_COLLECTIONS.CONSULTATIONS,
-      newConsultation.id,
-      newConsultation
-    );
-
     logAudit(patient.userId || 'guest', patient.fullName, 'PATIENT', 'CREATE_CONSULTATION', 'CONSULTATION', newConsultation.id, `إرسال استشارة طبية إلى ${docName}: ${title} (رسوم: ${fee} YER - حالة الدفع: ${newConsultation.paymentStatus})`, req);
 
-    // Notify doctor immediately
-    if (doctor) {
+    // If waived, notify doctor immediately; otherwise doctor is notified upon payment completion
+    if (isWaived && doctor) {
       pushNotification(
         [doctor.userId, doctor.id],
         'استشارة طبية جديدة بانتظار الرد',
@@ -5096,9 +5053,6 @@ export function createApiApp() {
   });
 
   app.get('/api/admin/staff', (req: Request, res: Response) => {
-    if (staffList.length === 0 && INITIAL_STAFF.length > 0) {
-      staffList = [...INITIAL_STAFF];
-    }
     res.json(staffList);
   });
 
@@ -5220,10 +5174,6 @@ export function createApiApp() {
     const roleNameAr = isRadiology ? 'أخصائي وفني أشعة وتصوير طبي' : (isLab ? 'فني وأخصائي مختبر' : (isSecretary ? 'سكرتير واستقبال طبي' : 'موظف خدمة عملاء'));
     logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'ADD_STAFF', 'STAFF', staffId, `إضافة حساب ${roleNameAr} جديد: ${newStaff.fullName} (${newStaff.phone})`, req);
 
-    saveDocument(FIRESTORE_COLLECTIONS.STAFF, newStaff.id, newStaff).catch(() => {});
-    saveDocument(FIRESTORE_COLLECTIONS.USERS, newUser.id, newUser).catch(() => {});
-    saveUserCredentialDoc({ userId, password: cleanPassword, email: normalizedEmail, phone: normalizedPhone }).catch(() => {});
-
     saveDatabase();
 
     return res.status(201).json({
@@ -5281,7 +5231,6 @@ export function createApiApp() {
         });
       }
       userPasswords[stf.userId] = cleanPassword;
-      saveUserCredentialDoc({ userId: stf.userId, password: cleanPassword, email: stf.email, phone: stf.phone }).catch(() => {});
     }
 
     if (fullName) {
@@ -5298,9 +5247,6 @@ export function createApiApp() {
     if (isActive !== undefined) stf.isActive = Boolean(isActive);
 
     logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'UPDATE_STAFF', 'STAFF', stf.id, `تعديل بيانات موظف خدمة العملاء: ${stf.fullName}`, req);
-
-    saveDocument(FIRESTORE_COLLECTIONS.STAFF, stf.id, stf).catch(() => {});
-    if (user) saveDocument(FIRESTORE_COLLECTIONS.USERS, user.id, user).catch(() => {});
 
     saveDatabase();
     res.json(stf);
@@ -5350,7 +5296,6 @@ export function createApiApp() {
         });
       }
       userPasswords[stf.userId] = cleanPassword;
-      saveUserCredentialDoc({ userId: stf.userId, password: cleanPassword, email: stf.email, phone: stf.phone }).catch(() => {});
     }
 
     if (fullName) {
@@ -5368,9 +5313,6 @@ export function createApiApp() {
 
     logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'UPDATE_STAFF', 'STAFF', stf.id, `تعديل بيانات موظف خدمة العملاء: ${stf.fullName}`, req);
 
-    saveDocument(FIRESTORE_COLLECTIONS.STAFF, stf.id, stf).catch(() => {});
-    if (user) saveDocument(FIRESTORE_COLLECTIONS.USERS, user.id, user).catch(() => {});
-
     saveDatabase();
     res.json(stf);
   });
@@ -5386,14 +5328,10 @@ export function createApiApp() {
     const deletedStaffUserId = stf.userId;
     staffList = staffList.filter(s => s.id !== stf.id && s.userId !== stf.userId);
 
-    deleteDocument(FIRESTORE_COLLECTIONS.STAFF, stf.id).catch(() => {});
-
     if (deletedStaffUserId) {
       await deleteFirebaseAuthUser(deletedStaffUserId);
       users = users.filter(u => u.id !== deletedStaffUserId);
       delete userPasswords[deletedStaffUserId];
-      deleteDocument(FIRESTORE_COLLECTIONS.USERS, deletedStaffUserId).catch(() => {});
-      deleteDocument(FIRESTORE_COLLECTIONS.USER_CREDENTIALS, deletedStaffUserId).catch(() => {});
     }
 
     logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'DELETE_STAFF', 'STAFF', stf.id, `حذف حساب موظف خدمة العملاء ${deletedStaffName} وإلغاء صلاحياته نهائياً`, req);
@@ -5408,7 +5346,6 @@ export function createApiApp() {
     if (!stf) return res.status(404).json({ error: 'الموظف غير موجود' });
     stf.isActive = !stf.isActive;
     logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'TOGGLE_STAFF_STATUS', 'STAFF', stf.id, `تغيير حالة الموظف ${stf.fullName} إلى ${stf.isActive ? 'نشط' : 'معطل'}`, req);
-    saveDocument(FIRESTORE_COLLECTIONS.STAFF, stf.id, stf).catch(() => {});
     saveDatabase();
     res.json(stf);
   });

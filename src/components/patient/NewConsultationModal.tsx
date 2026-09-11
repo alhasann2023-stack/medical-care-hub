@@ -13,13 +13,12 @@ import {
   Gift,
   CreditCard,
   ShieldCheck,
-  Info,
-  Send
+  Info
 } from 'lucide-react';
 import { Doctor } from '../../types/medical';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { ManualPaymentInstructionModal } from './ManualPaymentInstructionModal';
+import { PaymentCheckoutModal } from '../common/PaymentCheckoutModal';
 
 interface NewConsultationModalProps {
   isOpen: boolean;
@@ -46,8 +45,6 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
   
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
-  const [createdConsultationData, setCreatedConsultationData] = useState<any>(null);
-  const [showPaymentInstructions, setShowPaymentInstructions] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
@@ -66,6 +63,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
     oneFreePerPatient: boolean;
   } | null>(null);
   const [isCheckingEligibility, setIsCheckingEligibility] = useState<boolean>(false);
+  const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -225,7 +223,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
       .filter(Boolean);
 
     try {
-      const created = await api.createConsultation({
+      await api.createConsultation({
         patientId: patientProfile?.id || user?.id || 'pat-1',
         patientName: patientProfile?.fullName || user?.fullName || 'المريض',
         patientPhone: patientProfile?.phone || user?.phone || '',
@@ -247,9 +245,11 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
         attachmentFiles
       });
 
-      setCreatedConsultationData(created);
       setIsSubmitted(true);
-      setShowPaymentInstructions(true);
+      setTimeout(() => {
+        onSuccess();
+        onClose();
+      }, 2000);
     } catch (err: any) {
       setError(err.message || 'فشل إرسال الاستشارة الطبية.');
     } finally {
@@ -264,27 +264,14 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
       return;
     }
 
-    await executeCreateConsultation();
+    // If eligible for free consultation (or 0 fee), submit immediately without payment
+    if (isFreeEligible || finalFee === 0) {
+      await executeCreateConsultation();
+    } else {
+      // Patient must pay for subsequent consultations (or when promo is inactive)
+      setShowPaymentModal(true);
+    }
   };
-
-  if (showPaymentInstructions) {
-    return (
-      <ManualPaymentInstructionModal
-        isOpen={true}
-        onClose={() => {
-          setShowPaymentInstructions(false);
-          onSuccess();
-          onClose();
-        }}
-        type="CONSULTATION"
-        patientName={patientProfile?.fullName || user?.fullName || 'المريض'}
-        doctorName={selectedDoctor?.fullName || 'طبيب العيادة'}
-        amount={finalFee}
-        currency="YER"
-        referenceNumber={createdConsultationData?.id || createdConsultationData?.consultation?.id}
-      />
-    );
-  }
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -344,7 +331,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
                 تنويه: تم استخدام الاستشارة المجانية المخصصة لحسابك مسبقاً
               </p>
               <p className="text-[11px] text-amber-800/90 mt-0.5">
-                تتيح مبادرة المستشفى استشارة مجانية واحدة فقط لكل حساب مريض. هذه الاستشارة الحالية مسجلة بالرسوم الرسمية المقررة ({baseConsultationFee} ر.ي) ويتم إرسالها للطبيب مباشرة.
+                تتيح مبادرة المستشفى استشارة مجانية واحدة فقط لكل حساب مريض. هذه الاستشارة الحالية خاضعة للرسوم الرسمية المقررة ({baseConsultationFee} ر.ي) وسيتم توجيهك للسداد الإلكتروني المباشر.
               </p>
             </div>
           </div>
@@ -582,8 +569,8 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
                   </>
                 ) : (
                   <>
-                    <Send className="w-4 h-4" />
-                    <span>إرسال الاستشارة الطبية ({finalFee} ر.ي)</span>
+                    <CreditCard className="w-4 h-4" />
+                    <span>متابعة السداد ({finalFee} ر.ي) وإرسال الاستشارة</span>
                   </>
                 )}
               </button>
@@ -591,6 +578,33 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
           </form>
         )}
       </div>
+
+      {/* Payment Checkout Modal for subsequent / paid consultations */}
+      {showPaymentModal && (
+        <PaymentCheckoutModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={async (payment) => {
+            setShowPaymentModal(false);
+            await executeCreateConsultation({
+              paymentId: payment.id,
+              transactionRef: payment.transactionReference
+            });
+          }}
+          serviceType="CONSULTATION"
+          serviceReferenceId={`CNS-TEMP-${Date.now()}`}
+          serviceName={`استشارة طبية عن بعد: ${title}`}
+          amount={finalFee}
+          currency="YER"
+          patientId={patientProfile?.id || user?.id}
+          patientName={patientProfile?.fullName || user?.fullName}
+          patientPhone={patientProfile?.phone || user?.phone}
+          patientMrn={patientProfile?.mrn}
+          doctorId={selectedDoctorId}
+          doctorName={selectedDoctor?.fullName}
+          doctorSpecialty={selectedDoctor?.specialtyNameAr}
+        />
+      )}
     </div>
   );
 };
