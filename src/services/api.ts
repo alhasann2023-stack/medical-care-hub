@@ -78,7 +78,6 @@ import {
 // In Android WebView/file:// builds there may be no relative HTTP origin, so
 // use the production Netlify URL explicitly.
 const PRODUCTION_API_BASE = 'https://silly-tapioca-576af1.netlify.app';
-let isBackendAvailable = true;
 
 function resolveApiUrl(url: string): string {
   if (/^https?:\/\//i.test(url)) return url;
@@ -242,14 +241,11 @@ async function fetchJson<T>(
 
     if (
       err?.name === 'TypeError' ||
-      err?.message ===
-        'BACKEND_UNAVAILABLE' ||
       err?.message?.includes(
         'Failed to fetch'
       )
     ) {
 
-      isBackendAvailable = true;
     }
 
     throw err;
