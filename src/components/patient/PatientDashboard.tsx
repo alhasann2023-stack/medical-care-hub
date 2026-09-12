@@ -449,14 +449,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
           {/* Primary Quick Action Buttons & Reminder Trigger */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              onClick={onNavigateToTimeline}
-              className="px-3.5 py-2.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/40 text-purple-200 hover:text-white font-bold text-xs transition-all border border-purple-400/40 flex items-center gap-1.5 cursor-pointer shadow-sm"
-              title="عرض السجل الزمني الطبي الشامل"
-            >
-              <Clock className="w-4 h-4 text-purple-300" />
-              <span>السجل الزمني</span>
-            </button>
+
 
             <button
               onClick={() => setIsInvoiceModalOpen(true)}
@@ -522,7 +515,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
               مجاناً
             </span>
           )}
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ${
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-1 group-hover:scale-110 transition-transform ${
             isFreePromoActive ? 'bg-amber-100 text-amber-900' : 'bg-cyan-50 text-cyan-700'
           }`}>
             {isFreePromoActive ? <Gift className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
@@ -535,9 +528,9 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
         <button
           onClick={onNavigateToTimeline}
-          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-purple-300 hover:shadow-md transition-all text-start group cursor-pointer"
+          className="p-4 rounded-2xl bg-white border border-slate-300 shadow-xs hover:border-purple-300 hover:shadow-md transition-all text-start group cursor-pointer"
         >
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
             <Clock className="w-5 h-5" />
           </div>
           <h3 className="font-extrabold text-sm text-slate-900">السجل الزمني</h3>
@@ -546,9 +539,9 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
         <button
           onClick={onNavigateToTests}
-          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all text-start group cursor-pointer"
+          className="p-4 rounded-2xl bg-white border border-slate-300 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all text-start group cursor-pointer"
         >
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
             <TestTube className="w-5 h-5" />
           </div>
           <h3 className="font-extrabold text-sm text-slate-900">فحوصاتي</h3>
@@ -557,9 +550,9 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
         <button
           onClick={onNavigateToReports}
-          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-rose-300 hover:shadow-md transition-all text-start group cursor-pointer"
+          className="p-4 rounded-2xl bg-white border border-slate-300 shadow-xs hover:border-rose-300 hover:shadow-md transition-all text-start group cursor-pointer"
         >
-          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
             <FileText className="w-5 h-5" />
           </div>
           <h3 className="font-extrabold text-sm text-slate-900">تقاريري الطبية</h3>
@@ -568,9 +561,9 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
         <button
           onClick={() => setIsInvoiceModalOpen(true)}
-          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-emerald-400 hover:shadow-md transition-all text-start group cursor-pointer"
+          className="p-4 rounded-2xl bg-white border border-slate-300 shadow-xs hover:border-emerald-400 hover:shadow-md transition-all text-start group cursor-pointer"
         >
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
             <Receipt className="w-5 h-5" />
           </div>
           <h3 className="font-extrabold text-sm text-slate-900">الفواتير والسداد</h3>

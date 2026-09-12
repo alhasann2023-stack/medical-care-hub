@@ -968,7 +968,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                 <select
                   value={settings.defaultCurrency}
                   onChange={(e) => setSettings({ ...settings, defaultCurrency: e.target.value as CurrencyCode })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-200 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-600"
                 >
                   <option value="YER">YER — الريال اليمني (الرسمي)</option>
                   <option value="USD">USD — الدولار الأمريكي</option>
@@ -984,7 +984,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                   type="number"
                   value={settings.vatPercentage}
                   onChange={(e) => setSettings({ ...settings, vatPercentage: Number(e.target.value) })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold font-mono outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-200 text-xs font-bold font-mono outline-none"
                 />
               </div>
 
@@ -997,7 +997,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                   step="0.1"
                   value={settings.gatewayFeePercentage}
                   onChange={(e) => setSettings({ ...settings, gatewayFeePercentage: Number(e.target.value) })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold font-mono outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-200 text-xs font-bold font-mono outline-none"
                 />
               </div>
             </div>
@@ -1031,7 +1031,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     kuraimi: { ...settings.kuraimi, environment: e.target.value as any }
                   })}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold bg-slate-50 dark:bg-slate-800 outline-none"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold bg-slate-50 dark:bg-slate-200 outline-none"
                 >
                   <option value="LIVE">الإنتاج المباشر (Production LIVE)</option>
                   <option value="SANDBOX">بيئة الاختبار (Sandbox Test)</option>
@@ -1052,7 +1052,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     kuraimi: { ...settings.kuraimi, merchantId: e.target.value }
                   })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 dark:border-slate-200 bg-slate-50 dark:bg-slate-200 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-600"
                 />
               </div>
 
@@ -1068,7 +1068,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     kuraimi: { ...settings.kuraimi, terminalId: e.target.value }
                   })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 dark:border-slate-200 bg-slate-50 dark:bg-slate-200 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-600"
                 />
               </div>
 
@@ -1083,7 +1083,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     kuraimi: { ...settings.kuraimi, serviceKey: e.target.value }
                   })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 dark:border-slate-200 bg-slate-50 dark:bg-slate-200 text-xs font-mono outline-none"
                 />
               </div>
 
@@ -1099,7 +1099,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     kuraimi: { ...settings.kuraimi, serviceSecret: e.target.value }
                   })}
                   placeholder="••••••••••••••••••••••••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-200 text-xs font-mono outline-none"
                 />
                 <span className="text-[10px] text-slate-400 mt-1 block">
                   * يتم حفظ المفاتيح الحساسة في طبقة الخادم فقط دون كشفها للمتصفح.

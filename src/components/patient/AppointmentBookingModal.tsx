@@ -634,7 +634,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
           {/* HEADER */}
           {/* ================================================= */}
 
-          <div className="p-5 bg-gradient-to-r from-blue-700 via-indigo-700 to-emerald-700 text-white flex items-center justify-between">
+          <div className="p-3 bg-gradient-to-r from-blue-700 via-indigo-700 to-emerald-700 text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-white/10 backdrop-blur-md">
                 <Calendar className="w-6 h-6 text-cyan-300" />
@@ -711,7 +711,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
               {/* ================================================= */}
 
               <div>
-                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
                   1. اختر الطبيب المعالج / التخصص{' '}
                   <span className="text-rose-500">*</span>
                 </label>
@@ -737,7 +737,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                 </select>
 
                 {selectedDoctor && (
-                  <div className="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                  <div className="mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
 
                     <div className="flex items-center gap-2.5">
                       <img
@@ -799,7 +799,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                       key={s.id}
                       value={s.id}
                     >
-                      {s.nameAr} — السعرتتت الرسمي: {s.price} ر.ي{' '}
+                      {s.nameAr} — السعر الرسمي: {s.price} ر.ي{' '}
                       {s.durationMinutes
                         ? `(${s.durationMinutes} دقيقة)`
                         : ''}
