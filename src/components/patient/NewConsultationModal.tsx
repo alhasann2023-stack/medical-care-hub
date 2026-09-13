@@ -383,7 +383,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
               >
                 {doctors.map(d => (
                   <option key={d.id} value={d.id}>
-                    {d.fullName} — {d.specialtyNameAr} ({d.title}) {d.consultationFee ? `— ${d.consultationFee} ر.ي` : ''}
+                    {d.fullName} — {d.specialtyId} ({d.title}) {d.consultationFee ? `— ${d.consultationFee} ر.ي` : ''}
                   </option>
                 ))}
               </select>

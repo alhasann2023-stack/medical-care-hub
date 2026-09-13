@@ -2626,7 +2626,7 @@ createDoctor: async (
     email: doctorEmail,
     phone,
     specialtyId: data.specialtyId || 'spec-1',
-    specialtyNameAr: data.specialtyNameAr || 'تخصص عام',
+    specialtyNameAr: data.specialtyNameAr || 'specialtyId ',
     specialtyNameEn: data.specialtyNameEn || 'General Specialty',
     title: data.title || 'استشاري أول',
     qualifications: Array.isArray(data.qualifications) ? data.qualifications : ['بورد تخصصي معتمد', 'ترخيص الهيئة الصحية'],
