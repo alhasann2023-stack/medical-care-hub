@@ -1348,9 +1348,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       <td className="p-3">
                         {(() => {
                           const isAptPaid = Boolean(
+                            apt.isPaid === true ||
                             apt.paymentStatus === 'PAID' ||
                             apt.paymentStatus === 'PAYMENT_SUCCESS' ||
-                            (apt.isPaid && apt.paymentStatus !== 'PENDING' && apt.paymentStatus !== 'PAYMENT_REQUIRED')
+                            (apt as any).isApprovedByAdmin === true
                           );
                           return (
                             <span

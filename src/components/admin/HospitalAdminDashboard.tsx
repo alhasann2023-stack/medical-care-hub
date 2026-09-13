@@ -279,8 +279,8 @@ const [editDocExperience, setEditDocExperience] = useState<string>("10");
   const [isNewServiceModalOpen, setIsNewServiceModalOpen] = useState<boolean>(false);
   const [newServiceNameAr, setNewServiceNameAr] = useState<string>('');
   const [newServiceNameEn, setNewServiceNameEn] = useState<string>('');
-  const [newServicePrice, setNewServicePrice] = useState<number>(250);
-  const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
+const [newServicePrice, setNewServicePrice] = useState<number>(250);
+const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
   const [newServiceCategory, setNewServiceCategory] = useState<string>('قسم العيادات التخصصية');
   const [newServiceDescAr, setNewServiceDescAr] = useState<string>('');
 
@@ -3263,27 +3263,46 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1.5">السعر (ر.ي)</label>
-                  <input
-                    type="number"
-                    value={newServicePrice}
-                    onChange={(e) => setNewServicePrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1.5">المدة (دقيقة)</label>
-                  <input
-                    type="number"
-                    value={newServiceDuration}
-                    onChange={(e) => setNewServiceDuration(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50"
-                    required
-                  />
-                </div>
-              </div>
+  <div>
+    <label className="block font-bold text-slate-800 mb-1.5">
+      السعر (ر.ي)
+    </label>
+
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={String(newServicePrice)}
+      onChange={(e) => {
+        const value = e.target.value.replace(/\D/g, "");
+        setNewServicePrice(value === "" ? 0 : Number(value));
+      }}
+      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50"
+      placeholder="أدخل السعر"
+      required
+    />
+  </div>
+
+  <div>
+    <label className="block font-bold text-slate-800 mb-1.5">
+      المدة (دقيقة)
+    </label>
+
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={String(newServiceDuration)}
+      onChange={(e) => {
+        const value = e.target.value.replace(/\D/g, "");
+        setNewServiceDuration(value === "" ? 0 : Number(value));
+      }}
+      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50"
+      placeholder="مثال: 30"
+      required
+    />
+  </div>
+</div>
 
               <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-3">
                 <button

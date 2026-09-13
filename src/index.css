@@ -9,17 +9,55 @@
 }
 
 @media print {
-  body * {
-    visibility: hidden;
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
   }
-  #printable-report, #printable-report * {
-    visibility: visible;
+
+  /* When a printable modal is open, completely hide the background app */
+  body.has-printable-modal #root {
+    display: none !important;
   }
+
+  body.has-printable-modal {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide print buttons and controls */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Modal unwrap so it doesn't repeat as a fixed header on pages */
+  body.has-printable-modal .fixed,
+  body.has-printable-modal .inset-0 {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  body.has-printable-modal .max-w-3xl,
+  body.has-printable-modal .max-w-2xl {
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    max-height: none !important;
+  }
+
   #printable-report {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }
 

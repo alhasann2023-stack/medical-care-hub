@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Printer, TestTube, CheckCircle2, AlertTriangle, Building2, QrCode, ShieldCheck, User, Calendar } from 'lucide-react';
 import { MedicalTest } from '../../types/medical';
 
@@ -13,6 +14,17 @@ export const PrintableTestResultModal: React.FC<PrintableTestResultModalProps> =
   onClose,
   test
 }) => {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('has-printable-modal');
+    } else {
+      document.body.classList.remove('has-printable-modal');
+    }
+    return () => {
+      document.body.classList.remove('has-printable-modal');
+    };
+  }, [isOpen]);
+
   if (!isOpen || !test) return null;
 
   const handlePrint = () => {
@@ -23,7 +35,7 @@ export const PrintableTestResultModal: React.FC<PrintableTestResultModalProps> =
     ? `LAB-${test.id.replace('tst-', '').slice(-6).toUpperCase()}`
     : `LAB-${test.id.slice(-6).toUpperCase()}`;
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 font-cairo">
       <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
         {/* Controls (Hidden during print) */}
@@ -67,7 +79,7 @@ export const PrintableTestResultModal: React.FC<PrintableTestResultModalProps> =
                 />
               </div>
               <div>
-                <h1 className="font-black text-lg text-slate-900 leading-tight">مستشفى الرعاية الطبية الحديث</h1>
+                <h1 className="font-black text-lg text-slate-900 leading-tight"> عيادة الدكتور وهاج المقطري</h1>
                 <p className="text-xs font-bold text-emerald-700">قسم المختبر المركزي والتحاليل التشخيصية المتطورة</p>
                 <p className="text-[11px] text-slate-500 font-mono">Central Medical Diagnostic Laboratory Report</p>
               </div>
@@ -201,4 +213,6 @@ export const PrintableTestResultModal: React.FC<PrintableTestResultModalProps> =
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };

@@ -656,13 +656,13 @@ export function createApiApp() {
   app.use(securityHeadersMiddleware);
   app.use(preventPathTraversal);
 
-  // Normalize Netlify Functions URL routing
+  // Normalize Netlify Functions URL routing if deployed on Netlify
   app.use((req: Request, _res: Response, next) => {
     if (req.url.startsWith('/.netlify/functions/api')) {
       req.url = req.url.replace('/.netlify/functions/api', '');
-    }
-    if (!req.url.startsWith('/api') && !req.url.startsWith('/assets') && !req.url.startsWith('/@') && req.url !== '/' && req.url !== '/favicon.ico') {
-      req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+      if (!req.url.startsWith('/api')) {
+        req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+      }
     }
     next();
   });
@@ -2715,11 +2715,31 @@ export function createApiApp() {
   // 6.5 Admin Approves Bank Transfer Notice / Pending Payment ("تم السداد")
   app.post('/api/payments/:id/approve', (req: Request, res: Response) => {
     const { id } = req.params;
-    const { adminName = 'الإدارة المالية والمحاسبة' } = req.body;
+    const { adminName = 'الإدارة المالية والمحاسبة', payment: incomingPayment } = req.body;
 
-    const payment = payments.find(p => p.id === id || p.transactionReference === id);
+    let payment = payments.find(p => p.id === id || p.transactionReference === id);
+    if (!payment && incomingPayment) {
+      payment = incomingPayment;
+      payments.unshift(payment);
+    }
+
     if (!payment) {
-      return res.status(404).json({ error: 'سجل الدفع المطلوب غير موجود.' });
+      payment = {
+        id,
+        patientId: '',
+        patientName: 'مريض',
+        serviceName: 'كشفية / موعد',
+        serviceType: 'APPOINTMENT',
+        paymentMethod: 'BANK_TRANSFER_NOTICE',
+        transactionReference: id,
+        amount: 0,
+        currency: 'YER',
+        status: 'PENDING',
+        paymentStatus: 'PENDING',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      } as Payment;
+      payments.unshift(payment);
     }
 
     const now = new Date().toISOString();
@@ -2731,29 +2751,40 @@ export function createApiApp() {
     (payment as any).isApprovedByAdmin = true;
     payment.updatedAt = now;
 
-    // IMPORTANT: approve exactly ONE payment -> exactly ONE linked service.
-    // Never use patientId, transactionReference alone, or broad fallbacks to
-    // select another appointment/consultation for the same patient.
-    const serviceType = String(payment.serviceType || '').toUpperCase();
-    const serviceReferenceId = String(
-      payment.serviceReferenceId ||
-      (payment as any).appointmentId ||
-      (payment as any).consultationId ||
-      ''
-    );
+    // Link service by ID, paymentId, or transactionReference
+    const serviceReferenceId = payment.serviceReferenceId || payment.appointmentId || payment.consultationId || '';
+    let serviceType = String(payment.serviceType || '').toUpperCase();
+    if (!serviceType) {
+      if (payment.consultationId || serviceReferenceId.startsWith('cns')) {
+        serviceType = 'CONSULTATION';
+      } else if (payment.appointmentId || serviceReferenceId.startsWith('apt')) {
+        serviceType = 'APPOINTMENT';
+      }
+    }
 
     let linkedApt: Appointment | undefined;
     let linkedCon: Consultation | undefined;
 
-    if (serviceType === 'APPOINTMENT') {
+    if (serviceType === 'APPOINTMENT' || (!serviceType && !linkedCon)) {
       linkedApt = appointments.find(a =>
         (serviceReferenceId && a.id === serviceReferenceId) ||
-        a.paymentId === payment.id
+        (payment.id && a.paymentId === payment.id) ||
+        (payment.transactionReference && (a.paymentTransactionRef === payment.transactionReference || a.transactionReference === payment.transactionReference))
       );
 
+      // Fallback: If not found by exact ID/ref, match by patient ID or phone for pending appointment
+      if (!linkedApt && (payment.patientId || (payment as any).patientPhone)) {
+        linkedApt = appointments.find(a =>
+          ((payment.patientId && (a.patientId === payment.patientId || (a as any).patientUserId === payment.patientId)) ||
+           (payment.patientPhone && a.patientPhone === payment.patientPhone)) &&
+          (!a.isPaid || a.paymentStatus === 'PENDING' || a.paymentStatus === 'PAYMENT_REQUIRED')
+        );
+      }
+
       if (linkedApt) {
-        linkedApt.paymentStatus = 'PAYMENT_SUCCESS';
+        linkedApt.paymentStatus = 'PAID';
         linkedApt.isPaid = true;
+        (linkedApt as any).isApprovedByAdmin = true;
         linkedApt.paymentDate = now;
         linkedApt.paymentId = payment.id;
         linkedApt.paymentMethod = payment.paymentMethod || 'BANK_TRANSFER_NOTICE';
@@ -2764,11 +2795,18 @@ export function createApiApp() {
         }
         linkedApt.coordinatorNotes = `تم اعتماد السداد (تم السداد ✓) بواسطة ${adminName} بتاريخ ${new Date().toLocaleDateString('ar-YE')}`;
         linkedApt.updatedAt = now;
+
+        payment.serviceReferenceId = linkedApt.id;
+        payment.appointmentId = linkedApt.id;
+        payment.serviceType = 'APPOINTMENT';
       }
-    } else if (serviceType === 'CONSULTATION') {
+    }
+
+    if (serviceType === 'CONSULTATION' || (!serviceType && !linkedApt)) {
       linkedCon = consultations.find(c =>
         (serviceReferenceId && c.id === serviceReferenceId) ||
-        c.paymentId === payment.id
+        (payment.id && c.paymentId === payment.id) ||
+        (payment.transactionReference && (c.transactionReference === payment.transactionReference || (c as any).paymentTransactionRef === payment.transactionReference))
       );
 
       if (linkedCon) {
@@ -2784,11 +2822,6 @@ export function createApiApp() {
         }
         linkedCon.updatedAt = now;
       }
-    } else {
-      return res.status(400).json({
-        error: 'عملية الدفع لا تحتوي على نوع خدمة صالح (APPOINTMENT أو CONSULTATION).',
-        payment
-      });
     }
 
     const patient = patients.find(p => p.id === payment.patientId || p.userId === payment.patientId);
@@ -3510,35 +3543,41 @@ export function createApiApp() {
 
     appointments.unshift(newAppointment);
 
-    // Link existing payment if provided
+    // Link existing payment if provided or ALWAYS create a payment record in payments table directly
     let paymentRecord: Payment | null = null;
     if (req.body.paymentId) {
       const existingPay = payments.find(p => p.id === req.body.paymentId);
       if (existingPay) {
         existingPay.serviceReferenceId = newAppointment.id;
+        existingPay.appointmentId = newAppointment.id;
         existingPay.serviceName = newAppointment.serviceName;
-        existingPay.status = 'PENDING';
-        existingPay.paymentStatus = 'PENDING';
         paymentRecord = existingPay;
       }
-    } else if (!isWaived && fee > 0 && !isPaid) {
+    }
+
+    if (!paymentRecord) {
       paymentRecord = {
-        id: `pay-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id: req.body.paymentId || `pay-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}`,
         patientId: patient.id,
-        patientName: patient.fullName,
-        patientPhone: patient.phone,
+        patientName: patientName || patient.fullName,
+        patientPhone: patientPhone || patient.phone,
+        patientMrn: patient.mrn,
         doctorId: docId,
         doctorName: docName,
         doctorSpecialty: docSpecialty,
         serviceType: 'APPOINTMENT',
+        appointmentId: newAppointment.id,
         serviceReferenceId: newAppointment.id,
         serviceName: newAppointment.serviceName,
         amount: fee,
         currency: 'YER',
-        paymentMethod: req.body.paymentMethod || 'KURAIMI_EXPRESS',
-        status: 'PENDING',
-        paymentStatus: 'PENDING',
-        transactionReference: req.body.transactionReference || `TXN-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(100000 + Math.random() * 900000)}`,
+        paymentMethod: isWaived ? 'WAIVED' : (req.body.paymentMethod || (isNotice ? 'BANK_TRANSFER_NOTICE' : (isPaid ? 'KURAIMI_EXPRESS' : 'KURAIMI_EXPRESS'))),
+        status: isWaived ? 'WAIVED' : (isPaid ? 'PAYMENT_SUCCESS' : 'PENDING'),
+        paymentStatus: isWaived ? 'WAIVED' : (isPaid ? 'PAID' : 'PENDING'),
+        transactionReference: req.body.transactionReference || req.body.paymentTransactionRef || (isWaived ? `FREE-${Date.now().toString().slice(-6)}` : `TXN-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(100000 + Math.random() * 900000)}`),
+        isWaived: isWaived,
+        waivedReason: isWaived ? (req.body.waiverReason || 'إعفاء مالي معتمد') : undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -3970,35 +4009,41 @@ export function createApiApp() {
 
     consultations.unshift(newConsultation);
 
-    // Link existing payment if provided
+    // Link existing payment if provided or ALWAYS create a payment record in payments table directly
     let paymentRecord: Payment | null = null;
     if (req.body.paymentId) {
       const existingPay = payments.find(p => p.id === req.body.paymentId);
       if (existingPay) {
         existingPay.serviceReferenceId = newConsultation.id;
+        existingPay.consultationId = newConsultation.id;
         existingPay.serviceName = `استشارة طبية: ${title}`;
-        existingPay.status = 'PENDING';
-        existingPay.paymentStatus = 'PENDING';
         paymentRecord = existingPay;
       }
-    } else if (!isWaived && fee > 0 && !isPaid) {
+    }
+
+    if (!paymentRecord) {
       paymentRecord = {
-        id: `pay-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id: req.body.paymentId || `pay-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}`,
         patientId: patient.id,
-        patientName: patient.fullName,
-        patientPhone: patient.phone,
+        patientName: patientName || patient.fullName,
+        patientPhone: patientPhone || patient.phone,
+        patientMrn: patient.mrn,
         doctorId: docId,
         doctorName: docName,
         doctorSpecialty: docSpecialty,
         serviceType: 'CONSULTATION',
+        consultationId: newConsultation.id,
         serviceReferenceId: newConsultation.id,
         serviceName: `استشارة طبية: ${title}`,
         amount: fee,
         currency: 'YER',
-        paymentMethod: req.body.paymentMethod || 'KURAIMI_EXPRESS',
-        status: 'PENDING',
-        paymentStatus: 'PENDING',
-        transactionReference: req.body.transactionReference || `TXN-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(100000 + Math.random() * 900000)}`,
+        paymentMethod: finalIsWaived ? 'WAIVED' : (req.body.paymentMethod || (isNotice ? 'BANK_TRANSFER_NOTICE' : (isPaid ? 'KURAIMI_EXPRESS' : 'KURAIMI_EXPRESS'))),
+        status: finalIsWaived ? 'WAIVED' : (isPaid ? 'PAYMENT_SUCCESS' : 'PENDING'),
+        paymentStatus: finalIsWaived ? 'WAIVED' : (isPaid ? 'PAID' : 'PENDING'),
+        transactionReference: req.body.transactionReference || req.body.paymentTransactionRef || (finalIsWaived ? `FREE-${Date.now().toString().slice(-6)}` : `TXN-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(100000 + Math.random() * 900000)}`),
+        isWaived: finalIsWaived,
+        waivedReason: finalIsWaived ? (waiverReason || 'إعفاء مالي معتمد') : undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -5892,7 +5937,7 @@ ${context}
 
 export async function startServer() {
   const app = createApiApp();
-  const PORT = 3000;
+  const PORT = 3027;
 
   // ----------------------------------------------------
   // VITE DEVELOPMENT MIDDLEWARE & PRODUCTION SERVING

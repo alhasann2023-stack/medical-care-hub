@@ -78,8 +78,8 @@ export const CustomerServiceDashboard: React.FC = () => {
   const [isNewServiceModalOpen, setIsNewServiceModalOpen] = useState<boolean>(false);
   const [newServiceNameAr, setNewServiceNameAr] = useState<string>('');
   const [newServiceNameEn, setNewServiceNameEn] = useState<string>('');
-  const [newServicePrice, setNewServicePrice] = useState<number>(250);
-  const [newServiceDuration, setNewServiceDuration] = useState<number>();
+const [newServicePrice, setNewServicePrice] = useState<number>(250);
+const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
   const [newServiceCategory, setNewServiceCategory] = useState<string>('قسم العيادات التخصصية');
   const [newServiceDescAr, setNewServiceDescAr] = useState<string>('');
 
@@ -88,7 +88,7 @@ export const CustomerServiceDashboard: React.FC = () => {
   const [editServiceNameAr, setEditServiceNameAr] = useState<string>('');
   const [editServiceNameEn, setEditServiceNameEn] = useState<string>('');
   const [editServicePrice, setEditServicePrice] = useState<number>(250);
-  const [editServiceDuration, setEditServiceDuration] = useState<number>();
+  const [editServiceDuration, setEditServiceDuration] = useState<number>(30);
   const [editServiceCategory, setEditServiceCategory] = useState<string>('قسم العيادات التخصصية');
   const [editServiceDescAr, setEditServiceDescAr] = useState<string>('');
   const [editServiceIsActive, setEditServiceIsActive] = useState<boolean>(true);
@@ -737,9 +737,10 @@ export const CustomerServiceDashboard: React.FC = () => {
                               {/* Payment status badge */}
                               {(() => {
                                 const isAptPaid = Boolean(
+                                  apt.isPaid === true ||
                                   apt.paymentStatus === 'PAID' ||
                                   apt.paymentStatus === 'PAYMENT_SUCCESS' ||
-                                  (apt.isPaid && apt.paymentStatus !== 'PENDING' && apt.paymentStatus !== 'PAYMENT_REQUIRED')
+                                  (apt as any).isApprovedByAdmin === true
                                 );
                                 return (
                                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
@@ -948,9 +949,10 @@ export const CustomerServiceDashboard: React.FC = () => {
                 <div className="flex items-center gap-2">
                   {(() => {
                     const isCoordinatingPaid = Boolean(
+                      coordinatingAppointment.isPaid === true ||
                       coordinatingAppointment.paymentStatus === 'PAID' ||
                       coordinatingAppointment.paymentStatus === 'PAYMENT_SUCCESS' ||
-                      (coordinatingAppointment.isPaid && coordinatingAppointment.paymentStatus !== 'PENDING' && coordinatingAppointment.paymentStatus !== 'PAYMENT_REQUIRED')
+                      (coordinatingAppointment as any).isApprovedByAdmin === true
                     );
                     return (
                       <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
@@ -1191,27 +1193,46 @@ export const CustomerServiceDashboard: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1.5">السعر الرسمي (ر.ي) <span className="text-rose-500">*</span></label>
-                  <input
-                    type="number"
-                    value={newServicePrice}
-                    onChange={(e) => setNewServicePrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 font-mono font-bold text-purple-900"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1.5">المدة التقديرية (دقيقة) <span className="text-rose-500">*</span></label>
-                  <input
-                    type="number"
-                    value={newServiceDuration}
-                    onChange={(e) => setNewServiceDuration(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 font-mono"
-                    required
-                  />
-                </div>
-              </div>
+  <div>
+    <label className="block font-bold text-slate-800 mb-1.5">
+      السعر (ر.ي)
+    </label>
+
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={String(newServicePrice)}
+      onChange={(e) => {
+        const value = e.target.value.replace(/\D/g, "");
+        setNewServicePrice(value === "" ? 0 : Number(value));
+      }}
+      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50"
+      placeholder="أدخل السعر"
+      required
+    />
+  </div>
+
+  <div>
+    <label className="block font-bold text-slate-800 mb-1.5">
+      المدة (دقيقة)
+    </label>
+
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={String(newServiceDuration)}
+      onChange={(e) => {
+        const value = e.target.value.replace(/\D/g, "");
+        setNewServiceDuration(value === "" ? 0 : Number(value));
+      }}
+      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50"
+      placeholder="مثال: 30"
+      required
+    />
+  </div>
+</div>
 
               <div>
                 <label className="block font-bold text-slate-800 mb-1.5">القسم / العيادة</label>

@@ -420,7 +420,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
       <div className="relative w-full max-w-xl my-8 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-all text-start">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-6 bg-gradient-to-r from-emerald-700 via-teal-700 to-slate-900 text-white">
+        <div className="flex items-center justify-between p-6 bg-gradient-to-r from-emerald-700 via-teal-700 to-slate-900 text-white ">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-white/15 rounded-2xl backdrop-blur-md">
               <CreditCard className="w-6 h-6 text-white" />
@@ -448,7 +448,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
 
         {/* Content */}
         {!completedPayment ? (
-          <div className="p-2 space-y-2">
+          <div className="p-2 space-y-1">
             
             {/* Step 1: Currency Tabs & Live Exchange Equality Banner */}
             <div>
@@ -465,8 +465,8 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                 </div>
               </div>
               
-              <div className="grid grid-cols-3 gap-2.5">
-                {(['YER', 'USD', 'SAR'] as CurrencyCode[]).map((curr) => {
+              <div className="grid grid-cols-1 gap-2.5">
+                {(['YER'] as CurrencyCode[]).map((curr) => {
                   const info = SUPPORTED_CURRENCIES[curr];
                   const isSelected = selectedCurrency === curr;
                   const itemPrice = resolveServicePrice({ price: amount, multiCurrencyPricing }, curr, 'YER');
@@ -545,7 +545,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
 
             {/* OTP Step View for Kuraimi */}
             {isOtpStep ? (
-              <form onSubmit={handleVerifyKuraimiOtp} className="space-y-2 bg-amber-50/70 dark:bg-amber-950/20 p-3 rounded-2xl border border-amber-200 dark:border-amber-800/50">
+              <form onSubmit={handleVerifyKuraimiOtp} className="space-y-1 bg-amber-50/70 dark:bg-amber-950/20 p-3 rounded-2xl border border-amber-200 dark:border-amber-800/50">
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-amber-100 dark:bg-amber-900/60 rounded-xl text-amber-800 dark:text-amber-200">
                     <KeyRound className="w-6 h-6" />
@@ -619,7 +619,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
               <>
                 {/* Method Selector */}
                 <div>
-                  <label className="block text-xs font-black text-slate-800 dark:text-slate-200 mb-2">
+                  <label className="block text-xs font-black text-slate-800 dark:text-slate-200 mb-0">
                     اختر وسيلة الدفع المعتمدة
                   </label>
 
@@ -628,7 +628,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setSelectedMethod('KURAIMI_EXPRESS')}
-                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all cursor-pointer relative ${
+                      className={`flex flex-col items-center justify-center p-1 rounded-2xl border text-center transition-all cursor-pointer relative ${
                         selectedMethod === 'KURAIMI_EXPRESS' || selectedMethod === 'KURAIMI_HASEB' || selectedMethod === 'KURAIMI_PAY'
                           ? 'border-emerald-500 bg-emerald-500/10 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 ring-2 ring-emerald-500/20 shadow-xs'
                           : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
@@ -637,7 +637,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                       <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-600 text-white leading-none">
                         بوابة API
                       </span>
-                      <Landmark className="w-6 h-6 text-emerald-600 dark:text-emerald-400 mb-1 mt-1" />
+                      <Landmark className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mb-1 mt-1" />
                       <span className="text-xs font-black">بنك الكريمي</span>
                       <span className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-0.5 font-bold">بوابة الدفع الإلكتروني</span>
                     </button>
@@ -649,13 +649,13 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setSelectedMethod('ONE_CASH')}
-                          className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                          className={`flex flex-col items-center justify-center p-1 rounded-2xl border text-center transition-all cursor-pointer ${
                             selectedMethod === 'ONE_CASH'
                               ? 'border-amber-500 bg-amber-500/10 dark:bg-amber-950/40 text-amber-900 dark:text-amber-100 ring-2 ring-amber-500/20 shadow-xs'
                               : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
                           }`}
                         >
-                          <Wallet className="w-6 h-6 text-amber-500 mb-1" />
+                          <Wallet className="w-4 h-4 text-amber-500 mb-1" />
                           <span className="text-xs font-black">وان كاش (OneCash)</span>
                           <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">حساب المحفظة المعتمد</span>
                         </button>
@@ -670,7 +670,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                               : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
                           }`}
                         >
-                          <Smartphone className="w-6 h-6 text-purple-600 mb-1" />
+                          <Smartphone className="w-4 h-4 text-purple-600 mb-1" />
                           <span className="text-xs font-black">محفظتي (Mahfazati)</span>
                           <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">بنك اليمن الدولي</span>
                         </button>
@@ -685,7 +685,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                               : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
                           }`}
                         >
-                          <Smartphone className="w-6 h-6 text-sky-500 mb-1" />
+                          <Smartphone className="w-4 h-4 text-sky-500 mb-1" />
                           <span className="text-xs font-black">جيب (Jeeb)</span>
                           <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">بنك التضامن</span>
                         </button>
@@ -700,7 +700,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                               : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
                           }`}
                         >
-                          <Wallet className="w-6 h-6 text-indigo-500 mb-1" />
+                          <Wallet className="w-4 h-4 text-indigo-500 mb-1" />
                           <span className="text-xs font-black">فلوسك (Floosak)</span>
                           <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">بنك اليمن والكويت</span>
                         </button>
@@ -708,19 +708,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                     )}
 
                     {/* Visa / Mastercard */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMethod('VISA_MASTERCARD')}
-                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                        selectedMethod === 'VISA_MASTERCARD' || selectedMethod === 'VISA' || selectedMethod === 'MASTERCARD'
-                          ? 'border-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 ring-2 ring-emerald-500/20 shadow-xs'
-                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
-                      }`}
-                    >
-                      <CreditCard className="w-6 h-6 text-blue-600 dark:text-blue-400 mb-1" />
-                      <span className="text-xs font-black">Visa / Mastercard</span>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">بطاقة بنكية</span>
-                    </button>
+
 
                     {/* Mada (available for SAR) */}
                     {selectedCurrency === 'SAR' && (
@@ -733,7 +721,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                             : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
                         }`}
                       >
-                        <Wallet className="w-6 h-6 text-emerald-600 mb-1" />
+                        <Wallet className="w-4 h-4 text-emerald-600 mb-1" />
                         <span className="text-xs font-black">مدى (Mada)</span>
                         <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">بطاقات مدى السعودية</span>
                       </button>
@@ -791,7 +779,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                         <div className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
                           <div>
                             <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-bold">
-                              رقم حساب / هاتف المحفظة للمستشفى:
+                              رقم حساب / هاتف المحفظة للعيادة:
                             </span>
                             <span className="font-mono text-base font-black text-slate-900 dark:text-slate-100">
                               {selectedMethod === 'ONE_CASH' && (hospitalAccounts?.oneCash?.accountNumber || '777123456')}
@@ -803,11 +791,11 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                             <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
                               اسم الحساب:{' '}
                               <strong className="text-slate-800 dark:text-slate-200 font-bold">
-                                {selectedMethod === 'ONE_CASH' && (hospitalAccounts?.oneCash?.accountName || 'مستشفى وهج الطبي التخصصي')}
-                                {selectedMethod === 'MAHFAZATI' && (hospitalAccounts?.mahfazati?.accountName || 'مستشفى وهج الطبي التخصصي')}
-                                {selectedMethod === 'JEEB' && (hospitalAccounts?.jeeb?.accountName || 'مستشفى وهج الطبي التخصصي')}
-                                {selectedMethod === 'FLOOSAK' && (hospitalAccounts?.floosak?.accountName || 'مستشفى وهج الطبي التخصصي')}
-                                {selectedMethod === 'JAWALI' && 'مستشفى وهج الطبي التخصصي'}
+                                {selectedMethod === 'ONE_CASH' && (hospitalAccounts?.oneCash?.accountName || 'عيادة الدكتور وهاج المقطري  ')}
+                                {selectedMethod === 'MAHFAZATI' && (hospitalAccounts?.mahfazati?.accountName || 'عيادة الدكتور وهاج المقطري  ')}
+                                {selectedMethod === 'JEEB' && (hospitalAccounts?.jeeb?.accountName || 'عيادة الدكتور وهاج المقطري  ')}
+                                {selectedMethod === 'FLOOSAK' && (hospitalAccounts?.floosak?.accountName || 'عيادة الدكتور وهاج المقطري  ')}
+                                {selectedMethod === 'JAWALI' && 'عيادة الدكتور وهاج المقطري  '}
                               </strong>
                             </span>
                           </div>

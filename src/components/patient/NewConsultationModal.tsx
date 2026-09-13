@@ -40,7 +40,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
   const [title, setTitle] = useState<string>('');
   const [problemDescription, setProblemDescription] = useState<string>('');
   const [symptomsInput, setSymptomsInput] = useState<string>('خفقان، إجهاد خفيف');
-  const [duration, setDuration] = useState<string>('منذ 4 أيام');
+  const [duration, setDuration] = useState<string>('');
   const [attachments, setAttachments] = useState<{ name: string; url: string; type: string; size: string }[]>([]);
   
   const [isLoading, setIsLoading] = useState<boolean>(false);

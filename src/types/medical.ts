@@ -381,6 +381,8 @@ export interface Payment {
   paidAt?: string;
   createdAt: string;
   confirmedAt?: string;
+  confirmedBy?: string;
+  isApprovedByAdmin?: boolean;
   updatedAt?: string;
 }
 
@@ -407,6 +409,7 @@ export interface Appointment {
   paymentId?: string;
   paymentStatus?: PaymentStatus;
   isPaid?: boolean;
+  isApprovedByAdmin?: boolean;
   paymentAmount?: number;
   currency?: string;
   paymentMethod?: PaymentMethod;

@@ -137,11 +137,21 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
   const handleApprovePayment = async (payment: Payment) => {
     setApprovingPaymentId(payment.id);
     try {
-      await api.approvePayment(payment.id, 'الإدارة المالية والمحاسبة');
+      await api.approvePayment(payment.id, 'الإدارة المالية والمحاسبة', payment);
+      // Optimistic update of local state so the table immediately updates
+      setPayments(prev => prev.map(p => (p.id === payment.id || (payment.transactionReference && p.transactionReference === payment.transactionReference)) ? {
+        ...p,
+        status: 'PAYMENT_SUCCESS',
+        paymentStatus: 'PAID',
+        paidAt: new Date().toISOString(),
+        confirmedAt: new Date().toISOString(),
+        confirmedBy: 'الإدارة المالية والمحاسبة',
+        isApprovedByAdmin: true
+      } : p));
       if (onShowNotification) {
         onShowNotification(
           'success',
-          `تم اعتماد السداد بنجاح للعملية (${payment.transactionReference || payment.id}) للمريض ${payment.patientName}. تم تحديث الحالة في واجهات الطبيب وخدمة العملاء إلى "تم التسديد ✓".`
+          `تم اعتماد السداد بنجاح للعملية (${payment.transactionReference || payment.id}) للمريض ${payment.patientName || ''}. تم تحديث الحالة في واجهات الطبيب وخدمة العملاء إلى "تم التسديد ✓".`
         );
       }
       if (selectedNoticePayment?.id === payment.id) {
@@ -976,30 +986,53 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  نسبة ضريبة القيمة المضافة (VAT %)
-                </label>
-                <input
-                  type="number"
-                  value={settings.vatPercentage}
-                  onChange={(e) => setSettings({ ...settings, vatPercentage: Number(e.target.value) })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-200 text-xs font-bold font-mono outline-none"
-                />
-              </div>
+<div>
+  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+    نسبة ضريبة القيمة المضافة (VAT %)
+  </label>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  عمولة بوابات الدفع التقديرية (Fee %)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={settings.gatewayFeePercentage}
-                  onChange={(e) => setSettings({ ...settings, gatewayFeePercentage: Number(e.target.value) })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-200 text-xs font-bold font-mono outline-none"
-                />
-              </div>
+  <input
+    type="text"
+    inputMode="decimal"
+    value={String(settings.vatPercentage ?? "")}
+    onChange={(e) => {
+      const value = e.target.value
+        .replace(/[^\d.]/g, "")
+        .replace(/(\..*)\./g, "$1");
+
+      setSettings({
+        ...settings,
+        vatPercentage: value === "" ? 0 : Number(value),
+      });
+    }}
+    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-200 text-xs font-bold font-mono outline-none"
+    placeholder="مثال: 15"
+  />
+</div>
+
+<div>
+  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+    عمولة بوابات الدفع التقديرية (Fee %)
+  </label>
+
+  <input
+    type="text"
+    inputMode="decimal"
+    value={String(settings.gatewayFeePercentage ?? "")}
+    onChange={(e) => {
+      const value = e.target.value
+        .replace(/[^\d.]/g, "")
+        .replace(/(\..*)\./g, "$1");
+
+      setSettings({
+        ...settings,
+        gatewayFeePercentage: value === "" ? 0 : Number(value),
+      });
+    }}
+    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-200 text-xs font-bold font-mono outline-none"
+    placeholder="مثال: 2.5"
+  />
+</div>
             </div>
           </div>
 
@@ -1214,7 +1247,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                       value={settings.hospitalAccounts?.oneCash?.notes || ''}
                       onChange={(e) => updateHospitalAccount('oneCash', 'notes', e.target.value)}
                       placeholder="التحويل المباشر من تطبيق وان كاش لرقم المحفظة"
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none"
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-400 outline-none"
                     />
                   </div>
                 </div>
@@ -1284,7 +1317,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                       value={settings.hospitalAccounts?.mahfazati?.notes || ''}
                       onChange={(e) => updateHospitalAccount('mahfazati', 'notes', e.target.value)}
                       placeholder="التحويل المباشر من تطبيق محفظتي إلى حساب المستشفى"
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none"
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-400 outline-none"
                     />
                   </div>
                 </div>
@@ -1354,7 +1387,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                       value={settings.hospitalAccounts?.jeeb?.notes || ''}
                       onChange={(e) => updateHospitalAccount('jeeb', 'notes', e.target.value)}
                       placeholder="التحويل المباشر من تطبيق جيب (بنك التضامن)"
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none"
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-400 outline-none"
                     />
                   </div>
                 </div>
@@ -1424,7 +1457,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                       value={settings.hospitalAccounts?.floosak?.notes || ''}
                       onChange={(e) => updateHospitalAccount('floosak', 'notes', e.target.value)}
                       placeholder="التحويل من تطبيق فلوسك (بنك اليمن والكويت)"
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none"
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-400 outline-none"
                     />
                   </div>
                 </div>
@@ -1460,7 +1493,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     cardGateway: { ...settings.cardGateway, environment: e.target.value as any }
                   })}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold bg-slate-50 dark:bg-slate-800 outline-none"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold bg-slate-50 dark:bg-slate-400 outline-none"
                 >
                   <option value="LIVE">الإنتاج المباشر (Production LIVE)</option>
                   <option value="SANDBOX">بيئة الاختبار (Sandbox Test)</option>
@@ -1480,7 +1513,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     cardGateway: { ...settings.cardGateway, gatewayProvider: e.target.value }
                   })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-400 text-xs font-bold outline-none"
                 />
               </div>
 
@@ -1495,7 +1528,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     cardGateway: { ...settings.cardGateway, merchantId: e.target.value }
                   })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-400 text-xs font-mono font-bold outline-none"
                 />
               </div>
 
@@ -1510,7 +1543,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     cardGateway: { ...settings.cardGateway, publishableKey: e.target.value }
                   })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-400 text-xs font-mono outline-none"
                 />
               </div>
 
@@ -1526,7 +1559,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     cardGateway: { ...settings.cardGateway, secretKey: e.target.value }
                   })}
                   placeholder="••••••••••••••••••••••••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-400 text-xs font-mono outline-none"
                 />
               </div>
             </div>
