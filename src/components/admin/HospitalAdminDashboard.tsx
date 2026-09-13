@@ -1595,7 +1595,7 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
                         </div>
                       </td>
                       <td className="p-3.5 font-medium text-slate-700">
-                        <span className="font-bold text-slate-900 block">{d.specialtyNameAr}</span>
+                        <span className="font-bold text-slate-900 block">{d.specialtyId}</span>
                         <span className="text-[10px] text-emerald-700 font-medium">{d.title}</span>
                       </td>
                       <td className="p-3.5">

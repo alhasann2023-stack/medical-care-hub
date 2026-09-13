@@ -62,7 +62,7 @@
         "relation": "قريب",
         "phone": ""
       },
-      "address": "المملكة العربية السعودية",
+      "address": "الجمهورية اليمنية  ",
       "allergies": [],
       "chronicDiseases": [],
       "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=%D9%85%D8%B1%D9%8A%D9%85",
@@ -76,8 +76,8 @@
       "fullName": "وليد راوح",
       "email": "doc.772277722@medicalcarehub.com",
       "phone": "772277722",
-      "specialtyId": "spec-1",
-      "specialtyNameAr": "تخصص عام",
+      "specialtyId": "",
+      "specialtyNameAr": " ",
       "specialtyNameEn": "General Specialty",
       "title": "استشاري أول",
       "qualifications": [

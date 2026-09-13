@@ -911,7 +911,7 @@ export function createApiApp() {
         specialtyNameEn: 'Family Medicine & Internal Care',
         qualifications: ['اليمن ', ' '],
         experienceYears: 10,
-        bioAr: 'طبيب معتمد ومسجل لدى الهيئة السعودية للتخصصات الصحية.',
+        bioAr: 'طبيب معتمد ومسجل لدى الهيئة اليمنية للتخصصات الصحية.',
         bioEn: 'Certified medical consultant registered with health authorities.',
         consultationFee: 150,
         avatar: newUser.avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=400',
@@ -2928,8 +2928,9 @@ export function createApiApp() {
     // If payment not found in memory array, resolve from passed body or find from appointments / consultations
     if (!payment) {
       if (req.body.payment && req.body.payment.id) {
-        payment = { ...req.body.payment };
-        payments.unshift(payment);
+        const recoveredPayment = { ...req.body.payment } as Payment;
+        payment = recoveredPayment;
+        payments.unshift(recoveredPayment);
       } else {
         const linkedApt = appointments.find(a => 
           a.id === paymentId || 

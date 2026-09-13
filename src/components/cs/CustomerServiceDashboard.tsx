@@ -721,48 +721,90 @@ const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
                             )}
                           </td>
                           <td className="p-3.5">
-                            <div className="flex flex-col gap-1 items-start">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
-                                apt.status === 'CONFIRMED'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : apt.status === 'CONTACTED'
-                                  ? 'bg-purple-100 text-purple-800'
-                                  : apt.status === 'CANCELLED'
-                                  ? 'bg-rose-100 text-rose-800'
-                                  : 'bg-amber-100 text-amber-800 animate-pulse'
-                              }`}>
-                                {apt.status === 'CONFIRMED' ? 'مؤكد' : apt.status === 'CONTACTED' ? 'تم الاتصال' : apt.status === 'CANCELLED' ? 'ملغي' : 'طلب جديد'}
-                              </span>
+<div className="flex flex-col gap-1 items-start">
+  {(() => {
+    const isRefunded =
+      apt.paymentStatus === 'REFUNDED' ||
+      apt.paymentStatus === 'REFUND_SUCCESS' ||
+      (apt as any).refundStatus === 'REFUNDED' ||
+      (apt as any).isRefunded === true;
 
-                              {/* Payment status badge */}
-                              {(() => {
-                                const isAptPaid = Boolean(
-                                  apt.isPaid === true ||
-                                  apt.paymentStatus === 'PAID' ||
-                                  apt.paymentStatus === 'PAYMENT_SUCCESS' ||
-                                  (apt as any).isApprovedByAdmin === true
-                                );
-                                return (
-                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
-                                    isAptPaid
-                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                      : 'bg-amber-50 text-amber-800 border border-amber-200'
-                                  }`}>
-                                    <CheckCircle2 className={`w-3 h-3 ${isAptPaid ? 'text-emerald-600' : 'text-amber-500'}`} />
-                                    <span>
-                                      {isAptPaid ? 'تم السداد' : 'انتظار السداد'}
-                                    </span>
-                                  </span>
-                                );
-                              })()}
+    const isAptPaid = Boolean(
+      !isRefunded &&
+      (
+        apt.isPaid === true ||
+        apt.paymentStatus === 'PAID' ||
+        apt.paymentStatus === 'PAYMENT_SUCCESS' ||
+        (apt as any).isApprovedByAdmin === true
+      )
+    );
 
-                              {apt.isDoctorAbsent && (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 flex items-center gap-1">
-                                  <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
-                                  <span>تم إشعار المريض بالغياب</span>
-                                </span>
-                              )}
-                            </div>
+    return (
+      <>
+        {/* Appointment status badge */}
+        <span
+          className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
+            isRefunded
+              ? 'bg-rose-100 text-rose-800'
+              : apt.status === 'CONFIRMED'
+                ? 'bg-emerald-100 text-emerald-800'
+                : apt.status === 'CONTACTED'
+                  ? 'bg-purple-100 text-purple-800'
+                  : apt.status === 'CANCELLED'
+                    ? 'bg-rose-100 text-rose-800'
+                    : 'bg-amber-100 text-amber-800 animate-pulse'
+          }`}
+        >
+          {isRefunded
+            ? 'ملغي'
+            : apt.status === 'CONFIRMED'
+              ? 'مؤكد'
+              : apt.status === 'CONTACTED'
+                ? 'تم الاتصال'
+                : apt.status === 'CANCELLED'
+                  ? 'ملغي'
+                  : 'طلب جديد'}
+        </span>
+
+        {/* Payment status badge */}
+        <span
+          className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
+            isRefunded
+              ? 'bg-purple-100 text-purple-800 border border-purple-300'
+              : isAptPaid
+                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                : 'bg-amber-50 text-amber-800 border border-amber-200'
+          }`}
+        >
+          <CheckCircle2
+            className={`w-3 h-3 ${
+              isRefunded
+                ? 'text-purple-600'
+                : isAptPaid
+                  ? 'text-emerald-600'
+                  : 'text-amber-500'
+            }`}
+          />
+
+          <span>
+            {isRefunded
+              ? 'المبلغ مسترد'
+              : isAptPaid
+                ? 'تم السداد'
+                : 'انتظار السداد'}
+          </span>
+        </span>
+
+        {apt.isDoctorAbsent && (
+          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+            <span>تم إشعار المريض بالغياب</span>
+          </span>
+        )}
+      </>
+    );
+  })()}
+</div>
                           </td>
                           <td className="p-3.5 text-center">
                             <div className="flex items-center justify-center gap-1.5">
