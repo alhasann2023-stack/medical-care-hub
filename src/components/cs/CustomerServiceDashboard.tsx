@@ -115,7 +115,7 @@ const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
     const unsubApts = api.subscribeAppointments({}, (liveApts) => {
       if (liveApts) {
         setAppointments(liveApts);
-        setCoordinatingAppointment(prev => {
+        setCoordinatingAppointment((prev: Appointment | null) => {
           if (!prev) return null;
           const updated = liveApts.find(a => a.id === prev.id);
           return updated || prev;
@@ -159,8 +159,8 @@ const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
   };
 
   const getDocName = (docId: string) => {
-    const doc = doctors.find(d => d.id === docId || d.userId === docId);
-    return doc?.fullName || appointments.find(a => a.doctorId === docId)?.doctorName || 'طبيب العيادة';
+    const doc = doctors.find((d: Doctor) => d.id === docId || d.userId === docId);
+    return doc?.fullName || appointments.find((a: Appointment) => a.doctorId === docId)?.doctorName || 'طبيب العيادة';
   };
 
   const getDoctorAppointmentsForDate = (docId: string, targetDate: string) => {
@@ -193,7 +193,10 @@ const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
       setAbsentDate(dateStr);
       
       const aptsForDocAndDate = getDoctorAppointmentsForDate(docId, dateStr);
-      const allIds = Array.from(new Set([specificApt.id, ...aptsForDocAndDate.map(a => a.id)]));
+      const allIds = Array.from(new Set([
+        specificApt.id,
+        ...aptsForDocAndDate.map((a: Appointment) => a.id)
+      ]));
       setSelectedAppointmentIdsForAbsence(allIds);
 
       const docName = specificApt.doctorName || getDocName(docId);
@@ -216,7 +219,7 @@ const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
     setSelectedAbsentDoctorId(newDocId);
     const docName = getDocName(newDocId);
     const matchingApts = getDoctorAppointmentsForDate(newDocId, absentDate);
-    setSelectedAppointmentIdsForAbsence(matchingApts.map(a => a.id));
+    setSelectedAppointmentIdsForAbsence(matchingApts.map((a: Appointment) => a.id));
     
     // Update message if using default templates
     setAbsentCustomMessage(prev => {

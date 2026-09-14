@@ -711,7 +711,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
               {/* ================================================= */}
 
               <div>
-                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-0">
                   1. اختر الطبيب المعالج / التخصص{' '}
                   <span className="text-rose-500">*</span>
                 </label>
@@ -731,7 +731,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                       key={d.id}
                       value={d.id}
                     >
-                      {d.fullName} — {d.specialtyNameAr}
+                      {d.fullName} — {d.specialtyId}
                     </option>
                   ))}
                 </select>
@@ -779,7 +779,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
               {/* ================================================= */}
 
               <div>
-                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-0">
                   2. نوع الخدمة الطبية المطلوبة (السعر الرسمي){' '}
                   <span className="text-rose-500">*</span>
                 </label>
@@ -836,7 +836,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
                   <div>
-                    <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                    <label className="block font-bold text-slate-800 dark:text-slate-200 mb-0">
                       3. اليوم المفضل للزيارة{' '}
                       <span className="text-rose-500">*</span>
                     </label>
@@ -860,7 +860,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                   </div>
 
                   <div>
-                    <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                    <label className="block font-bold text-slate-800 dark:text-slate-200 mb-0">
                       4. الفترة المفضلة{' '}
                       <span className="text-rose-500">*</span>
                     </label>
@@ -917,7 +917,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
               {/* ================================================= */}
 
               <div>
-                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-0">
                   5. سبب الزيارة أو الأعراض التي تشعر بها{' '}
                   <span className="text-rose-500">*</span>
                 </label>
@@ -940,7 +940,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
               {/* ATTACHMENTS */}
               {/* ================================================= */}
 
-              <div className="p-3 rounded-2xl bg-blue-50/40 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/40 space-y-2">
+              <div className="p-3 rounded-2xl bg-blue-50/40 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/40 space-y-1">
 
                 <div className="flex items-center justify-between">
 
@@ -952,14 +952,14 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                     </span>
                   </label>
 
-                  <span className="text-[11px] text-blue-700 dark:text-blue-400 font-semibold">
+                  <span className="text-[10px] text-blue-700 dark:text-blue-400 font-semibold">
                     {attachments.length > 0
                       ? `${attachments.length} مرفق`
                       : 'اختياري'}
                   </span>
                 </div>
 
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">
                   يمكنك إرفاق صور الأشعة السابقة (X-Ray / MRI / CT) ليتسنى للطبيب الاطلاع عليها مسبقاً قبل وصولك للعيادة.
                 </p>
 
@@ -996,7 +996,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                     onClick={() =>
                       cameraInputRef.current?.click()
                     }
-                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-dashed border-cyan-500 bg-white dark:bg-slate-800 hover:bg-cyan-50 dark:hover:bg-slate-750 text-cyan-800 dark:text-cyan-200 text-xs font-bold cursor-pointer transition-colors shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-cyan-500 bg-white dark:bg-slate-800 hover:bg-cyan-50 dark:hover:bg-slate-750 text-cyan-800 dark:text-cyan-200 text-xs font-bold cursor-pointer transition-colors shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Camera className="w-4 h-4 text-cyan-600" />
 

@@ -48,7 +48,7 @@ import { Doctor, MedicalService, AuditLog, Staff, FreeConsultationPromo, Patient
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { AdminPaymentsManager } from './AdminPaymentsManager';
-import { Receipt, CreditCard } from 'lucide-react';
+import { Receipt, CreditCard, BookOpen } from 'lucide-react';
 
 export const HospitalAdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -58,7 +58,7 @@ export const HospitalAdminDashboard: React.FC = () => {
   const [services, setServices] = useState<MedicalService[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PAYMENTS' | 'DOCTORS' | 'STAFF' | 'SERVICES' | 'AUDIT_LOGS'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PAYMENTS' | 'LEDGER' | 'DOCTORS' | 'STAFF' | 'SERVICES' | 'AUDIT_LOGS'>('OVERVIEW');
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [notificationMsg, setNotificationMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -979,6 +979,18 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
         </button>
 
         <button
+          onClick={() => setActiveTab('LEDGER')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === 'LEDGER'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white text-teal-800 border border-teal-300/60 hover:bg-teal-50'
+          }`}
+        >
+          <BookOpen className="w-4 h-4 text-teal-600" />
+          <span>سجل الأستاذ المالي والتسويات</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('DOCTORS')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
             activeTab === 'DOCTORS'
@@ -1515,8 +1527,11 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
       )}
 
       {/* Tab: Financial & Payments Management */}
-      {activeTab === 'PAYMENTS' && (
-        <AdminPaymentsManager onShowNotification={showNotification} />
+      {(activeTab === 'PAYMENTS' || activeTab === 'LEDGER') && (
+        <AdminPaymentsManager 
+          initialSubTab={activeTab === 'LEDGER' ? 'LEDGER' : 'TRANSACTIONS'}
+          onShowNotification={showNotification} 
+        />
       )}
 
       {/* Tab 2: Doctors Management */}

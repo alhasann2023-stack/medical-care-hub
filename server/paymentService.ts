@@ -176,79 +176,7 @@ export class PaymentService {
   }
 
   private seedInitialLedger() {
-    const seed: PaymentLedgerEntry[] = [
-      {
-        id: 'led-001',
-        paymentId: 'pay-seed-1',
-        receiptNumber: 'REC-2026-0081',
-        transactionReference: 'TXN-KRM-998201',
-        patientId: 'pat-1',
-        patientName: 'أحمد صالح العمودي',
-        serviceType: 'APPOINTMENT',
-        serviceName: 'كشف استشاري أمراض الباطنة والقلب',
-        currency: 'YER',
-        grossAmount: 45000,
-        gatewayFee: 450,
-        vatAmount: 0,
-        netAmount: 44550,
-        refundedAmount: 0,
-        provider: 'KURAIMI',
-        paymentMethod: 'KURAIMI_EXPRESS',
-        status: 'SUCCESS',
-        settlementStatus: 'SETTLED',
-        createdAt: new Date(Date.now() - 3600 * 1000 * 24 * 2).toISOString(),
-        settledAt: new Date(Date.now() - 3600 * 1000 * 24 * 2).toISOString(),
-        notes: 'سداد عبر خدمة كريمي إكسبرس المباشرة'
-      },
-      {
-        id: 'led-002',
-        paymentId: 'pay-seed-2',
-        receiptNumber: 'REC-2026-0082',
-        transactionReference: 'TXN-VMC-772109',
-        patientId: 'pat-2',
-        patientName: 'سارة خالد الدوسري',
-        serviceType: 'CONSULTATION',
-        serviceName: 'استشارة طبية فورية عن بعد',
-        currency: 'USD',
-        grossAmount: 65,
-        gatewayFee: 1.62,
-        vatAmount: 0,
-        netAmount: 63.38,
-        refundedAmount: 0,
-        provider: 'VISA_MASTERCARD',
-        paymentMethod: 'VISA',
-        status: 'SUCCESS',
-        settlementStatus: 'SETTLED',
-        createdAt: new Date(Date.now() - 3600 * 1000 * 24 * 1).toISOString(),
-        settledAt: new Date(Date.now() - 3600 * 1000 * 24 * 1).toISOString(),
-        notes: 'سداد دولي عبر بطاقة فيزا 3D Secure'
-      },
-      {
-        id: 'led-003',
-        paymentId: 'pay-seed-3',
-        receiptNumber: 'REC-2026-0083',
-        transactionReference: 'TXN-MDA-554102',
-        patientId: 'pat-3',
-        patientName: 'محمد ناصر القحطاني',
-        serviceType: 'APPOINTMENT',
-        serviceName: 'معاينة عيادة طب الأطفال التخصصية',
-        currency: 'SAR',
-        grossAmount: 300,
-        gatewayFee: 3.0,
-        vatAmount: 39.13,
-        netAmount: 297.0,
-        refundedAmount: 0,
-        provider: 'MADA',
-        paymentMethod: 'MADA',
-        status: 'SUCCESS',
-        settlementStatus: 'SETTLED',
-        createdAt: new Date(Date.now() - 3600 * 1000 * 12).toISOString(),
-        settledAt: new Date(Date.now() - 3600 * 1000 * 12).toISOString(),
-        notes: 'سداد فوري عبر بطاقة مدى المصرفية'
-      }
-    ];
-
-    seed.forEach(item => this.ledgerEntries.set(item.id, item));
+    // Initial ledger starts clean; transactions are registered dynamically upon payment confirmation.
   }
 
   // ==========================================================
@@ -617,7 +545,49 @@ export class PaymentService {
       }
     }
 
+    // Populate aliases for front-end consumption
+    for (const cur of Object.keys(summaries) as CurrencyCode[]) {
+      (summaries[cur] as any).gross = summaries[cur].totalGross;
+      (summaries[cur] as any).fees = summaries[cur].totalGatewayFees;
+      (summaries[cur] as any).net = summaries[cur].totalNet - summaries[cur].totalRefunds;
+      (summaries[cur] as any).refunded = summaries[cur].totalRefunds;
+      (summaries[cur] as any).count = summaries[cur].successCount + summaries[cur].refundCount;
+    }
+
     return summaries;
+  }
+
+  public settleLedgerEntry(entryId: string, batchId?: string): PaymentLedgerEntry | null {
+    let entry = this.ledgerEntries.get(entryId);
+    if (!entry) {
+      for (const e of this.ledgerEntries.values()) {
+        if (e.paymentId === entryId || e.id === entryId || e.transactionReference === entryId) {
+          entry = e;
+          break;
+        }
+      }
+    }
+    if (!entry) return null;
+    entry.settlementStatus = 'SETTLED';
+    entry.settledAt = new Date().toISOString();
+    if (batchId) {
+      entry.notes = (entry.notes ? entry.notes + ' | ' : '') + `دفعة تسوية: ${batchId}`;
+    }
+    return entry;
+  }
+
+  public batchSettleLedgerEntries(entryIds?: string[], batchId: string = `BATCH-${Date.now()}`): { settledCount: number; batchId: string } {
+    let count = 0;
+    const targetIds = entryIds && entryIds.length > 0 
+      ? entryIds 
+      : Array.from(this.ledgerEntries.values()).filter(e => e.settlementStatus !== 'SETTLED' && e.status === 'SUCCESS').map(e => e.id);
+
+    for (const id of targetIds) {
+      if (this.settleLedgerEntry(id, batchId)) {
+        count++;
+      }
+    }
+    return { settledCount: count, batchId };
   }
 
   public getAllLedgerEntries(): PaymentLedgerEntry[] {

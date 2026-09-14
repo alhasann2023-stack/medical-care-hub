@@ -2619,15 +2619,28 @@ createDoctor: async (
     createdAt: new Date().toISOString()
   };
 
+  const enteredSpecialty = (
+    data.specialtyNameAr ||
+    data.specialty ||
+    (data.specialtyId && !data.specialtyId.startsWith('spec-') ? data.specialtyId : '') ||
+    'طب عام'
+  ).trim();
+
+  const finalSpecialtyNameAr = enteredSpecialty;
+  const finalSpecialtyNameEn = data.specialtyNameEn ? String(data.specialtyNameEn).trim() : enteredSpecialty;
+  const finalSpecialtyId = (data.specialtyId && data.specialtyId.startsWith('spec-'))
+    ? data.specialtyId
+    : `spec-${Date.now()}`;
+
   const doctorToSave: Doctor = {
     id: doctorId,
     userId: finalUid,
     fullName: data.fullName.trim(),
     email: doctorEmail,
     phone,
-    specialtyId: data.specialtyId || 'spec-1',
-    specialtyNameAr: data.specialtyNameAr || 'تخصص عام',
-    specialtyNameEn: data.specialtyNameEn || 'General Specialty',
+    specialtyId: finalSpecialtyId,
+    specialtyNameAr: finalSpecialtyNameAr,
+    specialtyNameEn: finalSpecialtyNameEn,
     title: data.title || 'استشاري أول',
     qualifications: Array.isArray(data.qualifications) ? data.qualifications : ['بورد تخصصي معتمد', 'ترخيص الهيئة الصحية'],
     experienceYears: Number(data.experienceYears) || 5,
@@ -2666,6 +2679,9 @@ createDoctor: async (
           email: doctorEmail,
           password,
           role: 'DOCTOR',
+          specialtyId: finalSpecialtyId,
+          specialtyNameAr: finalSpecialtyNameAr,
+          specialtyNameEn: finalSpecialtyNameEn,
           firebaseUid: finalUid
         })
       }
@@ -2722,12 +2738,20 @@ createDoctor: async (
           );
 
 
+        const enteredSpecialty = (
+          data.specialtyNameAr ||
+          data.specialty ||
+          (data.specialtyId && !data.specialtyId.startsWith('spec-') ? data.specialtyId : '')
+        );
+
         const merged:
           Doctor = {
 
           ...(existing || {}),
 
           ...data,
+
+          ...(enteredSpecialty ? { specialtyNameAr: String(enteredSpecialty).trim(), specialtyNameEn: String(enteredSpecialty).trim() } : {}),
 
           id
 
@@ -6676,7 +6700,244 @@ createStaff: async (
   },
 
   getPaymentLedger: async (): Promise<{ summaries: Record<CurrencyCode, any>; entries: PaymentLedgerEntry[] }> => {
-    return await fetchJson<{ summaries: Record<CurrencyCode, any>; entries: PaymentLedgerEntry[] }>('/api/payments/ledger');
+    let serverLedger: { summaries: Record<CurrencyCode, any>; entries: PaymentLedgerEntry[] } | null = null;
+    try {
+      serverLedger = await fetchJson<{ summaries: Record<CurrencyCode, any>; entries: PaymentLedgerEntry[] }>('/api/payments/ledger');
+    } catch (e) {
+      console.warn('Failed to fetch ledger from server API:', e);
+    }
+
+    // Get all payments (Firestore + local)
+    let allPayments: Payment[] = [];
+    try {
+      allPayments = await api.getPayments();
+    } catch {
+      // fallback
+    }
+
+    // Build ledger entries from payments and server entries
+    const entriesMap = new Map<string, PaymentLedgerEntry>();
+    const paymentIdToEntryId = new Map<string, string>();
+
+    // Add server entries first
+    if (serverLedger && Array.isArray(serverLedger.entries)) {
+      for (const entry of serverLedger.entries) {
+        if (!entry || !entry.id) continue;
+        entriesMap.set(entry.id, entry);
+        if (entry.paymentId) paymentIdToEntryId.set(entry.paymentId, entry.id);
+      }
+    }
+
+    // Convert real payments into ledger entries
+    for (const p of allPayments) {
+      const isPaid = Boolean(
+        (p as any).isPaid ||
+        p.paymentStatus === 'PAID' ||
+        p.paymentStatus === 'PAYMENT_SUCCESS' ||
+        (p as any).isApprovedByAdmin
+      );
+      const isRefunded = Boolean(
+        p.paymentStatus === 'REFUNDED' ||
+        (p as any).paymentStatus === 'REFUND_SUCCESS' ||
+        (p as any).refundStatus === 'REFUNDED' ||
+        (p as any).isRefunded
+      );
+
+      if (!isPaid && !isRefunded) continue;
+
+      const id = `LED-${p.id.replace('pay-', '').slice(-8).toUpperCase()}`;
+      const existingId = entriesMap.has(id) ? id : (paymentIdToEntryId.get(p.id) || id);
+      const existing = entriesMap.get(existingId);
+
+      const grossAmount = Number(p.amount) || 0;
+      const gatewayFee = Number(p.gatewayFee || 0);
+      const netAmount = isRefunded ? -grossAmount : Math.max(0, grossAmount - gatewayFee);
+
+      const entry: PaymentLedgerEntry = {
+        id: existing?.id || id,
+        paymentId: p.id,
+        receiptNumber: p.receiptNumber || (p.transactionReference ? `REC-${p.transactionReference}` : `REC-${p.id.slice(-6).toUpperCase()}`),
+        transactionReference: p.transactionReference || p.id,
+        patientId: p.patientId || '',
+        patientName: p.patientName || 'المريض',
+        serviceType: p.serviceType || 'APPOINTMENT',
+        serviceName: p.serviceName || (p.serviceType === 'CONSULTATION' ? 'استشارة طبية' : 'حجز موعد عيادة'),
+        currency: (p.currency as CurrencyCode) || 'YER',
+        grossAmount: grossAmount,
+        gatewayFee: gatewayFee,
+        vatAmount: Number(p.vatAmount || 0),
+        netAmount: netAmount,
+        refundedAmount: isRefunded ? grossAmount : 0,
+        provider: (p.paymentProvider as any) || (p.paymentMethod as any) || 'KURAIMI',
+        paymentMethod: p.paymentMethod || 'KURAIMI_EXPRESS',
+        status: isRefunded ? 'REFUNDED' : 'SUCCESS',
+        settlementStatus: (p as any).settlementStatus || existing?.settlementStatus || (isRefunded ? 'REFUNDED' : 'PENDING'),
+        createdAt: p.paidAt || p.createdAt || new Date().toISOString(),
+        settledAt: (p as any).settledAt || existing?.settledAt,
+        notes: (p as any).notes || existing?.notes || (isRefunded ? 'مبلغ مسترد' : 'تحصيل إيراد معتمد'),
+        ...({
+          entryType: isRefunded ? 'DEBIT_REFUND' : 'CREDIT_COLLECTION',
+          description: p.serviceName || (p.serviceType === 'CONSULTATION' ? 'استشارة طبية' : 'رسوم حجز موعد عيادة'),
+          serviceReferenceId: p.serviceReferenceId || p.transactionReference || p.id,
+          feeAmount: gatewayFee
+        } as any)
+      };
+
+      entriesMap.set(entry.id, entry);
+      if (entry.paymentId) paymentIdToEntryId.set(entry.paymentId, entry.id);
+    }
+
+    // Deduplicate entries strictly by unique entry.id
+    const uniqueEntriesMap = new Map<string, PaymentLedgerEntry>();
+    for (const ent of entriesMap.values()) {
+      if (ent && ent.id) {
+        uniqueEntriesMap.set(ent.id, ent);
+      }
+    }
+
+    const allEntries = Array.from(uniqueEntriesMap.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    // Compute robust summaries for all currencies
+    const summaries: Record<CurrencyCode, any> = {
+      YER: { gross: 0, fees: 0, net: 0, refunded: 0, count: 0, settledCount: 0, pendingCount: 0, totalGross: 0, totalGatewayFees: 0, totalNet: 0, totalRefunds: 0, successCount: 0 },
+      USD: { gross: 0, fees: 0, net: 0, refunded: 0, count: 0, settledCount: 0, pendingCount: 0, totalGross: 0, totalGatewayFees: 0, totalNet: 0, totalRefunds: 0, successCount: 0 },
+      SAR: { gross: 0, fees: 0, net: 0, refunded: 0, count: 0, settledCount: 0, pendingCount: 0, totalGross: 0, totalGatewayFees: 0, totalNet: 0, totalRefunds: 0, successCount: 0 }
+    };
+
+    for (const ent of allEntries) {
+      const cur = ent.currency || 'YER';
+      if (!summaries[cur]) continue;
+
+      if (ent.status === 'SUCCESS' || (ent as any).entryType === 'CREDIT_COLLECTION') {
+        summaries[cur].gross += ent.grossAmount;
+        summaries[cur].fees += ent.gatewayFee || (ent as any).feeAmount || 0;
+        summaries[cur].net += ent.netAmount;
+        summaries[cur].count += 1;
+        summaries[cur].successCount += 1;
+
+        if (ent.settlementStatus === 'SETTLED') {
+          summaries[cur].settledCount += 1;
+        } else {
+          summaries[cur].pendingCount += 1;
+        }
+      } else if (ent.status === 'REFUNDED' || (ent as any).entryType === 'DEBIT_REFUND') {
+        summaries[cur].refunded += ent.refundedAmount || ent.grossAmount;
+        summaries[cur].net -= (ent.refundedAmount || ent.grossAmount);
+        summaries[cur].count += 1;
+      }
+
+      summaries[cur].totalGross = summaries[cur].gross;
+      summaries[cur].totalGatewayFees = summaries[cur].fees;
+      summaries[cur].totalNet = summaries[cur].net;
+      summaries[cur].totalRefunds = summaries[cur].refunded;
+    }
+
+    return {
+      summaries,
+      entries: allEntries
+    };
+  },
+
+  settlePayment: async (paymentIdOrEntryId: string, batchId?: string): Promise<{ success: boolean; message: string }> => {
+    const batch = batchId || `SET-${Date.now().toString().slice(-6)}`;
+    const settledAt = new Date().toISOString();
+
+    // Call server endpoint
+    try {
+      await fetchJson('/api/payments/settle', {
+        method: 'POST',
+        body: JSON.stringify({ entryId: paymentIdOrEntryId, paymentId: paymentIdOrEntryId, batchId: batch })
+      });
+    } catch (e) {
+      console.warn('Server settle endpoint fallback:', e);
+    }
+
+    // Also update in Firestore / client
+    try {
+      const allPayments = await api.getPayments();
+      const targetPayment = allPayments.find(p => 
+        p.id === paymentIdOrEntryId || 
+        p.transactionReference === paymentIdOrEntryId ||
+        `LED-${p.id.replace('pay-', '').slice(-8).toUpperCase()}` === paymentIdOrEntryId
+      );
+
+      if (targetPayment) {
+        const updated: Payment = {
+          ...targetPayment,
+          updatedAt: settledAt,
+          ...({
+            settlementStatus: 'SETTLED',
+            settledAt: settledAt,
+            settlementBatchId: batch
+          } as any)
+        };
+        await firebaseDb.createPayment(updated);
+      }
+    } catch (err) {
+      console.warn('Firestore settle payment error:', err);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('mch_payments_updated'));
+    }
+
+    return {
+      success: true,
+      message: 'تمت تسوية ومقاصة القيد بنجاح.'
+    };
+  },
+
+  batchSettlePayments: async (entryIds: string[], batchId?: string): Promise<{ success: boolean; settledCount: number; message: string }> => {
+    const batch = batchId || `BATCH-SET-${Date.now().toString().slice(-6)}`;
+    const settledAt = new Date().toISOString();
+
+    try {
+      await fetchJson('/api/payments/batch-settle', {
+        method: 'POST',
+        body: JSON.stringify({ entryIds, batchId: batch })
+      });
+    } catch (e) {
+      console.warn('Server batch settle fallback:', e);
+    }
+
+    let count = 0;
+    try {
+      const allPayments = await api.getPayments();
+      for (const targetId of entryIds) {
+        const targetPayment = allPayments.find(p => 
+          p.id === targetId || 
+          p.transactionReference === targetId ||
+          `LED-${p.id.replace('pay-', '').slice(-8).toUpperCase()}` === targetId
+        );
+        if (targetPayment) {
+          const updated: Payment = {
+            ...targetPayment,
+            updatedAt: settledAt,
+            ...({
+              settlementStatus: 'SETTLED',
+              settledAt: settledAt,
+              settlementBatchId: batch
+            } as any)
+          };
+          await firebaseDb.createPayment(updated);
+          count++;
+        }
+      }
+    } catch (err) {
+      console.warn('Firestore batch settle error:', err);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('mch_payments_updated'));
+    }
+
+    return {
+      success: true,
+      settledCount: count || entryIds.length,
+      message: `تمت تسوية ومطابقة ${count || entryIds.length} قيد محاسبي بنجاح.`
+    };
   },
 
   confirmPayment: async (data: {

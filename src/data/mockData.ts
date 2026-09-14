@@ -136,14 +136,14 @@ export const DOCTORS: Doctor[] = [
 ];
 
 export const CURRENT_PATIENT: PatientProfile = {
-  name: 'محمد عبدالله الشمري',
-  mrn: 'MRN-849201',
-  age: 38,
+  name: '',
+  mrn: '',
+  age: 0,
   gender: 'ذكر',
-  bloodType: 'O+',
-  chronicDiseases: ['ارتفاع طفيف في ضغط الدم (منضبط)'],
-  allergies: ['البنسلين (Penicillin Allergy)'],
-  phone: '+966 50 123 4567',
+  bloodType: '',
+  chronicDiseases: [],
+  allergies: [],
+  phone: '',
 };
 
 export const INITIAL_RECORDS: MedicalRecordItem[] = [];

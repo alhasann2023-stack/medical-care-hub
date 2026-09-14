@@ -315,19 +315,7 @@ let freeConsultationPromo: FreeConsultationPromo = {
   applicableDoctors: 'ALL',
   totalFreeConsultationsCount: 0,
   oneFreePerPatient: true,
-  whitelistedPatients: [
-    {
-      id: 'wl-1',
-      patientId: 'pat-1',
-      patientName: 'سارة أحمد المنصور',
-      patientPhone: '+966501234567',
-      patientMrn: 'MRN-2026-1001',
-      reason: 'إعفاء خاص بقرار الإدارة - رعاية إنسانية',
-      grantedAt: new Date().toISOString(),
-      grantedBy: 'مدير المستشفى',
-      usedCount: 0
-    }
-  ],
+  whitelistedPatients: [],
   updatedAt: new Date().toISOString()
 };
 
@@ -477,11 +465,12 @@ function saveDatabase() {
 
 async function loadCredentialsAndUsersFromFirestore() {
   try {
-    const [fsUsers, fsCreds, fsPromo, fsPayments] = await Promise.all([
+    const [fsUsers, fsCreds, fsPromo, fsPayments, fsDoctors] = await Promise.all([
       fetchDocsWithFilter<User>('users'),
       fetchDocsWithFilter<{ userId: string; password?: string; email?: string; phone?: string }>('userCredentials'),
       getSettingsDoc<FreeConsultationPromo>('freeConsultationPromo'),
-      fetchDocsWithFilter<Payment>('payments')
+      fetchDocsWithFilter<Payment>('payments'),
+      fetchDocsWithFilter<Doctor>('doctors')
     ]);
 
     if (fsPromo && fsPromo.id) {
@@ -503,6 +492,18 @@ async function loadCredentialsAndUsersFromFirestore() {
         }
       }
       console.log(`[Store] Loaded ${fsPayments.length} payments from Firestore.`);
+    }
+
+    if (fsDoctors && fsDoctors.length > 0) {
+      for (const fd of fsDoctors) {
+        const idx = doctors.findIndex(d => d.id === fd.id || d.userId === fd.userId);
+        if (idx >= 0) {
+          doctors[idx] = { ...doctors[idx], ...fd };
+        } else {
+          doctors.push(fd);
+        }
+      }
+      console.log(`[Store] Loaded ${fsDoctors.length} doctors from Firestore.`);
     }
 
     if (fsUsers && fsUsers.length > 0) {
@@ -911,7 +912,7 @@ export function createApiApp() {
         specialtyNameEn: 'Family Medicine & Internal Care',
         qualifications: ['اليمن ', ' '],
         experienceYears: 10,
-        bioAr: 'طبيب معتمد ومسجل لدى الهيئة اليمنية للتخصصات الصحية.',
+        bioAr: 'طبيب معتمد ومسجل لدى الهيئة السعودية للتخصصات الصحية.',
         bioEn: 'Certified medical consultant registered with health authorities.',
         consultationFee: 150,
         avatar: newUser.avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=400',
@@ -2005,6 +2006,8 @@ export function createApiApp() {
       password,
       phone,
       specialtyId,
+      specialtyNameAr,
+      specialtyNameEn,
       title,
       qualifications,
       experienceYears,
@@ -2060,7 +2063,15 @@ export function createApiApp() {
       return res.status(400).json({ error: 'كلمة المرور هذه مستخدمة بالفعل لحساب آخر. يجب تعيين كلمة مرور فريدة لكل طبيب/مستخدم.' });
     }
 
-    const spec = specialties.find(s => s.id === specialtyId) || specialties[0];
+    const matchedSpec = specialties.find(s => s.id === specialtyId || s.nameAr === specialtyId || s.nameAr === specialtyNameAr);
+    const enteredSpec = (
+      specialtyNameAr?.trim() ||
+      (specialtyId && !specialtyId.startsWith('spec-') ? specialtyId.trim() : '')
+    );
+    const resolvedSpecialtyNameAr = enteredSpec || matchedSpec?.nameAr || (specialtyId && !specialtyId.startsWith('spec-') ? specialtyId : 'طب عام');
+    const resolvedSpecialtyNameEn = specialtyNameEn?.trim() || matchedSpec?.nameEn || resolvedSpecialtyNameAr;
+    const resolvedSpecialtyId = matchedSpec?.id || (specialtyId && specialtyId.startsWith('spec-') ? specialtyId : `spec-${Date.now()}`);
+
     const doctorId = `doc-${Date.now()}`;
     const docAvatar = avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80';
 
@@ -2107,9 +2118,9 @@ export function createApiApp() {
       fullName: fullName.trim(),
       email: normalizedEmail,
       phone: normalizedPhone,
-      specialtyId: specialtyId || spec?.id || 'spec-1',
-      specialtyNameAr: spec?.nameAr || 'تخصص عام',
-      specialtyNameEn: spec?.nameEn || 'General Specialty',
+      specialtyId: resolvedSpecialtyId,
+      specialtyNameAr: resolvedSpecialtyNameAr,
+      specialtyNameEn: resolvedSpecialtyNameEn,
       title: title || 'استشاري أول',
       qualifications: Array.isArray(qualifications) && qualifications.length > 0
         ? qualifications
@@ -2157,6 +2168,8 @@ export function createApiApp() {
       password, 
       phone, 
       specialtyId, 
+      specialtyNameAr,
+      specialtyNameEn,
       title, 
       qualifications, 
       experienceYears, 
@@ -2229,12 +2242,20 @@ export function createApiApp() {
       if (user) user.avatar = avatar;
     }
 
-    if (specialtyId) {
-      const spec = specialties.find(s => s.id === specialtyId);
+    if (specialtyId || specialtyNameAr) {
+      const enteredSpec = (
+        specialtyNameAr?.trim() ||
+        (specialtyId && !specialtyId.startsWith('spec-') ? specialtyId.trim() : '')
+      );
+      const spec = specialties.find(s => s.id === specialtyId || s.nameAr === specialtyId || s.nameAr === specialtyNameAr);
       if (spec) {
         doc.specialtyId = spec.id;
         doc.specialtyNameAr = spec.nameAr;
         doc.specialtyNameEn = spec.nameEn;
+      } else if (enteredSpec) {
+        doc.specialtyId = (specialtyId && specialtyId.startsWith('spec-')) ? specialtyId : (doc.specialtyId || `spec-${Date.now()}`);
+        doc.specialtyNameAr = enteredSpec;
+        doc.specialtyNameEn = specialtyNameEn?.trim() || enteredSpec;
       }
     }
 
@@ -2347,6 +2368,32 @@ export function createApiApp() {
     res.json({
       summaries,
       entries
+    });
+  });
+
+  // 3.1 Settle Single Ledger Entry
+  app.post('/api/payments/settle', (req: Request, res: Response) => {
+    const { paymentId, entryId, batchId } = req.body;
+    const targetId = entryId || paymentId;
+    if (!targetId) {
+      return res.status(400).json({ error: 'معرف العملية أو القيد مطلوب للتسوية.' });
+    }
+    const settled = paymentService.settleLedgerEntry(targetId, batchId);
+    res.json({
+      success: true,
+      entry: settled,
+      message: 'تمت تسوية ومقاصة القيد المالي بنجاح.'
+    });
+  });
+
+  // 3.2 Batch Settle Ledger Entries
+  app.post('/api/payments/batch-settle', (req: Request, res: Response) => {
+    const { entryIds, batchId } = req.body;
+    const result = paymentService.batchSettleLedgerEntries(entryIds, batchId);
+    res.json({
+      success: true,
+      ...result,
+      message: `تمت تسوية ومطابقة ${result.settledCount} قيد محاسبي بنجاح.`
     });
   });
 
@@ -2928,9 +2975,8 @@ export function createApiApp() {
     // If payment not found in memory array, resolve from passed body or find from appointments / consultations
     if (!payment) {
       if (req.body.payment && req.body.payment.id) {
-        const recoveredPayment = { ...req.body.payment } as Payment;
-        payment = recoveredPayment;
-        payments.unshift(recoveredPayment);
+        payment = { ...req.body.payment };
+        payments.unshift(payment);
       } else {
         const linkedApt = appointments.find(a => 
           a.id === paymentId || 
@@ -5938,7 +5984,7 @@ ${context}
 
 export async function startServer() {
   const app = createApiApp();
-  const PORT = 3027;
+  const PORT = 3000;
 
   // ----------------------------------------------------
   // VITE DEVELOPMENT MIDDLEWARE & PRODUCTION SERVING
