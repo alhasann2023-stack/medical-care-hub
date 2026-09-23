@@ -73,7 +73,7 @@ export const PrintableBookingModal: React.FC<PrintableBookingModalProps> = ({
               <div className="w-14 h-14 rounded-xl bg-white border border-slate-300 p-1 flex items-center justify-center shadow-xs overflow-hidden shrink-0">
                 <img
                   src="/logo.png"
-                  alt="شعار المستشفى"
+                  alt="شعار العيادة"
                   className="w-full h-full object-contain"
                   referrerPolicy="no-referrer"
                   onError={(e) => {
@@ -191,7 +191,7 @@ export const PrintableBookingModal: React.FC<PrintableBookingModalProps> = ({
             </h5>
             <ul className="list-disc list-inside space-y-0.5 text-amber-800 pr-1 leading-relaxed">
               <li>يرجى التواجد في قسم الاستقبال قبل 15 دقيقة من موعد العيادة لتأكيد الوصول.</li>
-              <li>أيام الدوام المعتمدة: السبت، الأحد، الثلاثاء، والأربعاء فقط (يوم الإثنين إجازة رسمية للمستشفى).</li>
+              <li>أيام الدوام المعتمدة: السبت، الأحد، الثلاثاء، والأربعاء فقط (يوم الإثنين إجازة رسمية للعيادة).</li>
               <li>يرجى إبراز هذه التذكرة المطبوعة أو الإلكترونية مع بطاقة الهوية لموظف السكرتاريا والاستقبال.</li>
             </ul>
           </div>

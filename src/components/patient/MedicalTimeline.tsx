@@ -6,20 +6,13 @@ import {
   FileText, 
   Pill, 
   MessageSquare, 
-  Calendar, 
-  ChevronRight, 
-  Download, 
   Eye, 
-  Filter,
   Search,
-  Sparkles,
-  User,
-  HeartPulse,
   Clock,
   RefreshCw,
   X
 } from 'lucide-react';
-import { TimelineItem, Patient, MedicalReport, Prescription, MedicalTest, MedicalExamination } from '../../types/medical';
+import { TimelineItem, Patient, MedicalReport, Prescription } from '../../types/medical';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { AICallout } from '../common/AICallout';
@@ -144,7 +137,7 @@ export const MedicalTimeline: React.FC<MedicalTimelineProps> = ({
     }
   };
 
-  const filteredTimeline = timeline.filter(item => {
+  const filteredTimeline = timeline.filter((item: TimelineItem) => {
     if (selectedFilter !== 'ALL' && item.type !== selectedFilter) {
       return false;
     }
@@ -185,13 +178,13 @@ export const MedicalTimeline: React.FC<MedicalTimelineProps> = ({
               </p>
               <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px]">
                 <span className="text-slate-400">الحساسيات:</span>
-                {patient.allergies.map((a, i) => (
+                {patient.allergies.map((a: string, i: number) => (
                   <span key={i} className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-100 font-medium">
                     {a}
                   </span>
                 ))}
                 <span className="text-slate-400 mr-2">الأمراض المزمنة:</span>
-                {patient.chronicDiseases.map((c, i) => (
+                {patient.chronicDiseases.map((c: string, i: number) => (
                   <span key={i} className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-100 font-medium">
                     {c}
                   </span>
@@ -257,7 +250,7 @@ export const MedicalTimeline: React.FC<MedicalTimelineProps> = ({
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
               placeholder="بحث في السجل الطبي..."
               className="w-full pl-3 pr-9 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
             />
@@ -290,7 +283,7 @@ export const MedicalTimeline: React.FC<MedicalTimelineProps> = ({
             </button>
           </div>
         ) : (
-          filteredTimeline.map((item) => {
+          filteredTimeline.map((item: TimelineItem) => {
             const config = getTypeConfig(item.type);
             const Icon = config.icon;
 

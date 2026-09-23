@@ -70,7 +70,7 @@ export const PrintableTestResultModal: React.FC<PrintableTestResultModalProps> =
               <div className="w-14 h-14 rounded-xl bg-white border border-slate-300 p-1 flex items-center justify-center shadow-xs overflow-hidden shrink-0">
                 <img
                   src="/logo.png"
-                  alt="شعار المستشفى"
+                  alt="شعار العيادة"
                   className="w-full h-full object-contain"
                   referrerPolicy="no-referrer"
                   onError={(e) => {

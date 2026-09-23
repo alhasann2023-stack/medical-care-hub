@@ -486,7 +486,7 @@ export const AuthProvider: React.FC<{
           id: `stf-${normalizedUser.id}`,
           userId: normalizedUser.id,
           fullName: normalizedUser.fullName || 'المدير العام والمسؤول المعتمد',
-          department: 'إدارة المستشفى والعمليات العليا',
+          department: 'إدارة العيادة والعمليات العليا',
           roleTitle: 'المدير العام والمسؤول المعتمد',
           shift: 'شامل',
           avatar: normalizedUser.avatar,

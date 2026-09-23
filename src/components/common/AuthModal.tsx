@@ -11,14 +11,12 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
-  Building2,
   ArrowLeft,
   Sparkles,
   HeartPulse
 } from 'lucide-react';
 
 import { useAuth } from '../../context/AuthContext';
-import { UserRole } from '../../types/medical';
 
 
 // ============================================================
@@ -360,7 +358,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         setSuccessMessage(
           isAdmin
-            ? 'تم إنشاء الحساب وتعيينك مديراً عاماً ومسؤولاً للمستشفى بنجاح!'
+            ? 'تم إنشاء الحساب وتعيينك مديراً عاماً ومسؤولاً للعيادة بنجاح!'
             : 'تم إنشاء ملفك الطبي وحسابك كمريض بنجاح!'
         );
 

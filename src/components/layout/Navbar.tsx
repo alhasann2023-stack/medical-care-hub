@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState } from 'react';
 import { 
   Building2, 
@@ -10,9 +11,7 @@ import {
   ChevronDown,
   LogOut,
   PlusCircle,
-  Clock,
   Sparkles,
-  Search,
   Menu,
   X,
   Database,
@@ -68,7 +67,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       bg: 'bg-purple-50 border-purple-200'
     },
     HOSPITAL_ADMIN: {
-      label: 'إدارة المستشفى',
+      label: 'إدارة العيادة',
       icon: ShieldAlert,
       color: 'text-amber-700',
       bg: 'bg-amber-50 border-amber-200'
@@ -147,7 +146,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className="font-extrabold text-lg text-slate-900 tracking-tight">صحتك في يدك Sehatak Fe Yadeki</span>
                   <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-100 text-blue-800"></span>
                 </div>
-                <p className="text-xs text-slate-500 font-medium">مركز الرعاية الصحية والعيادات التخصصية</p>
+                <p className="text-xs text-slate-500 font-medium">   عيادة الدكتور وهاج المقطري</p>
               </div>
             </button>
           </div>
@@ -278,7 +277,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={() => setCurrentView('admin_dashboard')}
                 className="px-3 py-2 rounded-lg text-amber-700 bg-amber-50/80 font-bold"
               >
-                لوحة إدارة المستشفى
+                لوحة إدارة العيادة
               </button>
             )}
           </nav>

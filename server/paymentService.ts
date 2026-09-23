@@ -2,7 +2,6 @@ import crypto from 'crypto';
 import { 
   CurrencyCode, 
   PaymentProviderType, 
-  PaymentStatus, 
   PaymentMethod,
   PaymentSettings, 
   PaymentLedgerEntry, 
@@ -110,7 +109,7 @@ export class PaymentService {
     hospitalAccounts: {
       kuraimi: {
         accountNumber: '300889214',
-        accountName: 'مستشفى وهج الطبي التخصصي',
+        accountName: 'عيادة د/وهجاج الطبي التخصصي',
         merchantId: 'KRM-HOSP-770921',
         terminalId: 'POS-SANAA-01',
         enableHasebPay: true,
@@ -121,7 +120,7 @@ export class PaymentService {
       },
       oneCash: {
         accountNumber: '777123456',
-        accountName: 'مستشفى وهج الطبي التخصصي - وان كاش',
+        accountName: 'عيادة د/وهاج الطبي التخصصي - وان كاش',
         phone: '777123456',
         providerNameAr: 'محفظة وان كاش (OneCash)',
         isActive: true,
@@ -129,7 +128,7 @@ export class PaymentService {
       },
       mahfazati: {
         accountNumber: '778901234',
-        accountName: 'مستشفى وهج الطبي التخصصي - محفظتي',
+        accountName: 'عيادة د/وهاج الطبي التخصصي - محفظتي',
         phone: '778901234',
         providerNameAr: 'محفظة محفظتي (Mahfazati)',
         isActive: true,
@@ -137,7 +136,7 @@ export class PaymentService {
       },
       jeeb: {
         accountNumber: '773456789',
-        accountName: 'مستشفى وهج الطبي التخصصي - جيب',
+        accountName: 'عيادة د/وهاج الطبي التخصصي - جيب',
         phone: '773456789',
         providerNameAr: 'محفظة جيب (Jeeb - بنك التضامن)',
         isActive: true,
@@ -145,7 +144,7 @@ export class PaymentService {
       },
       floosak: {
         accountNumber: '774567890',
-        accountName: 'مستشفى وهج الطبي التخصصي - فلوسك',
+        accountName: 'عيادة د/وهاج الطبي التخصصي - فلوسك',
         phone: '774567890',
         providerNameAr: 'محفظة فلوسك (Floosak - بنك اليمن والكويت)',
         isActive: true,
@@ -443,12 +442,14 @@ export class PaymentService {
     };
 
     // Update or create ledger entry
-    let ledgerEntry = this.ledgerEntries.get(`led-${payment.id}`);
-    if (ledgerEntry) {
-      ledgerEntry.refundedAmount = amountToRefund;
-      ledgerEntry.status = 'REFUNDED';
-      ledgerEntry.settlementStatus = 'REFUNDED';
-      ledgerEntry.notes = `تم استرداد مبلغ ${amountToRefund} ${currency} - السبب: ${reason}`;
+    let ledgerEntry: PaymentLedgerEntry;
+    const existingLedgerEntry = this.ledgerEntries.get(`led-${payment.id}`);
+    if (existingLedgerEntry) {
+      existingLedgerEntry.refundedAmount = amountToRefund;
+      existingLedgerEntry.status = 'REFUNDED';
+      existingLedgerEntry.settlementStatus = 'REFUNDED';
+      existingLedgerEntry.notes = `تم استرداد مبلغ ${amountToRefund} ${currency} - السبب: ${reason}`;
+      ledgerEntry = existingLedgerEntry;
     } else {
       ledgerEntry = {
         id: `led-${payment.id}`,
@@ -466,14 +467,15 @@ export class PaymentService {
         netAmount: payment.netAmount || payment.amount,
         refundedAmount: amountToRefund,
         provider: payment.paymentProvider || 'KURAIMI',
-        paymentMethod: payment.paymentMethod,
+        paymentMethod: payment.paymentMethod || 'CASH',
         status: 'REFUNDED',
         settlementStatus: 'REFUNDED',
         createdAt: new Date().toISOString(),
         notes: `استرداد مالي: ${reason}`
       };
-      this.ledgerEntries.set(ledgerEntry.id, ledgerEntry);
     }
+
+    this.ledgerEntries.set(ledgerEntry.id, ledgerEntry);
 
     return {
       refund,

@@ -120,7 +120,7 @@ export const SecretaryDashboard: React.FC = () => {
               صلاحية السكرتير للبحث والطباعة الفورية الرسمية للتذاكر والمستندات الطبية المعتمدة للمرضى
             </p>
             <div className="inline-flex items-center gap-2 mt-2 px-3 py-1 bg-amber-500/20 border border-amber-400/30 rounded-lg text-amber-200 text-[11px] font-bold">
-              <span>📅 أيام الدوام: السبت، الأحد، الثلاثاء، والأربعاء (الإثنين إجازة رسمية للمستشفى)</span>
+              <span>📅 أيام الدوام: السبت، الأحد، الثلاثاء، والأربعاء (الإثنين إجازة رسمية للعيادة)</span>
             </div>
           </div>
 

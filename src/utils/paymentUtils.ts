@@ -142,7 +142,7 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
   hospitalAccounts: {
     kuraimi: {
       accountNumber: '300889214',
-      accountName: 'مستشفى وهج الطبي التخصصي',
+      accountName: 'عيادة وهاج الطبي التخصصي',
       merchantId: 'KRM-HOSP-770921',
       terminalId: 'POS-SANAA-01',
       enableHasebPay: true,
@@ -153,7 +153,7 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
     },
     oneCash: {
       accountNumber: '777123456',
-      accountName: 'مستشفى وهج الطبي التخصصي - وان كاش',
+      accountName: 'عيادة د/وهاج الطبي التخصصي - وان كاش',
       phone: '777123456',
       providerNameAr: 'محفظة وان كاش (OneCash)',
       isActive: true,
@@ -161,7 +161,7 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
     },
     mahfazati: {
       accountNumber: '778901234',
-      accountName: 'مستشفى وهج الطبي التخصصي - محفظتي',
+      accountName: 'عيادة د/وهاج الطبي التخصصي - محفظتي',
       phone: '778901234',
       providerNameAr: 'محفظة محفظتي (Mahfazati)',
       isActive: true,
@@ -169,7 +169,7 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
     },
     jeeb: {
       accountNumber: '773456789',
-      accountName: 'مستشفى وهج الطبي التخصصي - جيب',
+      accountName: 'عيادة د/وهاج الطبي التخصصي - جيب',
       phone: '773456789',
       providerNameAr: 'محفظة جيب (Jeeb - بنك التضامن)',
       isActive: true,
@@ -177,7 +177,7 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
     },
     floosak: {
       accountNumber: '774567890',
-      accountName: 'مستشفى وهج الطبي التخصصي - فلوسك',
+      accountName: 'عيادة د/وهاج الطبي التخصصي - فلوسك',
       phone: '774567890',
       providerNameAr: 'محفظة فلوسك (Floosak - بنك اليمن والكويت)',
       isActive: true,

@@ -751,7 +751,7 @@ export const api = {
           id: 'stf-' + Date.now(),
           userId: newUser.id,
           fullName: newUser.fullName,
-          department: 'إدارة المستشفى والعمليات العليا',
+          department: 'إدارة العيادة والعمليات العليا',
           roleTitle: 'المدير العام والمسؤول المعتمد',
           shift: 'شامل',
           avatar: newUser.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
@@ -3511,21 +3511,26 @@ createDoctor: async (
     /**
      * توحيد الحالة:
      *
-     * ANSWERED => تم الرد
+     * إذا وجد الرد الطبي أو كانت الحالة ANSWERED => تم الرد
      * CLOSED   => مغلقة
      * أي شيء آخر => PENDING
      */
     const normalizeConsultation = (
       consultation: Consultation
-    ): Consultation => ({
-      ...consultation,
-      status:
-        consultation.status === 'ANSWERED'
+    ): Consultation => {
+      const isAnswered =
+        consultation.status === 'ANSWERED' ||
+        Boolean(consultation.doctorAdvice && consultation.doctorAdvice.trim().length > 0);
+
+      return {
+        ...consultation,
+        status: isAnswered
           ? 'ANSWERED'
           : consultation.status === 'CLOSED'
             ? 'CLOSED'
             : 'PENDING'
-    });
+      };
+    };
 
     const apiNormalized =
       apiCns.map(
@@ -3553,8 +3558,7 @@ createDoctor: async (
     );
 
     /**
-     * Firestore يضيف السجلات غير الموجودة فقط.
-     * لا نسمح له باستبدال حالة API الحالية.
+     * دمج Firestore مع الحفاظ على حالة الرد الطبي والبيانات المحدثة.
      */
     fsNormalized.forEach(
       (consultation) => {
@@ -3565,6 +3569,19 @@ createDoctor: async (
           );
         } else {
           const existing = mergedMap.get(consultation.id)!;
+          // إذا كانت الاستشارة مجاب عليها في فايربيس أو تحتوي رداً طبياً، نحتفظ بها كتم الرد
+          if (consultation.status === 'ANSWERED' || Boolean(consultation.doctorAdvice?.trim())) {
+            existing.status = 'ANSWERED';
+            if (consultation.doctorAdvice) existing.doctorAdvice = consultation.doctorAdvice;
+            if (consultation.doctorNotes) existing.doctorNotes = consultation.doctorNotes;
+            if (consultation.treatmentPlan) existing.treatmentPlan = consultation.treatmentPlan;
+            if (consultation.suggestedAction) existing.suggestedAction = consultation.suggestedAction;
+            if (consultation.answeredAt) existing.answeredAt = consultation.answeredAt;
+            if (consultation.requireInPersonVisit !== undefined) existing.requireInPersonVisit = consultation.requireInPersonVisit;
+          }
+          if (consultation.messages && consultation.messages.length > (existing.messages?.length || 0)) {
+            existing.messages = consultation.messages;
+          }
           if (consultation.isPaid || consultation.paymentStatus === 'PAID' || consultation.paymentStatus === 'PAYMENT_SUCCESS') {
             existing.isPaid = true;
             existing.paymentStatus = 'PAID';
@@ -3943,148 +3960,130 @@ return newCns;
     );
   }
 
+  const replyText = data.doctorAdvice.trim();
+
+  // 1. استدعاء خادم الـ API أولاً
+  let serverRes: any = null;
   try {
-    const res =
-      await fetchJson<Consultation>(
+    serverRes =
+      await fetchJson<any>(
         '/api/consultations/' +
         id +
         '/reply',
         {
           method: 'POST',
-
           body:
             JSON.stringify({
               ...data,
-              doctorAdvice:
-                data.doctorAdvice.trim()
+              doctorAdvice: replyText
             })
         }
       );
-
-    /**
-     * تأكيد الحالة القادمة من الخادم.
-     * الرد الناجح = ANSWERED.
-     */
-    savedConsultation = {
-      ...res,
-      status: 'ANSWERED'
-    };
-
-    /**
-     * نحفظ نفس النسخة المحدثة في Firestore.
-     */
-    const saved =
-      await firebaseDb.saveConsultation(
-        savedConsultation
-      );
-
-    if (!saved) {
-      console.warn(
-        'Consultation API updated successfully but Firestore sync failed.'
-      );
-    }
-
   } catch (error) {
     console.warn(
-      'API replyConsultation fallback:',
+      'API replyConsultation server call warning:',
       error
     );
+  }
 
-    const existing =
+  // 2. استخراج كائن الاستشارة بشكل صحيح سواء كان مغلّفاً أو مباشراً
+  const unwrappedServerCns: Partial<Consultation> | null =
+    serverRes?.consultation || (serverRes?.id ? serverRes : null);
+
+  // 3. جلب الاستشارة المخزنة في فايربيس للمطابقة والحفاظ على كافة الحقول
+  let existingFs: Consultation | null = null;
+  try {
+    existingFs =
       await firebaseDb.getDocument<Consultation>(
         FIRESTORE_COLLECTIONS.CONSULTATIONS,
         id
       );
+  } catch (err) {
+    console.warn('Could not read existing consultation from Firestore:', err);
+  }
 
-    if (!existing) {
-      throw new Error(
-        'لم يتم العثور على الاستشارة الطبية.'
-      );
+  const base = unwrappedServerCns || existingFs;
+  if (!base && !existingFs && !serverRes) {
+    throw new Error(
+      'لم يتم العثور على الاستشارة الطبية.'
+    );
+  }
+
+  const doctorId = base?.doctorId || existingFs?.doctorId || 'usr-doc-1';
+  const doctorName = base?.doctorName || existingFs?.doctorName || 'طبيب استشاري';
+
+  const baseMessages = Array.isArray(unwrappedServerCns?.messages) && unwrappedServerCns!.messages!.length > 0
+    ? unwrappedServerCns!.messages!
+    : (Array.isArray(existingFs?.messages) ? existingFs!.messages! : []);
+
+  const updatedMessages = [
+    ...baseMessages,
+    {
+      id: 'msg-' + Date.now(),
+      consultationId: id,
+      senderId: doctorId,
+      senderName: doctorName,
+      senderRole: 'DOCTOR' as const,
+      message: replyText,
+      createdAt: new Date().toISOString()
     }
+  ];
 
-    const replyText =
-      data.doctorAdvice.trim();
+  savedConsultation = {
+    ...(existingFs || {}),
+    ...(base || {}),
+    id,
+    patientId: base?.patientId || existingFs?.patientId || '',
+    patientName: base?.patientName || existingFs?.patientName || '',
+    doctorId,
+    doctorName,
+    status: 'ANSWERED',
+    doctorAdvice: replyText,
+    doctorNotes:
+      data.doctorNotes !== undefined
+        ? data.doctorNotes
+        : (base?.doctorNotes || existingFs?.doctorNotes || ''),
+    suggestedAction:
+      data.suggestedAction !== undefined
+        ? data.suggestedAction
+        : (base?.suggestedAction || existingFs?.suggestedAction || ''),
+    treatmentPlan:
+      data.treatmentPlan !== undefined
+        ? data.treatmentPlan
+        : (base?.treatmentPlan || existingFs?.treatmentPlan || ''),
+    requireInPersonVisit:
+      data.requireInPersonVisit !== undefined
+        ? data.requireInPersonVisit
+        : (base?.requireInPersonVisit ?? existingFs?.requireInPersonVisit ?? false),
+    answeredAt:
+      base?.answeredAt || new Date().toISOString(),
+    messages: updatedMessages
+  } as Consultation;
 
-    const updated:
-      Consultation = {
-      ...existing,
+  /**
+   * حفظ النسخة المؤكدة قطعيًا في Firestore مع المعرف id الصحيح لمنع أي رفض.
+   */
+  const saved =
+    await firebaseDb.saveConsultation(
+      savedConsultation
+    );
 
-      doctorAdvice:
-        replyText,
+  if (!saved) {
+    console.warn(
+      'Consultation Firestore save fallback with explicit ID:',
+      id
+    );
+    await firebaseDb.saveDocument(
+      FIRESTORE_COLLECTIONS.CONSULTATIONS,
+      id,
+      savedConsultation
+    );
+  }
 
-      doctorNotes:
-        data.doctorNotes !== undefined
-          ? data.doctorNotes
-          : existing.doctorNotes,
-
-      suggestedAction:
-        data.suggestedAction !== undefined
-          ? data.suggestedAction
-          : existing.suggestedAction,
-
-      treatmentPlan:
-        data.treatmentPlan !== undefined
-          ? data.treatmentPlan
-          : existing.treatmentPlan,
-
-      requireInPersonVisit:
-        data.requireInPersonVisit !==
-        undefined
-          ? data.requireInPersonVisit
-          : existing.requireInPersonVisit,
-
-      /**
-       * لا تتغير إلى ANSWERED إلا هنا،
-       * بعد وجود الرد الطبي فعلياً.
-       */
-      status:
-        'ANSWERED',
-
-      answeredAt:
-        new Date().toISOString(),
-
-      messages: [
-        ...(existing.messages || []),
-
-        {
-          id:
-            'msg-' +
-            Date.now(),
-
-          consultationId:
-            id,
-
-          senderId:
-            existing.doctorId,
-
-          senderName:
-            existing.doctorName,
-
-          senderRole:
-            'DOCTOR',
-
-          message:
-            replyText,
-
-          createdAt:
-            new Date().toISOString()
-        }
-      ]
-    };
-
-    const firestoreSaved =
-      await firebaseDb.saveConsultation(
-        updated
-      );
-
-    if (!firestoreSaved) {
-      console.warn(
-        'Failed saving answered consultation to Firestore.'
-      );
-    }
-
-    savedConsultation =
-      updated;
+  // إطلاق أحداث التحديث الفوري لكافة شاشات التطبيق
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('mch_consultations_updated'));
+    localStorage.setItem('mch_sync_trigger', Date.now().toString());
   }
 
   /**
@@ -5618,7 +5617,7 @@ return newCns;
               .replace(/{date}|{التاريخ}|\[التاريخ\]/g, aptDate)
               .replace(/{time}|{الوقت}|\[الوقت\]/g, aptTime);
           } else {
-            notifMsg = `نود إحاطتكم بأن الطبيب ${docName} غير مداوم في العيادة بتاريخ ${aptDate} لظرف طارئ. نرجو عدم الحضور إلى المستشفى حرصاً على راحتكم ووقتكم، وسيقوم فريق خدمة العملاء بالتواصل معكم هاتفياً لترتيب موعد بديل يناسبكم.`;
+            notifMsg = `نود إحاطتكم بأن الطبيب ${docName} غير مداوم في العيادة بتاريخ ${aptDate} لظرف طارئ. نرجو عدم الحضور إلى العيادة حرصاً على راحتكم ووقتكم، وسيقوم فريق خدمة العملاء بالتواصل معكم هاتفياً لترتيب موعد بديل يناسبكم.`;
           }
 
           const notif: AppNotification = {
@@ -6506,7 +6505,15 @@ createStaff: async (
       let unsubFirestore: (() => void) | null = null;
       try {
         unsubFirestore = subscribeToConsultations(filter, (cns) => {
-          if (Array.isArray(cns) && cns.length > 0) callback(cns);
+          if (Array.isArray(cns) && cns.length > 0) {
+            const normalized = cns.map(c => ({
+              ...c,
+              status: (c.status === 'ANSWERED' || Boolean(c.doctorAdvice?.trim()))
+                ? ('ANSWERED' as const)
+                : (c.status === 'CLOSED' ? ('CLOSED' as const) : ('PENDING' as const))
+            }));
+            callback(normalized);
+          }
         });
       } catch {}
 
@@ -7030,7 +7037,7 @@ createStaff: async (
         ...paymentIdOrOptions,
         amount: paymentIdOrOptions.amount,
         reason: paymentIdOrOptions.reason || 'استرداد مالي',
-        processedBy: paymentIdOrOptions.processedBy || paymentIdOrOptions.refundedBy || 'إدارة المستشفى',
+        processedBy: paymentIdOrOptions.processedBy || paymentIdOrOptions.refundedBy || 'إدارة العيادة',
         serviceReferenceId: paymentIdOrOptions.serviceReferenceId
       };
     }
@@ -7077,7 +7084,7 @@ createStaff: async (
         reason: payload.reason || 'إلغاء واسترداد الرسوم',
         status: 'REFUNDED',
         transactionReference: `REF-TXN-${Date.now().toString().slice(-6)}`,
-        processedBy: payload.processedBy || 'إدارة المستشفى المالية',
+        processedBy: payload.processedBy || 'إدارة العيادة المالية',
         createdAt: new Date().toISOString()
       };
 
@@ -7352,7 +7359,7 @@ createStaff: async (
           patientMrn: 'MRN-2026-1001',
           reason: 'إعفاء خاص بقرار الإدارة - رعاية إنسانية',
           grantedAt: new Date().toISOString(),
-          grantedBy: 'مدير المستشفى',
+          grantedBy: 'مدير العيادة',
           usedCount: 0
         }
       ],
@@ -7673,9 +7680,9 @@ createStaff: async (
       patientName: cleanName,
       patientPhone: cleanPhone || undefined,
       patientMrn: (data.patientMrn || '').trim() || undefined,
-      reason: (data.reason || 'إعفاء خاص بقرار إدارة المستشفى').trim(),
+      reason: (data.reason || 'إعفاء خاص بقرار إدارة العيادة').trim(),
       grantedAt: new Date().toISOString(),
-      grantedBy: data.grantedBy || 'مدير المستشفى',
+      grantedBy: data.grantedBy || 'مدير العيادة',
       usedCount: 0
     };
 

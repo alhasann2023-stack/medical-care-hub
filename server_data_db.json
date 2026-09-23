@@ -107,7 +107,7 @@
       "id": "stf-1788004859373",
       "userId": "usr-hospital_admin-1788004859373",
       "fullName": "نشوان وهيب",
-      "department": "إدارة المستشفى والعمليات العليا",
+      "department": "إدارة العيادة والعمليات العليا",
       "roleTitle": "المدير العام والمسؤول المعتمد",
       "shift": "شامل",
       "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=%D9%86%D8%B4%D9%88%D8%A7%D9%86%20%D9%88%D9%87%D9%8A%D8%A8",
@@ -259,7 +259,7 @@
     {
       "id": "log-1788006112259-945",
       "userId": "admin",
-      "userName": "مدير المستشفى",
+      "userName": "مدير العيادة",
       "userRole": "HOSPITAL_ADMIN",
       "action": "DELETE_DOCTOR",
       "entityType": "DOCTOR",
@@ -271,7 +271,7 @@
     {
       "id": "log-1788006003393-326",
       "userId": "admin",
-      "userName": "مدير المستشفى",
+      "userName": "مدير العيادة",
       "userRole": "HOSPITAL_ADMIN",
       "action": "ADD_DOCTOR",
       "entityType": "DOCTOR",
@@ -319,7 +319,7 @@
     {
       "id": "log-1788004994728-396",
       "userId": "admin",
-      "userName": "مدير المستشفى",
+      "userName": "مدير العيادة",
       "userRole": "HOSPITAL_ADMIN",
       "action": "ADD_STAFF",
       "entityType": "STAFF",
@@ -331,7 +331,7 @@
     {
       "id": "log-1788004973840-824",
       "userId": "admin",
-      "userName": "مدير المستشفى",
+      "userName": "مدير العيادة",
       "userRole": "HOSPITAL_ADMIN",
       "action": "ADD_DOCTOR",
       "entityType": "DOCTOR",
@@ -367,7 +367,7 @@
     {
       "id": "log-1788004783061-437",
       "userId": "admin",
-      "userName": "مدير المستشفى",
+      "userName": "مدير العيادة",
       "userRole": "HOSPITAL_ADMIN",
       "action": "DELETE_STAFF",
       "entityType": "STAFF",
@@ -379,7 +379,7 @@
     {
       "id": "log-1788004775224-234",
       "userId": "admin",
-      "userName": "مدير المستشفى",
+      "userName": "مدير العيادة",
       "userRole": "HOSPITAL_ADMIN",
       "action": "DELETE_DOCTOR",
       "entityType": "DOCTOR",
@@ -415,7 +415,7 @@
     {
       "id": "log-1788004542570-328",
       "userId": "admin",
-      "userName": "مدير المستشفى",
+      "userName": "مدير العيادة",
       "userRole": "HOSPITAL_ADMIN",
       "action": "ADD_DOCTOR",
       "entityType": "DOCTOR",

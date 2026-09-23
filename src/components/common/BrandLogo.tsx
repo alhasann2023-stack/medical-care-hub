@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface BrandLogoProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
@@ -10,7 +10,7 @@ interface BrandLogoProps {
   theme?: 'light' | 'dark';
 }
 
-export const BrandLogo: React.FC<BrandLogoProps> = ({
+export const BrandLogo = ({
   size = 'md',
   className = '',
   imageClassName = '',
@@ -18,8 +18,9 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   textClassName = '',
   subtextClassName = '',
   theme = 'light'
-}) => {
+}: BrandLogoProps) => {
   const [imgError, setImgError] = useState(false);
+  const [imgSrc, setImgSrc] = useState(theme === 'dark' ? '/logo-transparent.png' : '/logo.png');
 
   const sizeClasses = {
     xs: 'w-7 h-7',
@@ -27,9 +28,12 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
     md: 'w-11 h-11',
     lg: 'w-14 h-14',
     xl: 'w-20 h-20'
-  };
+  } as const;
 
-  const imageSrc = theme === 'dark' ? '/logo-transparent.png' : '/logo.png';
+  useEffect(() => {
+    setImgSrc(theme === 'dark' ? '/logo-transparent.png' : '/logo.png');
+    setImgError(false);
+  }, [theme]);
 
   return (
     <div className={`inline-flex items-center gap-3 ${className}`}>
@@ -38,14 +42,13 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       >
         {!imgError ? (
           <img
-            src={imageSrc}
+            src={imgSrc}
             alt="شعار صحتك في يدك"
             className={`w-full h-full object-contain ${imageClassName}`}
             referrerPolicy="no-referrer"
             onError={() => {
-              // fallback to regular logo.png if transparent fails
-              if (imageSrc !== '/logo.png') {
-                // do nothing or switch
+              if (imgSrc !== '/logo.png') {
+                setImgSrc('/logo.png');
               } else {
                 setImgError(true);
               }

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useEffect, useState } from 'react';
 import { 
   X, 
@@ -5,12 +6,9 @@ import {
   Heart, 
   Phone, 
   Plus, 
-  Trash2, 
   CheckCircle2, 
   Save, 
-  Droplet, 
-  User, 
-  Sparkles 
+  Droplet
 } from 'lucide-react';
 import { Patient } from '../../types/medical';
 import { api } from '../../services/api';

@@ -723,7 +723,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                       </strong>
                       <p className="text-rose-800 text-[11px] leading-relaxed">
                         {upcomingAppointment.doctorAbsentNotice ||
-                          `نود إحاطتكم بأن الطبيب ${upcomingAppointment.doctorName} غير مداوم في العيادة في هذا الموعد، يرجى عدم الحضور إلى المستشفى. سيتواصل معكم فريق خدمة العملاء لترتيب موعد بديل.`}
+                          `نود إحاطتكم بأن الطبيب ${upcomingAppointment.doctorName} غير مداوم في العيادة في هذا الموعد، يرجى عدم الحضور إلى العيادة. سيتواصل معكم فريق خدمة العملاء لترتيب موعد بديل.`}
                       </p>
                     </div>
                   </div>

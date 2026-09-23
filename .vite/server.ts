@@ -636,7 +636,7 @@ export function createApiApp() {
     // Restrict public self-registration to patients only; doctor and staff accounts must be created by admin
     if (!isAdminUser && (role === 'DOCTOR' || role === 'CUSTOMER_SERVICE' || role === 'HOSPITAL_ADMIN')) {
       return res.status(403).json({ 
-        error: 'عذراً، لا يُسمح بإنشاء حسابات الأطباء أو الموظفين عبر التسجيل العام. يتم إنشاء واعتماد الحسابات ومنح الصلاحيات حصراً عبر لوحة إدارة المستشفى بواسطة المشرف.' 
+        error: 'عذراً، لا يُسمح بإنشاء حسابات الأطباء أو الموظفين عبر التسجيل العام. يتم إنشاء واعتماد الحسابات ومنح الصلاحيات حصراً عبر لوحة إدارة عيادة بواسطة المشرف.' 
       });
     }
 
@@ -802,7 +802,7 @@ export function createApiApp() {
         id: newStaffId,
         userId: newUserId,
         fullName: newUser.fullName,
-        department: targetRole === 'HOSPITAL_ADMIN' ? 'إدارة المستشفى والعمليات العليا' : 'خدمة العملاء والتنسيق الطبي',
+        department: targetRole === 'HOSPITAL_ADMIN' ? 'إدارة العيادة والعمليات العليا' : 'خدمة العملاء والتنسيق الطبي',
         roleTitle: targetRole === 'HOSPITAL_ADMIN' ? 'المدير العام والمسؤول المعتمد' : 'منسق رعاية المرضى',
         shift: 'شامل',
         avatar: newUser.avatar,
@@ -1865,7 +1865,7 @@ export function createApiApp() {
     users.push(newUser);
     doctors.push(newDoctor);
 
-    logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'ADD_DOCTOR', 'DOCTOR', doctorId, `إضافة حساب استشاري جديد: ${fullName} بالبريد ${normalizedEmail}`, req);
+    logAudit('admin', 'مدير العيادة', 'HOSPITAL_ADMIN', 'ADD_DOCTOR', 'DOCTOR', doctorId, `إضافة حساب استشاري جديد: ${fullName} بالبريد ${normalizedEmail}`, req);
 
     saveDatabase();
 
@@ -1984,7 +1984,7 @@ export function createApiApp() {
     if (availableHours !== undefined) doc.availableHours = availableHours;
     if (isActive !== undefined) doc.isActive = Boolean(isActive);
 
-    logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'UPDATE_DOCTOR', 'DOCTOR', doc.id, `تحديث بيانات الطبيب ${doc.fullName} (${doc.email})`, req);
+    logAudit('admin', 'مدير العيادة', 'HOSPITAL_ADMIN', 'UPDATE_DOCTOR', 'DOCTOR', doc.id, `تحديث بيانات الطبيب ${doc.fullName} (${doc.email})`, req);
 
     saveDatabase();
 
@@ -2012,7 +2012,7 @@ export function createApiApp() {
       delete userPasswords[deletedDocUserId];
     }
 
-    logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'DELETE_DOCTOR', 'DOCTOR', doc.id, `حذف حساب الطبيب ${deletedDocName} وإلغاء صلاحياته كلياً`, req);
+    logAudit('admin', 'مدير العيادة', 'HOSPITAL_ADMIN', 'DELETE_DOCTOR', 'DOCTOR', doc.id, `حذف حساب الطبيب ${deletedDocName} وإلغاء صلاحياته كلياً`, req);
 
     saveDatabase();
 
@@ -2024,7 +2024,7 @@ export function createApiApp() {
     const doc = doctors.find(d => d.id === req.params.id || d.userId === req.params.id);
     if (!doc) return res.status(404).json({ error: 'الطبيب غير موجود' });
     doc.isActive = !doc.isActive;
-    logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'TOGGLE_DOCTOR_STATUS', 'DOCTOR', doc.id, `تغيير حالة الطبيب ${doc.fullName} إلى ${doc.isActive ? 'نشط' : 'معطل'}`, req);
+    logAudit('admin', 'مدير العيادة', 'HOSPITAL_ADMIN', 'TOGGLE_DOCTOR_STATUS', 'DOCTOR', doc.id, `تغيير حالة الطبيب ${doc.fullName} إلى ${doc.isActive ? 'نشط' : 'معطل'}`, req);
     saveDatabase();
     res.json(doc);
   });
@@ -2054,7 +2054,7 @@ export function createApiApp() {
 
   // 2. Update Payment Settings (Admin only)
   app.put('/api/payment-settings', (req: Request, res: Response) => {
-    const { updatedBy = 'مدير المستشفى والمالية', ...newSettings } = req.body;
+    const { updatedBy = 'مدير العيادة والمالية', ...newSettings } = req.body;
     
     // Preserve existing secrets if masked values were submitted
     const currentSettings = paymentService.getSettings();
@@ -2243,7 +2243,7 @@ export function createApiApp() {
       success: true,
       payment: confirmed.payment,
       ledgerEntry: confirmed.ledgerEntry,
-      message: 'تم تأكيد السداد عبر بنك الكريمي وإيداع المبلغ في حساب المستشفى.'
+      message: 'تم تأكيد السداد عبر بنك الكريمي وإيداع المبلغ في حساب العيادة.'
     });
   });
 
@@ -2410,7 +2410,7 @@ export function createApiApp() {
       return res.status(404).json({ error: 'سجل الدفع غير موجود.' });
     }
 
-    const { amount, reason = 'إلغاء الموعد أو الاستشارة بناءً على رغبة المريض أو اعتذار الطبيب', processedBy = 'إدارة المستشفى المالية', processedByUserId = 'usr-admin-1' } = req.body;
+    const { amount, reason = 'إلغاء الموعد أو الاستشارة بناءً على رغبة المريض أو اعتذار الطبيب', processedBy = 'إدارة العيادة المالية', processedByUserId = 'usr-admin-1' } = req.body;
     
     const result = paymentService.processRefund(payment, amount, reason, processedBy);
 
@@ -2504,7 +2504,7 @@ export function createApiApp() {
 
   // 10. Admin / CS Fee Waiver
   app.post('/api/payments/waive', (req: Request, res: Response) => {
-    const { serviceType, serviceReferenceId, reason = 'إعفاء مالي معتمد من إدارة المستشفى', approvedBy = 'مدير المستشفى', approvedByUserId = 'usr-admin-1' } = req.body;
+    const { serviceType, serviceReferenceId, reason = 'إعفاء مالي معتمد من إدارة العيادة', approvedBy = 'مدير العيادة', approvedByUserId = 'usr-admin-1' } = req.body;
 
     let targetName = '';
     let patientId = '';
@@ -3053,7 +3053,7 @@ export function createApiApp() {
         const isWaived = apt.isWaived || apt.paymentMethod === 'WAIVED';
         if (!isPaid && !isWaived) {
           return res.status(400).json({
-            error: 'لا يمكن تأكيد الموعد الطبي قبل سداد الرسوم المطلوبة أو منح إعفاء مالي معتمد من إدارة المستشفى.'
+            error: 'لا يمكن تأكيد الموعد الطبي قبل سداد الرسوم المطلوبة أو منح إعفاء مالي معتمد من إدارة العيادة.'
           });
         }
       }
@@ -3445,7 +3445,7 @@ export function createApiApp() {
     consultation.answeredAt = new Date().toISOString();
 
     const isAdmin = senderRole === 'HOSPITAL_ADMIN' || senderRole === 'ADMIN';
-    const effectiveSenderName = senderName || (isAdmin ? 'إدارة المستشفى الطبية' : consultation.doctorName);
+    const effectiveSenderName = senderName || (isAdmin ? 'إدارة العيادة الطبية' : consultation.doctorName);
     const effectiveSenderId = senderId || (isAdmin ? 'usr-admin-1' : consultation.doctorId);
     const effectiveSenderRole = isAdmin ? 'HOSPITAL_ADMIN' : 'DOCTOR';
 
@@ -3518,7 +3518,7 @@ export function createApiApp() {
     if (patient) {
       pushNotification(
         [patient.userId, patient.id],
-        isAdmin ? 'ردت إدارة المستشفى على استشارتك الطبية' : 'رد الطبيب على استشارتك الطبية',
+        isAdmin ? 'ردت إدارة العيادة على استشارتك الطبية' : 'رد الطبيب على استشارتك الطبية',
         `قام ${effectiveSenderName} بالرد على استشارتك: "${consultation.title}". ${createdFollowUp ? `وتم تحديد موعد مراجعة في تاريخ ${createdFollowUp.followUpDate}.` : ''} اضغط لعرض التوجيه الطبي.`,
         'CONSULTATION',
         consultation.id
@@ -4405,7 +4405,7 @@ export function createApiApp() {
 
       const notifTitle = `⚠️ تنبيه من خدمة العملاء: الطبيب ${docName} غير مداوم في العيادة`;
       const notifMessage = customMessage?.trim() || 
-        `نود إحاطتكم بأن الطبيب ${docName} غير مداوم في العيادة بتاريخ ${aptDate} لظرف طارئ. نرجو عدم الحضور إلى المستشفى حرصاً على راحتكم ووقتكم، وسيقوم فريق خدمة العملاء بالتواصل معكم هاتفياً لترتيب موعد بديل يناسبكم.`;
+        `نود إحاطتكم بأن الطبيب ${docName} غير مداوم في العيادة بتاريخ ${aptDate} لظرف طارئ. نرجو عدم الحضور إلى العيادة حرصاً على راحتكم ووقتكم، وسيقوم فريق خدمة العملاء بالتواصل معكم هاتفياً لترتيب موعد بديل يناسبكم.`;
 
       // Push notification to patient
       const targetUserIds = [apt.patientId, pat?.userId, pat?.id].filter(Boolean) as string[];
@@ -4616,7 +4616,7 @@ export function createApiApp() {
     staffList.push(newStaff);
 
     const roleNameAr = isLab ? 'فني وأخصائي مختبر' : (isSecretary ? 'سكرتير واستقبال طبي' : 'موظف خدمة عملاء');
-    logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'ADD_STAFF', 'STAFF', staffId, `إضافة حساب ${roleNameAr} جديد: ${newStaff.fullName} (${newStaff.phone})`, req);
+    logAudit('admin', 'مدير العيادة', 'HOSPITAL_ADMIN', 'ADD_STAFF', 'STAFF', staffId, `إضافة حساب ${roleNameAr} جديد: ${newStaff.fullName} (${newStaff.phone})`, req);
 
     saveDatabase();
 
@@ -4690,7 +4690,7 @@ export function createApiApp() {
     if (shift !== undefined) stf.shift = shift;
     if (isActive !== undefined) stf.isActive = Boolean(isActive);
 
-    logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'UPDATE_STAFF', 'STAFF', stf.id, `تعديل بيانات موظف خدمة العملاء: ${stf.fullName}`, req);
+    logAudit('admin', 'مدير العيادة', 'HOSPITAL_ADMIN', 'UPDATE_STAFF', 'STAFF', stf.id, `تعديل بيانات موظف خدمة العملاء: ${stf.fullName}`, req);
 
     saveDatabase();
     res.json(stf);
@@ -4755,7 +4755,7 @@ export function createApiApp() {
     if (shift !== undefined) stf.shift = shift;
     if (isActive !== undefined) stf.isActive = Boolean(isActive);
 
-    logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'UPDATE_STAFF', 'STAFF', stf.id, `تعديل بيانات موظف خدمة العملاء: ${stf.fullName}`, req);
+    logAudit('admin', 'مدير العيادة', 'HOSPITAL_ADMIN', 'UPDATE_STAFF', 'STAFF', stf.id, `تعديل بيانات موظف خدمة العملاء: ${stf.fullName}`, req);
 
     saveDatabase();
     res.json(stf);
@@ -4778,7 +4778,7 @@ export function createApiApp() {
       delete userPasswords[deletedStaffUserId];
     }
 
-    logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'DELETE_STAFF', 'STAFF', stf.id, `حذف حساب موظف خدمة العملاء ${deletedStaffName} وإلغاء صلاحياته نهائياً`, req);
+    logAudit('admin', 'مدير العيادة', 'HOSPITAL_ADMIN', 'DELETE_STAFF', 'STAFF', stf.id, `حذف حساب موظف خدمة العملاء ${deletedStaffName} وإلغاء صلاحياته نهائياً`, req);
 
     saveDatabase();
 
@@ -4789,7 +4789,7 @@ export function createApiApp() {
     const stf = staffList.find(s => s.id === req.params.id);
     if (!stf) return res.status(404).json({ error: 'الموظف غير موجود' });
     stf.isActive = !stf.isActive;
-    logAudit('admin', 'مدير المستشفى', 'HOSPITAL_ADMIN', 'TOGGLE_STAFF_STATUS', 'STAFF', stf.id, `تغيير حالة الموظف ${stf.fullName} إلى ${stf.isActive ? 'نشط' : 'معطل'}`, req);
+    logAudit('admin', 'مدير العيادة', 'HOSPITAL_ADMIN', 'TOGGLE_STAFF_STATUS', 'STAFF', stf.id, `تغيير حالة الموظف ${stf.fullName} إلى ${stf.isActive ? 'نشط' : 'معطل'}`, req);
     saveDatabase();
     res.json(stf);
   });
@@ -4861,7 +4861,7 @@ export function createApiApp() {
 
     logAudit(
       'admin',
-      'مدير المستشفى',
+      'مدير العيادة',
       'HOSPITAL_ADMIN',
       'UPDATE_FREE_CONSULTATION_PROMO',
       'SETTINGS',
@@ -4876,7 +4876,7 @@ export function createApiApp() {
         pushNotification(
           [pat.userId, pat.id].filter(Boolean),
           `🎉 بشرى سارة: استشارات طبية مجانية!`,
-          `بمناسبة "${freeConsultationPromo.occasionTitle}"، يسر المستشفى إتاحة الاستشارات الطبية مجاناً لفترة محدودة. يمكنك الآن إرسال استشارتك مجاناً.`,
+          `بمناسبة "${freeConsultationPromo.occasionTitle}"، يسر العيادة إتاحة الاستشارات الطبية مجاناً لفترة محدودة. يمكنك الآن إرسال استشارتك مجاناً.`,
           'SYSTEM',
           freeConsultationPromo.id
         );
@@ -4905,7 +4905,7 @@ export function createApiApp() {
 
     logAudit(
       'admin',
-      'مدير المستشفى',
+      'مدير العيادة',
       'HOSPITAL_ADMIN',
       'TOGGLE_FREE_CONSULTATION_PROMO',
       'SETTINGS',
@@ -5022,7 +5022,7 @@ ${context}
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `أنت مساعد صياغة تقارير طبية لمستشفى الرعاية الطبية.
+        contents: `أنت مساعد صياغة تقارير طبية العيادة الرعاية الطبية.
 المريض: ${patientName} (${gender === 'MALE' ? 'ذكر' : 'أنثى'}، ${age} سنة)
 التشخيص: ${diagnosis}
 الملاحظات السريرية: ${keyFindings}
