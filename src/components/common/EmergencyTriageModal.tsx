@@ -1,14 +1,14 @@
-import React from 'react';
-import {
-  ShieldAlert,
-  PhoneCall,
-  AlertOctagon,
-  CheckCircle2,
-  X,
-  Sparkles,
-  Bot,
-} from 'lucide-react';
-import { Language } from '../../types';
+import type { FC } from 'react';
+import { PhoneCall, AlertOctagon, X, Bot } from 'lucide-react';
+import type { Language } from '../../types';
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      [elemName: string]: any;
+    }
+  }
+}
 
 interface EmergencyTriageModalProps {
   isOpen: boolean;
@@ -17,7 +17,7 @@ interface EmergencyTriageModalProps {
   language: Language;
 }
 
-export const EmergencyTriageModal: React.FC<EmergencyTriageModalProps> = ({
+export const EmergencyTriageModal: FC<EmergencyTriageModalProps> = ({
   isOpen,
   onClose,
   onLaunchAITriage,

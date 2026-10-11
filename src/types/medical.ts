@@ -403,8 +403,11 @@ export interface Payment {
   confirmedAt?: string;
   confirmedBy?: string;
   isApprovedByAdmin?: boolean;
+<<<<<<< HEAD
   notes?: string;
   description?: string;
+=======
+>>>>>>> 77013a1ecaa8ea259247f5112f8edc08f576d052
   updatedAt?: string;
 }
 

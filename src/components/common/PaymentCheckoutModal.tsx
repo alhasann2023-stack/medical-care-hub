@@ -764,7 +764,7 @@ export const PaymentCheckoutModal: React.FC<PaymentCheckoutModalProps> = ({
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-black flex items-center gap-1.5 text-slate-900 dark:text-slate-100">
                             <Building2 className="w-4 h-4 text-emerald-600" />
-                            <span>حساب المستشفى الرسمي المعتمد للتحصيل (المضاف من الإدارة)</span>
+                            <span>حساب العيادة الرسمي المعتمد للتحصيل (المضاف من الإدارة)</span>
                           </span>
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700">
                             {selectedMethod === 'ONE_CASH' && 'وان كاش (OneCash)'}

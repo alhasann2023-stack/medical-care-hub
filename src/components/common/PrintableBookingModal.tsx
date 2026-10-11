@@ -73,7 +73,7 @@ export const PrintableBookingModal: React.FC<PrintableBookingModalProps> = ({
               <div className="w-14 h-14 rounded-xl bg-white border border-slate-300 p-1 flex items-center justify-center shadow-xs overflow-hidden shrink-0">
                 <img
                   src="/logo.png"
-                  alt="شعار المستشفى"
+                  alt="شعار العيادة"
                   className="w-full h-full object-contain"
                   referrerPolicy="no-referrer"
                   onError={(e) => {
@@ -82,7 +82,7 @@ export const PrintableBookingModal: React.FC<PrintableBookingModalProps> = ({
                 />
               </div>
               <div>
-                <h1 className="font-black text-lg text-slate-900 leading-tight">مستشفى الرعاية الطبية الحديث</h1>
+                <h1 className="font-black text-lg text-slate-900 leading-tight">  عيادة الدكتور وهاج المقطري</h1>
                 <p className="text-xs font-bold text-indigo-700">قسم الاستقبال وتنسيق المواعيد والعيادات الخارجية</p>
                 <p className="text-[11px] text-slate-500 font-mono">Modern Medical Care Hospital • Outpatient Booking Ticket</p>
               </div>
@@ -191,7 +191,7 @@ export const PrintableBookingModal: React.FC<PrintableBookingModalProps> = ({
             </h5>
             <ul className="list-disc list-inside space-y-0.5 text-amber-800 pr-1 leading-relaxed">
               <li>يرجى التواجد في قسم الاستقبال قبل 15 دقيقة من موعد العيادة لتأكيد الوصول.</li>
-              <li>أيام الدوام المعتمدة: السبت، الأحد، الثلاثاء، والأربعاء فقط (يوم الإثنين إجازة رسمية للمستشفى).</li>
+              <li>أيام الدوام المعتمدة: السبت، الأحد، الثلاثاء، والأربعاء فقط (يوم الإثنين إجازة رسمية للعيادة).</li>
               <li>يرجى إبراز هذه التذكرة المطبوعة أو الإلكترونية مع بطاقة الهوية لموظف السكرتاريا والاستقبال.</li>
             </ul>
           </div>

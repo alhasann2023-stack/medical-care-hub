@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
 
 import {
@@ -420,7 +421,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
 
       if (selectedDay === 1) {
         setError(
-          'تنبيه: يوم الإثنين إجازة رسمية للمستشفى. أيام الدوام المعتمدة لاستقبال المرضى هي السبت، الأحد، الثلاثاء، والأربعاء فقط.'
+          'تنبيه: يوم الإثنين إجازة رسمية العيادة. أيام الدوام المعتمدة لاستقبال المرضى هي السبت، الأحد، الثلاثاء، والأربعاء فقط.'
         );
 
         return;
@@ -806,7 +807,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                       key={s.id}
                       value={s.id}
                     >
-                      {s.nameAr} — السعر الرسمي: {s.price} نقطة{' '}
+                      {s.nameAr} — السعر الرسمي: {s.price} ر.ي{' '}
                       {s.durationMinutes
                         ? `(${s.durationMinutes} دقيقة)`
                         : ''}

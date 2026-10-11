@@ -59,7 +59,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
           </h1>
 
           <p className="text-sm sm:text-base text-blue-200/90 max-w-2xl mx-auto leading-relaxed font-normal">
-            منظومة سحابية موحدة تجمع بين المرضى، الأطباء الاستشاريين، مراكز خدمة المواعيد، وإدارة المستشفى لتقديم تجربة علاجية وسجلات طبية فورية وآمنة عبر البريد الإلكتروني.
+            منظومة سحابية موحدة تجمع بين المرضى، الأطباء الاستشاريين، مراكز خدمة المواعيد، وإدارة العيادة لتقديم تجربة علاجية وسجلات طبية فورية وآمنة عبر البريد الإلكتروني.
           </p>
 
           {/* Call to Actions */}
@@ -131,7 +131,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             </div>
             <h3 className="font-bold text-sm text-slate-900">تقارير ووصفات رسمية قابلة للطباعة</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              مخرجات معتمدة بختم المستشفى ورموز التحقق الرقمية QR ومطابقة لصيغ الطباعة المعتمدة في المستشفيات.
+              مخرجات معتمدة بختم العيادة ورموز التحقق الرقمية QR ومطابقة لصيغ الطباعة المعتمدة في المستشفيات.
             </p>
           </div>
         </div>

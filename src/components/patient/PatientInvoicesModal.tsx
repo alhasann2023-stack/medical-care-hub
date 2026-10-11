@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+declare module 'react/jsx-runtime';
+
+import React, { useState, useEffect, type ChangeEvent } from 'react';
 import { 
   CreditCard, 
   Receipt, 
@@ -18,7 +20,7 @@ import {
   UserCheck,
   Stethoscope
 } from 'lucide-react';
-import { Payment } from '../../types/medical';
+import { Payment, CurrencyCode } from '../../types/medical';
 import { apiClient } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { PaymentCheckoutModal } from '../common/PaymentCheckoutModal';
@@ -30,12 +32,12 @@ interface PatientInvoicesModalProps {
   patientName?: string;
 }
 
-export const PatientInvoicesModal: React.FC<PatientInvoicesModalProps> = ({
+export const PatientInvoicesModal = ({
   isOpen,
   onClose,
   patientId: propPatientId,
   patientName: propPatientName
-}) => {
+}: PatientInvoicesModalProps) => {
   const { user, patientProfile } = useAuth();
 
   const effectivePatientId = propPatientId || patientProfile?.id || user?.id || '';
@@ -122,7 +124,7 @@ export const PatientInvoicesModal: React.FC<PatientInvoicesModalProps> = ({
 
       cns?.forEach(cn => {
         if (cn.id && !existingRefIds.has(cn.id)) {
-          const fee = (cn as any).paymentAmount ?? (cn.fee ?? 50);
+          const fee = (cn as any).paymentAmount ?? ((cn as any).fee ?? 50);
           const cnPay: Payment = {
             id: (cn as any).paymentId || `inv-cns-${cn.id}`,
             receiptNumber: (cn as any).receiptNumber || `INV-${cn.id.replace(/\D/g, '').slice(-6) || Math.floor(100000 + Math.random() * 900000)}`,
@@ -183,7 +185,7 @@ export const PatientInvoicesModal: React.FC<PatientInvoicesModalProps> = ({
 
   if (!isOpen) return null;
 
-  const filtered = payments.filter(p => {
+  const filtered = payments.filter((p: Payment) => {
     const matchesSearch = 
       p.serviceName?.toLowerCase().includes(search.toLowerCase()) ||
       p.transactionReference?.toLowerCase().includes(search.toLowerCase()) ||
@@ -194,10 +196,10 @@ export const PatientInvoicesModal: React.FC<PatientInvoicesModalProps> = ({
   });
 
   const totalPaid = payments
-    .filter(p => p.status === 'PAYMENT_SUCCESS' || p.paymentStatus === 'PAID' || p.status === 'PAID' || p.paymentStatus === 'PAYMENT_SUCCESS')
-    .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    .filter((p: Payment) => p.status === 'PAYMENT_SUCCESS' || p.paymentStatus === 'PAID' || p.status === 'PAID' || p.paymentStatus === 'PAYMENT_SUCCESS')
+    .reduce<number>((acc: number, curr: Payment) => acc + (Number(curr.amount) || 0), 0);
 
-  const pendingCount = payments.filter(p => 
+  const pendingCount = payments.filter((p: Payment) => 
     p.status === 'PAYMENT_REQUIRED' || 
     p.paymentStatus === 'PAYMENT_REQUIRED' || 
     p.status === 'PENDING' || 
@@ -316,7 +318,7 @@ export const PatientInvoicesModal: React.FC<PatientInvoicesModalProps> = ({
           ) : (
             filtered.map(payment => {
               const isRefunded = payment.status === 'REFUNDED' || payment.paymentStatus === 'REFUNDED';
-              const isSuccess = !isRefunded && (payment.status === 'PAYMENT_SUCCESS' || payment.paymentStatus === 'PAYMENT_SUCCESS' || payment.status === 'PAID' || payment.paymentStatus === 'PAID' || payment.isPaid);
+              const isSuccess = !isRefunded && (payment.status === 'PAYMENT_SUCCESS' || payment.paymentStatus === 'PAYMENT_SUCCESS' || payment.status === 'PAID' || payment.paymentStatus === 'PAID' || (payment as any).isPaid);
               const isPending = !isRefunded && !isSuccess && (payment.status === 'PENDING' || payment.status === 'PAYMENT_REQUIRED' || payment.paymentStatus === 'PAYMENT_REQUIRED' || payment.paymentStatus === 'PENDING');
               const isTransferNotice = payment.paymentMethod === 'BANK_TRANSFER_NOTICE' || !!(payment as any).bankTransferDetails;
 
@@ -480,7 +482,12 @@ export const PatientInvoicesModal: React.FC<PatientInvoicesModalProps> = ({
                 <div className="flex justify-between">
                   <span className="text-slate-500">حالة الفاتورة:</span>
                   <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                    {selectedInvoicePreview.status === 'PAYMENT_SUCCESS' || selectedInvoicePreview.paymentStatus === 'PAID' || selectedInvoicePreview.isPaid ? 'تم التحصيل والسداد بنجاح ✓' : 'بانتظار السداد'}
+                    {selectedInvoicePreview.status === 'PAYMENT_SUCCESS' ||
+                    selectedInvoicePreview.paymentStatus === 'PAYMENT_SUCCESS' ||
+                    selectedInvoicePreview.status === 'PAID' ||
+                    selectedInvoicePreview.paymentStatus === 'PAID'
+                      ? 'تم التحصيل والسداد بنجاح ✓'
+                      : 'بانتظار السداد'}
                   </span>
                 </div>
               </div>
@@ -562,26 +569,37 @@ export const PatientInvoicesModal: React.FC<PatientInvoicesModalProps> = ({
       )}
 
       {/* Embedded Checkout if patient chooses to pay an unpaid invoice */}
-      {selectedPaymentToPay && (
-        <PaymentCheckoutModal
-          isOpen={Boolean(selectedPaymentToPay)}
-          onClose={() => setSelectedPaymentToPay(null)}
-          onSuccess={() => {
-            setSelectedPaymentToPay(null);
-            fetchPayments();
-          }}
-          serviceType={selectedPaymentToPay.serviceType}
-          serviceReferenceId={selectedPaymentToPay.serviceReferenceId}
-          serviceName={selectedPaymentToPay.serviceName}
-          amount={selectedPaymentToPay.amount}
-          currency={selectedPaymentToPay.currency}
-          patientId={effectivePatientId}
-          patientName={effectivePatientName}
-          doctorId={selectedPaymentToPay.doctorId}
-          doctorName={selectedPaymentToPay.doctorName}
-          doctorSpecialty={selectedPaymentToPay.doctorSpecialty}
-        />
-      )}
+      {selectedPaymentToPay && (() => {
+        const checkoutServiceType: 'APPOINTMENT' | 'CONSULTATION' | 'PROCEDURE' | 'MEDICATION' =
+          selectedPaymentToPay.serviceType === 'APPOINTMENT' || selectedPaymentToPay.serviceType === 'APPOINTMENT_BOOKING'
+            ? 'APPOINTMENT'
+            : selectedPaymentToPay.serviceType === 'CONSULTATION' || selectedPaymentToPay.serviceType === 'MEDICAL_CONSULTATION'
+              ? 'CONSULTATION'
+              : selectedPaymentToPay.serviceType === 'PROCEDURE' || selectedPaymentToPay.serviceType === 'LAB_TEST'
+                ? 'PROCEDURE'
+                : 'MEDICATION';
+
+        return (
+          <PaymentCheckoutModal
+            isOpen={Boolean(selectedPaymentToPay)}
+            onClose={() => setSelectedPaymentToPay(null)}
+            onSuccess={() => {
+              setSelectedPaymentToPay(null);
+              fetchPayments();
+            }}
+            serviceType={checkoutServiceType}
+            serviceReferenceId={selectedPaymentToPay.serviceReferenceId ?? selectedPaymentToPay.id ?? ''}
+            serviceName={selectedPaymentToPay.serviceName}
+            amount={selectedPaymentToPay.amount}
+            currency={(selectedPaymentToPay.currency as CurrencyCode) || ('PTS' as CurrencyCode)}
+            patientId={effectivePatientId}
+            patientName={effectivePatientName}
+            doctorId={selectedPaymentToPay.doctorId}
+            doctorName={selectedPaymentToPay.doctorName}
+            doctorSpecialty={selectedPaymentToPay.doctorSpecialty}
+          />
+        );
+      })()}
     </div>
   );
 };

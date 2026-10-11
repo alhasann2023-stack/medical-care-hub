@@ -164,8 +164,8 @@ const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
   };
 
   const getDoctorAppointmentsForDate = (docId: string, targetDate: string) => {
-    const doc = doctors.find(d => d.id === docId || d.userId === docId);
-    return appointments.filter(a => {
+    const doc = doctors.find((d: Doctor) => d.id === docId || d.userId === docId);
+    return appointments.filter((a: Appointment) => {
       const matchDoc = a.doctorId === docId ||
         (doc && (a.doctorId === doc.id || a.doctorId === doc.userId || a.doctorName === doc.fullName));
       const matchDate = (a.confirmedDate === targetDate || a.preferredDate === targetDate);
@@ -178,7 +178,7 @@ const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
 عزيزنا المريض: {اسم_المريض} المحترم،
 
 نود إحاطتكم علماً باعتذار الطبيب: {اسم_الطبيب} عن الدوام في العيادة بتاريخ: {التاريخ} لظرف طارئ خارج عن الإرادة.
-حرصاً على راحتكم ووقتكم الثمين، نرجو عدم الحضور إلى المستشفى.
+حرصاً على راحتكم ووقتكم الثمين، نرجو عدم الحضور إلى العيادة.
 📞 سيقوم فريق خدمة العملاء بالتواصل معكم لتأكيد موعد بديل يناسبكم في أقرب وقت.
 
 مع تمنياتنا لكم بدوام الصحة والعافية.`;
@@ -743,17 +743,25 @@ const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
                           <td className="p-3.5">
 <div className="flex flex-col gap-1 items-start">
   {(() => {
+    const paymentStatus = (apt as any).paymentStatus ?? apt.paymentStatus;
     const isRefunded =
-      apt.paymentStatus === 'REFUNDED' ||
-      apt.paymentStatus === 'REFUND_SUCCESS' ||
+      paymentStatus === 'REFUNDED' ||
+      paymentStatus === 'REFUND_SUCCESS' ||
       (apt as any).refundStatus === 'REFUNDED' ||
       (apt as any).isRefunded === true;
 
-    const isAptPaid = !isRefunded;
+    const isAptPaid = Boolean(
+      !isRefunded &&
+      (
+        apt.isPaid === true ||
+        paymentStatus === 'PAID' ||
+        paymentStatus === 'PAYMENT_SUCCESS' ||
+        (apt as any).isApprovedByAdmin === true
+      )
+    );
 
     return (
       <>
-        {/* Appointment status badge */}
         <span
           className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
             isRefunded
@@ -778,7 +786,6 @@ const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
                   : 'طلب جديد'}
         </span>
 
-        {/* Payment status badge */}
         <span
           className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
             isRefunded
@@ -1002,12 +1009,18 @@ const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
                 </div>
                 <div className="flex items-center gap-2">
                   {(() => {
-                    const isCoordinatingPaid = !Boolean(
-                      coordinatingAppointment.paymentStatus === 'REFUNDED' ||
-                      coordinatingAppointment.paymentStatus === 'REFUND_SUCCESS' ||
-                      (coordinatingAppointment as any).refundStatus === 'REFUNDED' ||
-                      (coordinatingAppointment as any).isRefunded === true
-                    );
+                    const isCoordinatingPaid =
+                      Boolean(
+                        coordinatingAppointment.isPaid === true ||
+                        coordinatingAppointment.paymentStatus === 'PAID' ||
+                        coordinatingAppointment.paymentStatus === 'PAYMENT_SUCCESS' ||
+                        (coordinatingAppointment as any).isApprovedByAdmin === true
+                      ) && !Boolean(
+                        coordinatingAppointment.paymentStatus === 'REFUNDED' ||
+                        (coordinatingAppointment as any).refundStatus === 'REFUND_SUCCESS' ||
+                        (coordinatingAppointment as any).refundStatus === 'REFUNDED' ||
+                        (coordinatingAppointment as any).isRefunded === true
+                      );
                     return (
                       <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
                         isCoordinatingPaid
@@ -1472,7 +1485,7 @@ const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
                   <span>هل أنت متأكد من رغبتك في حذف هذه الخدمة؟</span>
                 </div>
                 <p className="text-xs text-rose-800 leading-relaxed">
-                  سيتم حذف خدمة <strong>{deletingService.nameAr}</strong> بسعر ({deletingService.price} ر.ي) نهائياً من دليل الخدمات وقوائم الأسعار بالمستشفى.
+                  سيتم حذف خدمة <strong>{deletingService.nameAr}</strong> بسعر ({deletingService.price} ر.ي) نهائياً من دليل الخدمات وقوائم الأسعار العيادة.
                 </p>
               </div>
 
@@ -1529,15 +1542,15 @@ const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
         const handleApplyTemplate = (templateType: 'formal' | 'reschedule' | 'brief') => {
           if (templateType === 'formal') {
             setAbsentCustomMessage(
-              `السلام عليكم ورحمة الله وبركاته،\nعزيزنا المريض: {اسم_المريض} المحترم،\n\nنود إحاطتكم علماً باعتذار الطبيب: {اسم_الطبيب} عن الدوام في العيادة بتاريخ: {التاريخ} لظرف طارئ خارج عن الإرادة.\nحرصاً على راحتكم ووقتكم الثمين، نرجو عدم الحضور إلى المستشفى.\n📞 سيقوم فريق خدمة العملاء بالتواصل معكم هاتفياً لتنسيق موعد بديل يناسبكم في أقرب وقت.\n\nمع تمنياتنا لكم بدوام الصحة والعافية.`
+              `السلام عليكم ورحمة الله وبركاته،\nعزيزنا المريض: {اسم_المريض} المحترم،\n\nنود إحاطتكم علماً باعتذار الطبيب: {اسم_الطبيب} عن الدوام في العيادة بتاريخ: {التاريخ} لظرف طارئ خارج عن الإرادة.\nحرصاً على راحتكم ووقتكم الثمين، نرجو عدم الحضور إلى العيادة.\n📞 سيقوم فريق خدمة العملاء بالتواصل معكم هاتفياً لتنسيق موعد بديل يناسبكم في أقرب وقت.\n\nمع تمنياتنا لكم بدوام الصحة والعافية.`
             );
           } else if (templateType === 'reschedule') {
             setAbsentCustomMessage(
-              `عزيزنا المريض {اسم_المريض} المحترم،\nنفيدكم باعتذار الطبيب {اسم_الطبيب} عن الحضور للعيادة بتاريخ {التاريخ}. نرجو عدم الحضور إلى المستشفى في هذا الموعد، وسيقوم فريق المواعيد بالتواصل معكم هاتفياً لإعادة الجدولة في أقرب وقت متاح.\nشكراً لتفهمكم.`
+              `عزيزنا المريض {اسم_المريض} المحترم،\nنفيدكم باعتذار الطبيب {اسم_الطبيب} عن الحضور للعيادة بتاريخ {التاريخ}. نرجو عدم الحضور إلى العيادة في هذا الموعد، وسيقوم فريق المواعيد بالتواصل معكم هاتفياً لإعادة الجدولة في أقرب وقت متاح.\nشكراً لتفهمكم.`
             );
           } else if (templateType === 'brief') {
             setAbsentCustomMessage(
-              `تنبيه هام من المستشفى: نعتذر منكم عن عدم دوام د. {اسم_الطبيب} بتاريخ {التاريخ}. يرجى عدم الحضور إلى العيادة وسنتواصل معكم هاتفياً لترتيب موعدكم البديل.`
+              `تنبيه هام من العيادة: نعتذر منكم عن عدم دوام د. {اسم_الطبيب} بتاريخ {التاريخ}. يرجى عدم الحضور إلى العيادة وسنتواصل معكم هاتفياً لترتيب موعدكم البديل.`
             );
           }
         };
@@ -1569,7 +1582,7 @@ const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
                 <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 flex items-start gap-2.5">
                   <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
-                    حدد الطبيب واليوم الذي لم يداوم فيه لعرض جميع المرضى الذين حجزوا موعداً لديه في ذلك اليوم، وصِغ نص رسالة الواتساب كما ترغب لإبلاغهم قبل حضورهم للمستشفى.
+                    حدد الطبيب واليوم الذي لم يداوم فيه لعرض جميع المرضى الذين حجزوا موعداً لديه في ذلك اليوم، وصِغ نص رسالة الواتساب كما ترغب لإبلاغهم قبل حضورهم العيادة.
                   </p>
                 </div>
 
@@ -1586,20 +1599,24 @@ const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
                       className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 focus:ring-2 focus:ring-rose-500"
                       required
                     >
-                      {doctors.map(doc => {
-                        const countForDate = appointments.filter(a =>
-                          (a.doctorId === doc.id || a.doctorId === doc.userId || a.doctorName === doc.fullName) &&
-                          (a.confirmedDate === absentDate || a.preferredDate === absentDate) &&
-                          a.status !== 'CANCELLED' && a.status !== 'COMPLETED'
-                        ).length;
-                        return (
-                          <option key={doc.id} value={doc.id}>
-                            {doc.fullName} ({doc.specialty}) {countForDate > 0 ? `• [${countForDate} حجز]` : ''}
-                          </option>
-                        );
-                      })}
-                      {doctors.length === 0 && (
-                        <option value="doc-1">د. عبدالله الشمري (استشاري جراحة القلب)</option>
+                      {doctors.length === 0 ? (
+                        <option value="">لا يوجد أطباء متاحون</option>
+                      ) : (
+                        doctors.map(doc => {
+                          const countForDate = appointments.filter(a =>
+                            (a.doctorId === doc.id || a.doctorId === doc.userId || a.doctorName === doc.fullName) &&
+                            (a.confirmedDate === absentDate || a.preferredDate === absentDate) &&
+                            a.status !== 'CANCELLED' && a.status !== 'COMPLETED'
+                          ).length;
+
+                          const specialtyName = 'غير محدد';
+
+                          return (
+                            <option key={doc.id} value={doc.id}>
+                              {doc.fullName} ({specialtyName}) {countForDate > 0 ? `• [${countForDate} حجز]` : ''}
+                            </option>
+                          );
+                        })
                       )}
                     </select>
                   </div>
@@ -1733,10 +1750,10 @@ const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
                                   </span>
                                   <span>•</span>
                                   <span className="text-blue-700 font-medium">{apt.serviceName || 'استشارة طبية'}</span>
-                                  {apt.mrn && (
+                                  {apt.patientMrn && (
                                     <>
                                       <span>•</span>
-                                      <span className="text-slate-400 text-[10px]">الملف: {apt.mrn}</span>
+                                      <span className="text-slate-400 text-[10px]">الملف: {apt.patientMrn}</span>
                                     </>
                                   )}
                                 </div>

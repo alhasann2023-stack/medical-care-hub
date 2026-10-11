@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Sparkles,
   Coins,
@@ -41,7 +41,7 @@ interface PointsAndPackagesCheckoutModalProps {
   doctorSpecialty?: string;
 }
 
-export const PointsAndPackagesCheckoutModal: React.FC<PointsAndPackagesCheckoutModalProps> = ({
+export const PointsAndPackagesCheckoutModal = ({
   isOpen,
   onClose,
   onSuccess,
@@ -55,7 +55,7 @@ export const PointsAndPackagesCheckoutModal: React.FC<PointsAndPackagesCheckoutM
   doctorId,
   doctorName,
   doctorSpecialty
-}) => {
+}: PointsAndPackagesCheckoutModalProps) => {
   const [activeTab, setActiveTab] = useState<'POINTS' | 'PACKAGE' | 'DIRECT'>('POINTS');
   const [wallet, setWallet] = useState<PointsWallet | null>(null);
   const [activePackage, setActivePackage] = useState<ActivePatientPackage | null>(null);

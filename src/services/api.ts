@@ -815,7 +815,7 @@ export const api = {
           id: 'stf-' + Date.now(),
           userId: newUser.id,
           fullName: newUser.fullName,
-          department: 'إدارة المستشفى والعمليات العليا',
+          department: 'إدارة العيادة والعمليات العليا',
           roleTitle: 'المدير العام والمسؤول المعتمد',
           shift: 'شامل',
           avatar: newUser.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
@@ -3171,9 +3171,9 @@ createDoctor: async (
             serviceName: res.serviceName || data.serviceName || 'حجز موعد عيادة',
             amount: res.paymentAmount !== undefined ? res.paymentAmount : (data.fee !== undefined ? data.fee : 200),
             currency: res.currency || 'YER',
-            paymentMethod: res.paymentMethod || ((data as any).paymentMethod) || (res.isWaived ? 'WAIVED' : 'POINTS'),
-            status: res.isWaived ? 'WAIVED' : 'PAYMENT_SUCCESS',
-            paymentStatus: res.paymentStatus || (res.isWaived ? 'WAIVED' : 'PAID'),
+            paymentMethod: res.paymentMethod || ((data as any).paymentMethod) || (res.isWaived ? 'WAIVED' : 'KURAIMI_EXPRESS'),
+            status: res.isWaived ? 'WAIVED' : (res.isPaid ? 'PAYMENT_SUCCESS' : 'PENDING'),
+            paymentStatus: res.paymentStatus || (res.isWaived ? 'WAIVED' : (res.isPaid ? 'PAID' : 'PENDING')),
             transactionReference: res.transactionReference || (data as any).transactionReference || `TXN-${Date.now()}`,
             isWaived: Boolean(res.isWaived),
             waivedReason: res.waiverReason,
@@ -3350,11 +3350,11 @@ createDoctor: async (
             appointmentId: newApt.id,
             serviceReferenceId: newApt.id,
             serviceName: newApt.serviceName,
-            amount: newApt.paymentAmount !== undefined ? newApt.paymentAmount : (data.fee !== undefined ? data.fee : 50),
-            currency: 'PTS',
-            paymentMethod: newApt.paymentMethod || ((data as any).paymentMethod) || (newApt.isWaived ? 'WAIVED' : 'POINTS'),
-            status: newApt.isWaived ? 'WAIVED' : 'PAYMENT_SUCCESS',
-            paymentStatus: newApt.paymentStatus || (newApt.isWaived ? 'WAIVED' : 'PAID'),
+            amount: newApt.paymentAmount !== undefined ? newApt.paymentAmount : (data.fee !== undefined ? data.fee : 200),
+            currency: newApt.currency || 'YER',
+            paymentMethod: newApt.paymentMethod || ((data as any).paymentMethod) || (newApt.isWaived ? 'WAIVED' : 'KURAIMI_EXPRESS'),
+            status: newApt.isWaived ? 'WAIVED' : (newApt.isPaid ? 'PAYMENT_SUCCESS' : 'PENDING'),
+            paymentStatus: newApt.paymentStatus || (newApt.isWaived ? 'WAIVED' : (newApt.isPaid ? 'PAID' : 'PENDING')),
             transactionReference: newApt.transactionReference || (data as any).transactionReference || `TXN-${Date.now()}`,
             isWaived: Boolean(newApt.isWaived),
             waivedReason: newApt.waiverReason,
@@ -3815,9 +3815,9 @@ createDoctor: async (
             serviceName: `استشارة طبية: ${res.title}`,
             amount: res.paymentAmount !== undefined ? res.paymentAmount : (res.consultationFee !== undefined ? res.consultationFee : (data.fee || 0)),
             currency: res.currency || 'YER',
-            paymentMethod: res.paymentMethod || ((data as any).paymentMethod) || (res.isWaived ? 'WAIVED' : 'POINTS'),
-            status: res.isWaived ? 'WAIVED' : 'PAYMENT_SUCCESS',
-            paymentStatus: res.paymentStatus || (res.isWaived ? 'WAIVED' : 'PAID'),
+            paymentMethod: res.paymentMethod || ((data as any).paymentMethod) || (res.isWaived ? 'WAIVED' : (res.isPaid ? 'POINTS' : 'KURAIMI_EXPRESS')),
+            status: res.isWaived ? 'WAIVED' : (res.isPaid ? 'PAYMENT_SUCCESS' : 'PENDING'),
+            paymentStatus: res.paymentStatus || (res.isWaived ? 'WAIVED' : (res.isPaid ? 'PAID' : 'PENDING')),
             transactionReference: res.transactionReference || (data as any).transactionReference || `TXN-${Date.now()}`,
             isWaived: Boolean(res.isWaived),
             waivedReason: res.waiverReason,
@@ -5762,7 +5762,7 @@ return newCns;
               .replace(/{date}|{التاريخ}|\[التاريخ\]/g, aptDate)
               .replace(/{time}|{الوقت}|\[الوقت\]/g, aptTime);
           } else {
-            notifMsg = `نود إحاطتكم بأن الطبيب ${docName} غير مداوم في العيادة بتاريخ ${aptDate} لظرف طارئ. نرجو عدم الحضور إلى المستشفى حرصاً على راحتكم ووقتكم، وسيقوم فريق خدمة العملاء بالتواصل معكم هاتفياً لترتيب موعد بديل يناسبكم.`;
+            notifMsg = `نود إحاطتكم بأن الطبيب ${docName} غير مداوم في العيادة بتاريخ ${aptDate} لظرف طارئ. نرجو عدم الحضور إلى العيادة حرصاً على راحتكم ووقتكم، وسيقوم فريق خدمة العملاء بالتواصل معكم هاتفياً لترتيب موعد بديل يناسبكم.`;
           }
 
           const notif: AppNotification = {
@@ -6791,7 +6791,7 @@ createStaff: async (
 
         cns?.forEach(cn => {
           if (cn.id && !existingRefIds.has(cn.id)) {
-            const fee = (cn as any).paymentAmount ?? (cn.fee ?? 50);
+            const fee = (cn as any).paymentAmount ?? ((cn as any).fee ?? 50);
             const isPaid = true;
             const cnPay: Payment = {
               id: (cn as any).paymentId || `pay-cns-${cn.id}`,
@@ -7283,7 +7283,7 @@ createStaff: async (
         ...paymentIdOrOptions,
         amount: paymentIdOrOptions.amount,
         reason: paymentIdOrOptions.reason || 'استرداد مالي',
-        processedBy: paymentIdOrOptions.processedBy || paymentIdOrOptions.refundedBy || 'إدارة المستشفى',
+        processedBy: paymentIdOrOptions.processedBy || paymentIdOrOptions.refundedBy || 'إدارة العيادة',
         serviceReferenceId: paymentIdOrOptions.serviceReferenceId
       };
     }
@@ -7330,7 +7330,7 @@ createStaff: async (
         reason: payload.reason || 'إلغاء واسترداد الرسوم',
         status: 'REFUNDED',
         transactionReference: `REF-TXN-${Date.now().toString().slice(-6)}`,
-        processedBy: payload.processedBy || 'إدارة المستشفى المالية',
+        processedBy: payload.processedBy || 'إدارة العيادة المالية',
         createdAt: new Date().toISOString()
       };
 
@@ -7609,7 +7609,7 @@ createStaff: async (
           patientMrn: 'MRN-2026-1001',
           reason: 'إعفاء خاص بقرار الإدارة - رعاية إنسانية',
           grantedAt: new Date().toISOString(),
-          grantedBy: 'مدير المستشفى',
+          grantedBy: 'مدير العيادة',
           usedCount: 0
         }
       ],
@@ -7930,9 +7930,9 @@ createStaff: async (
       patientName: cleanName,
       patientPhone: cleanPhone || undefined,
       patientMrn: (data.patientMrn || '').trim() || undefined,
-      reason: (data.reason || 'إعفاء خاص بقرار إدارة المستشفى').trim(),
+      reason: (data.reason || 'إعفاء خاص بقرار إدارة العيادة').trim(),
       grantedAt: new Date().toISOString(),
-      grantedBy: data.grantedBy || 'مدير المستشفى',
+      grantedBy: data.grantedBy || 'مدير العيادة',
       usedCount: 0
     };
 

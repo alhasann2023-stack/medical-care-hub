@@ -364,7 +364,7 @@ export const GeminiMedicalChat: React.FC<GeminiMedicalChatProps> = ({
               {isAr ? 'تنويه طبي هام:' : 'Medical Disclaimer:'}{' '}
             </span>
             {isAr
-              ? 'المعلومات المقدمة من المساعد الذكي هي لغرض التثقيف والتوجيه المبدئي، ولا تغني بأي حال عن الفحص السريري المباشر. في الحالات الطارئة، يرجى التوجه لأقرب مستشفى فوراً.'
+              ? 'المعلومات المقدمة من المساعد الذكي هي لغرض التثقيف والتوجيه المبدئي، ولا تغني بأي حال عن الفحص السريري المباشر. في الحالات الطارئة، يرجى التوجه لأقرب العيادة فوراً.'
               : 'AI medical guidance is for informational purposes only and does not substitute professional medical diagnosis. In emergencies, call your local emergency number immediately.'}
           </div>
         </div>

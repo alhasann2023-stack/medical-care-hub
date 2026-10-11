@@ -71,14 +71,14 @@ interface PatientDashboardProps {
   onNavigateToCommunity?: () => void;
 }
 
-export const PatientDashboard: React.FC<PatientDashboardProps> = ({
+export const PatientDashboard = ({
   onOpenBooking,
   onOpenConsultation,
   onNavigateToTimeline,
   onNavigateToTests,
   onNavigateToReports,
   onNavigateToCommunity
-}) => {
+}: PatientDashboardProps) => {
   const { user, patientProfile, refreshProfile } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
@@ -184,26 +184,26 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
   const checkForReminders = (apts: Appointment[], cns: Consultation[], docs: Doctor[] = doctorsList) => {
     const found = localReminderService.findUpcomingReminders(
-      apts, 
-      cns, 
+      apts,
+      cns,
       reminderSettings.leadTimeMinutes || 30,
       docs
     );
-    setActiveReminders(prev => {
+    setActiveReminders((prev: ReminderItem[]) => {
       // Keep any active test reminders
-      const testReminders = prev.filter(r => r.isTest);
-      return [...testReminders, ...found.filter(f => !testReminders.some(t => t.id === f.id))];
+      const testReminders = prev.filter((r: ReminderItem) => r.isTest);
+      return [...testReminders, ...found.filter((f: ReminderItem) => !testReminders.some((t: ReminderItem) => t.id === f.id))];
     });
   };
 
   const handleDismissReminder = (id: string) => {
     localReminderService.dismissReminder(id);
-    setActiveReminders(prev => prev.filter(r => r.id !== id));
+    setActiveReminders((prev: ReminderItem[]) => prev.filter((r: ReminderItem) => r.id !== id));
   };
 
   const handleSnoozeReminder = (id: string) => {
     localReminderService.snoozeReminder(id, 5);
-    setActiveReminders(prev => prev.filter(r => r.id !== id));
+    setActiveReminders((prev: ReminderItem[]) => prev.filter((r: ReminderItem) => r.id !== id));
   };
 
   const handleTriggerTestReminder = () => {
@@ -211,8 +211,8 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
     // 1. From patient's latest appointment
     // 2. From patient's latest consultation
     // 3. Or from the registered hospital specialist doctors
-    const selectedApt = appointments.find(a => a.doctorName);
-    const selectedCns = consultations.find(c => c.doctorName);
+    const selectedApt = appointments.find((a: Appointment) => a.doctorName);
+    const selectedCns = consultations.find((c: Consultation) => c.doctorName);
     const fallbackDoc = doctorsList[0];
 
     const targetDoctorName = selectedApt?.doctorName || selectedCns?.doctorName || fallbackDoc?.fullName || 'د. فيصل العتيبي';
@@ -762,7 +762,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                       </strong>
                       <p className="text-rose-800 text-[11px] leading-relaxed">
                         {upcomingAppointment.doctorAbsentNotice ||
-                          `نود إحاطتكم بأن الطبيب ${upcomingAppointment.doctorName} غير مداوم في العيادة في هذا الموعد، يرجى عدم الحضور إلى المستشفى. سيتواصل معكم فريق خدمة العملاء لترتيب موعد بديل.`}
+                          `نود إحاطتكم بأن الطبيب ${upcomingAppointment.doctorName} غير مداوم في العيادة في هذا الموعد، يرجى عدم الحضور إلى العيادة. سيتواصل معكم فريق خدمة العملاء لترتيب موعد بديل.`}
                       </p>
                     </div>
                   </div>
@@ -1072,7 +1072,8 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
               <div className="space-y-2.5">
                 {patientPayments.slice(0, 4).map(pm => {
                   const isRefunded = pm.status === 'REFUNDED' || pm.paymentStatus === 'REFUNDED';
-                  const isPaid = !isRefunded && (pm.status === 'PAYMENT_SUCCESS' || pm.paymentStatus === 'PAID' || pm.status === 'PAID' || pm.paymentStatus === 'PAYMENT_SUCCESS' || pm.isPaid);
+                  const hasIsPaidFlag = (pm as { isPaid?: boolean }).isPaid === true;
+                  const isPaid = !isRefunded && (pm.status === 'PAYMENT_SUCCESS' || pm.paymentStatus === 'PAID' || pm.status === 'PAID' || pm.paymentStatus === 'PAYMENT_SUCCESS' || hasIsPaidFlag);
                   const isPending = !isPaid && !isRefunded && (pm.status === 'PENDING' || pm.status === 'PAYMENT_REQUIRED' || pm.paymentStatus === 'PAYMENT_REQUIRED' || pm.paymentStatus === 'PENDING');
                   const invNum = pm.receiptNumber || pm.transactionReference || pm.id;
 
@@ -1529,7 +1530,11 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
             setCheckoutData(null);
             loadDashboardData();
           }}
-          serviceType={checkoutData.serviceType}
+          serviceType={
+            checkoutData.serviceType === 'LAB_TEST' || checkoutData.serviceType === 'OTHER'
+              ? 'PROCEDURE'
+              : checkoutData.serviceType
+          }
           serviceReferenceId={checkoutData.serviceReferenceId}
           serviceName={checkoutData.serviceName}
           amount={checkoutData.amount}
