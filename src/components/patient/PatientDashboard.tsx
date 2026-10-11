@@ -68,7 +68,7 @@ interface PatientDashboardProps {
   onNavigateToTimeline: () => void;
   onNavigateToTests: () => void;
   onNavigateToReports: () => void;
-  onNavigateToCommunity?: () => void;
+  onNavigateToCommunity: () => void;
 }
 
 export const PatientDashboard = ({
@@ -493,6 +493,14 @@ export const PatientDashboard = ({
             </button>
 
             <button
+              onClick={onNavigateToCommunity}
+              className="px-3.5 py-2.5 rounded-xl bg-teal-600/30 hover:bg-teal-600/40 text-teal-100 hover:text-white font-bold text-xs transition-all border border-teal-300/40 flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <MessageSquare className="w-4 h-4 text-teal-200" />
+              <span>مجتمع الصحة</span>
+            </button>
+
+            <button
               onClick={onOpenConsultation}
               className={`px-4 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer ${
                 isFreePromoActive
@@ -523,8 +531,8 @@ export const PatientDashboard = ({
         </div>
       </div>
 
-      {/* 6 Feature Shortcut Cards (حجز موعد، استشارة، السجل الزمني، فحوصاتي، تقاريري، الفواتير) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+      {/* 7 Feature Shortcut Cards (حجز موعد، استشارة، السجل الزمني، فحوصاتي، تقاريري، الفواتير، المجتمع) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3.5">
         <button
           onClick={onOpenBooking}
           className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-blue-300 hover:shadow-md transition-all text-start group cursor-pointer"
@@ -600,6 +608,17 @@ export const PatientDashboard = ({
           </div>
           <h3 className="font-extrabold text-sm text-slate-900">الفواتير والسداد</h3>
           <p className="text-xs text-slate-500 mt-0.5">سجل الدفع وسندات القبض</p>
+        </button>
+
+        <button
+          onClick={onNavigateToCommunity}
+          className="p-4 rounded-2xl bg-white border border-slate-300 shadow-xs hover:border-teal-400 hover:shadow-md transition-all text-start group cursor-pointer"
+        >
+          <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+            <MessageSquare className="w-5 h-5" />
+          </div>
+          <h3 className="font-extrabold text-sm text-slate-900">مجتمع الصحة</h3>
+          <p className="text-xs text-slate-500 mt-0.5">شارك وتواصل مع المجتمع</p>
         </button>
       </div>
 

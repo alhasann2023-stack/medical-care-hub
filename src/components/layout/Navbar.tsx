@@ -196,6 +196,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   تقاريري
                 </button>
+                <button
+                  onClick={() => setCurrentView('community')}
+                  className={`px-3 py-2 rounded-lg transition-colors cursor-pointer ${
+                    currentView === 'community' ? 'text-teal-700 bg-teal-50/90 font-bold' : 'hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  مجتمع الصحة
+                </button>
               </>
             )}
 
@@ -281,23 +289,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Public Community Nav Item */}
-            <button
-              onClick={() => {
-                if (!user) {
-                  onOpenAuth('register');
-                } else {
-                  setCurrentView('community');
-                }
-              }}
-              className={`px-3 py-2 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
-                currentView === 'community'
-                  ? 'text-teal-700 bg-teal-50/90 font-bold border border-teal-200'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <span>مجتمع الصحة 💬</span>
-            </button>
+            {role !== 'PATIENT' && (
+              <button
+                onClick={() => {
+                  if (!user) {
+                    onOpenAuth('register');
+                  } else {
+                    setCurrentView('community');
+                  }
+                }}
+                className={`px-3 py-2 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  currentView === 'community'
+                    ? 'text-teal-700 bg-teal-50/90 font-bold border border-teal-200'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <span>مجتمع الصحة 💬</span>
+              </button>
+            )}
           </nav>
 
           {/* Quick Actions & Role Switcher */}
@@ -467,6 +476,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 التقارير الطبية
               </button>
+              <button
+                onClick={() => { setCurrentView('community'); setIsMobileMenuOpen(false); }}
+                className="w-full text-start px-3 py-2 rounded-md text-sm font-medium text-teal-800 hover:bg-teal-50"
+              >
+                مجتمع الصحة
+              </button>
               <div className="pt-2 flex gap-2">
                 <button
                   onClick={() => { onOpenConsultation(); setIsMobileMenuOpen(false); }}
@@ -566,21 +581,22 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* Mobile Community Link */}
-          <button
-            onClick={() => {
-              if (!user) {
-                onOpenAuth('register');
-              } else {
-                setCurrentView('community');
-              }
-              setIsMobileMenuOpen(false);
-            }}
-            className="w-full text-start px-3 py-2 rounded-md text-sm font-bold text-teal-800 bg-teal-50 flex items-center justify-between"
-          >
-            <span>مجتمع الصحة والتجارب</span>
-            <span>💬</span>
-          </button>
+          {role !== 'PATIENT' && (
+            <button
+              onClick={() => {
+                if (!user) {
+                  onOpenAuth('register');
+                } else {
+                  setCurrentView('community');
+                }
+                setIsMobileMenuOpen(false);
+              }}
+              className="w-full text-start px-3 py-2 rounded-md text-sm font-bold text-teal-800 bg-teal-50 flex items-center justify-between"
+            >
+              <span>مجتمع الصحة والتجارب</span>
+              <span>💬</span>
+            </button>
+          )}
 
           {/* Mobile Auth Actions */}
           <div className="pt-3 border-t border-slate-100">

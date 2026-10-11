@@ -100,24 +100,8 @@ export const DEFAULT_MEDICAL_PACKAGES: MedicalPackage[] = [
 // DEFAULT GIFT CATALOG ITEMS
 // ============================================================
 export const DEFAULT_GIFT_CATALOG: GiftCatalogItem[] = [
-  {
-    id: 'gift-coffee',
-    nameAr: 'فنجان قهوة وشكر ☕',
-    icon: '☕',
-    pointsCost: 15,
-    descriptionAr: 'تقدير بسيط ولطيف يعبر عن امتنانك لجهود الطبيب أو موظف الرعاية',
-    category: 'COFFEE',
-    color: 'bg-amber-100 text-amber-900 border-amber-300'
-  },
-  {
-    id: 'gift-rose',
-    nameAr: 'باقة ورد وامتنان 💐',
-    icon: '💐',
-    pointsCost: 30,
-    descriptionAr: 'باقة ورد أنيقة تعبر عن عميق الشكر والراحة التي قدمها لك الفريق',
-    category: 'FLOWERS',
-    color: 'bg-rose-100 text-rose-900 border-rose-300'
-  },
+
+
   {
     id: 'gift-shield',
     nameAr: 'درع الشكر والوفاء 🛡️',

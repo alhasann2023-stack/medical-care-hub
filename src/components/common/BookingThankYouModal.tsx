@@ -261,11 +261,11 @@ export const BookingThankYouModal: React.FC<BookingThankYouModalProps> = ({
             <X className="w-5 h-5" />
           </button>
 
-          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border-2 border-white/30 shadow-lg">
+          <div className="w-12 h-12 mx-auto mb-1 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border-2 border-white/30 shadow-lg">
             <Gift className="w-9 h-9 text-amber-300 animate-bounce" />
           </div>
 
-          <h2 className="text-xl sm:text-2xl font-black mb-1">
+          <h2 className="text-x sm:text-2xl font-black mb-0">
             شكراً لثقتكم بنا! 🎉
           </h2>
           <p className="text-xs sm:text-sm text-teal-100 max-w-md mx-auto">
@@ -273,7 +273,7 @@ export const BookingThankYouModal: React.FC<BookingThankYouModalProps> = ({
           </p>
 
           {/* Patient Reward Badge */}
-          <div className="mt-4 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/20 border border-white/30 backdrop-blur-md text-xs font-black shadow-inner">
+          <div className="mt-2 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/20 border border-white/30 backdrop-blur-md text-xs font-black shadow-inner">
             <Coins className="w-4 h-4 text-amber-300 animate-spin" style={{ animationDuration: '6s' }} />
             <span>هدية شكر فورية: أضفنا +{earnedReward} نقطة مكافأة لمحفظتك! (رصيدك: {currentPoints} نقطة)</span>
           </div>
@@ -335,11 +335,11 @@ export const BookingThankYouModal: React.FC<BookingThankYouModalProps> = ({
         </div>
 
         {/* Tab Contents */}
-        <div className="p-5 max-h-[60vh] overflow-y-auto space-y-4">
+        <div className="p-5 max-h-[60vh] overflow-y-auto space-y-2">
           
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'OVERVIEW' && (
-            <div className="space-y-4">
+            <div className="space-y-2">
               <div className="p-4 bg-teal-50/70 border border-teal-200 rounded-2xl flex items-center justify-between">
                 <div>
                   <div className="text-xs font-bold text-teal-900">رصيدك المتاح من النقاط</div>
@@ -447,7 +447,7 @@ export const BookingThankYouModal: React.FC<BookingThankYouModalProps> = ({
                   )}
 
                   {/* Recipient Selection */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="text-xs font-extrabold text-slate-700">إلى من تود إرسال الهدية؟</label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -479,7 +479,7 @@ export const BookingThankYouModal: React.FC<BookingThankYouModalProps> = ({
                   </div>
 
                   {/* Gift Items Selection */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="text-xs font-extrabold text-slate-700">اختر الهدية التقديرية:</label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {giftCatalog.map((gift) => {
@@ -488,14 +488,14 @@ export const BookingThankYouModal: React.FC<BookingThankYouModalProps> = ({
                           <div
                             key={gift.id}
                             onClick={() => setSelectedGift(gift)}
-                            className={`p-2.5 rounded-xl border text-right cursor-pointer transition-all ${
+                            className={`p-2 rounded-xl border text-right cursor-pointer transition-all ${
                               isSelected
                                 ? 'border-rose-500 bg-rose-50/80 shadow-xs ring-1 ring-rose-400'
                                 : 'border-slate-200 bg-white hover:border-slate-300'
                             }`}
                           >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xl">{gift.icon}</span>
+                            <div className="flex items-center justify-between mb-0">
+                              <span className="text-12">{gift.icon}</span>
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300">
                                 {gift.pointsCost} نقطة
                               </span>
@@ -509,19 +509,19 @@ export const BookingThankYouModal: React.FC<BookingThankYouModalProps> = ({
                   </div>
 
                   {/* Dedication Message */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-0">
                     <label className="text-xs font-extrabold text-slate-700">كلمة شكر وتقدير ترفقها مع الهدية:</label>
                     <textarea
                       rows={2}
                       value={giftMessage}
                       onChange={(e) => setGiftMessage(e.target.value)}
                       placeholder="اكتب كلمة شكر نابعة من القلب..."
-                      className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white"
+                      className="w-full text-xs p-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white"
                     />
                   </div>
 
                   {/* Send Action */}
-                  <div className="pt-2 flex items-center justify-between">
+                  <div className="pt-1 flex items-center justify-between">
                     <div className="text-xs text-slate-600 font-semibold">
                       رصيدك: <span className="font-bold text-amber-700">{currentPoints} نقطة</span>
                     </div>
@@ -529,7 +529,7 @@ export const BookingThankYouModal: React.FC<BookingThankYouModalProps> = ({
                       type="button"
                       disabled={isSendingGift || !selectedGift}
                       onClick={handleSendGift}
-                      className="py-2.5 px-5 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white text-xs font-extrabold rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                      className="py-2 px-5 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white text-xs font-extrabold rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       <Heart className="w-4 h-4 fill-white" />
                       <span>إرسال الهدية ({selectedGift?.pointsCost || 0} نقطة)</span>
@@ -542,9 +542,9 @@ export const BookingThankYouModal: React.FC<BookingThankYouModalProps> = ({
 
           {/* TAB 3: RATE SERVICE */}
           {activeTab === 'REVIEW' && (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {reviewSubmitted ? (
-                <div className="p-5 bg-emerald-50 border border-emerald-300 rounded-2xl text-center space-y-3 animate-in zoom-in-95">
+                <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-2xl text-center space-y-1 animate-in zoom-in-95">
                   <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 mx-auto flex items-center justify-center">
                     <CheckCircle2 className="w-7 h-7" />
                   </div>
