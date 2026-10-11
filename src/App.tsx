@@ -15,6 +15,7 @@ import { CustomerServiceDashboard } from './components/cs/CustomerServiceDashboa
 import { HospitalAdminDashboard } from './components/admin/HospitalAdminDashboard';
 import { SecretaryDashboard } from './components/secretary/SecretaryDashboard';
 import { LabDashboard } from './components/lab/LabDashboard';
+import { CommunityView } from './components/community/CommunityView';
 import { NotificationDrawer } from './components/common/NotificationDrawer';
 import { ToastNotification, ToastItem } from './components/common/ToastNotification';
 import { AuthModal } from './components/common/AuthModal';
@@ -200,6 +201,7 @@ const MainAppContent: React.FC = () => {
             onNavigateToTimeline={() => setCurrentView('patient_timeline')}
             onNavigateToTests={() => setCurrentView('patient_tests')}
             onNavigateToReports={() => setCurrentView('patient_reports')}
+            onNavigateToCommunity={() => setCurrentView('community')}
           />
         )}
 
@@ -281,6 +283,20 @@ const MainAppContent: React.FC = () => {
         {/* Hospital Admin View */}
         {currentView === 'admin_dashboard' && (
           <HospitalAdminDashboard />
+        )}
+
+        {/* Public Health Community View */}
+        {currentView === 'community' && (
+          <CommunityView
+            onOpenAuth={openAuth}
+            onBack={() => {
+              if (role === 'DOCTOR') setCurrentView('doctor_dashboard');
+              else if (role === 'HOSPITAL_ADMIN') setCurrentView('admin_dashboard');
+              else if (role === 'SECRETARY') setCurrentView('secretary_dashboard');
+              else if (role === 'CUSTOMER_SERVICE') setCurrentView('cs_dashboard');
+              else setCurrentView('patient_dashboard');
+            }}
+          />
         )}
       </main>
 

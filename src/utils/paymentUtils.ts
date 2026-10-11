@@ -1,4 +1,4 @@
-import { CurrencyCode, CurrencyConfig, PaymentSettings, MultiCurrencyPrice, PaymentProviderType } from '../types/medical';
+import { CurrencyCode, CurrencyConfig, PaymentSettings, MultiCurrencyPrice, PaymentProviderType, ManualPaymentAccounts } from '../types/medical';
 
 /**
  * Standard anchor rates:
@@ -116,9 +116,23 @@ export const SUPPORTED_CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
   }
 };
 
+export const DEFAULT_MANUAL_ACCOUNTS: ManualPaymentAccounts = {
+  adminWhatsapp: '967770000000',
+  adminPhone: '967771234567',
+  bankName: 'بنك الكريمي',
+  accountHolderName: 'مستشفى وهج الطبي التخصصي',
+  iban: 'YE123456789012345678901234',
+  kuraimiAccount: '3055489211',
+  jawwaliAccount: '778901234',
+  oneCashAccount: '733456789',
+  jeebAccount: '711234567',
+  floosakAccount: '770123456'
+};
+
 export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
   defaultCurrency: 'YER',
   supportedCurrencies: Object.values(SUPPORTED_CURRENCIES),
+  manualAccounts: DEFAULT_MANUAL_ACCOUNTS,
   kuraimi: {
     merchantId: 'KRM-HOSP-770921',
     terminalId: 'POS-SANAA-01',
@@ -237,9 +251,12 @@ export function convertCurrency(
  * Format currency amount with appropriate symbols and decimal places
  */
 export function formatPaymentAmount(amount: number, currency: CurrencyCode | string = 'YER'): string {
-  const code = (currency || 'YER').toUpperCase() as CurrencyCode;
+  const code = String(currency || 'YER').toUpperCase();
   const num = Number(amount) || 0;
   
+  if (code === 'PTS' || code === 'POINTS') {
+    return `${Math.round(num).toLocaleString('ar-YE')} نقطة`;
+  }
   if (code === 'YER') {
     return `${Math.round(num).toLocaleString('ar-YE')} ر.ي`;
   }
@@ -253,7 +270,8 @@ export function formatPaymentAmount(amount: number, currency: CurrencyCode | str
  * Get currency symbol for quick badges
  */
 export function getCurrencySymbol(currency: CurrencyCode | string = 'YER'): string {
-  const code = (currency || 'YER').toUpperCase() as CurrencyCode;
+  const code = String(currency || 'YER').toUpperCase();
+  if (code === 'PTS' || code === 'POINTS') return 'نقطة';
   if (code === 'YER') return 'ر.ي';
   if (code === 'USD') return '$';
   return 'ر.س';

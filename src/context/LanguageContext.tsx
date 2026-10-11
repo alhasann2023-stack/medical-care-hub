@@ -69,7 +69,7 @@ const translations: Record<Language, Record<string, string>> = {
     print_report: 'طباعة التقرير',
     
     // Footer
-    footer_rights: 'جميع الحقوق محفوظة © 2026 مركز الرعاية الطبية المتكامل Medical Care Hub'
+    footer_rights: 'جميع الحقوق محفوظة © 2026 لعيادة الدكتور وهاج المقطري  '
   },
   en: {
     // Nav & General

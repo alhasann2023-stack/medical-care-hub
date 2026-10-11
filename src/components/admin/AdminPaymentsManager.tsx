@@ -34,7 +34,9 @@ import {
   Building2,
   Eye,
   Loader2,
-  Smartphone
+  Smartphone,
+  Coins,
+  Sparkles
 } from 'lucide-react';
 import { 
   Payment, 
@@ -58,35 +60,55 @@ import {
 
 interface AdminPaymentsManagerProps {
   onShowNotification?: (type: 'success' | 'error', text: string) => void;
+  initialSubTab?: 'TRANSACTIONS' | 'LEDGER';
 }
 
 export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
-  onShowNotification
+  onShowNotification,
+  initialSubTab
 }) => {
   // Navigation Tabs
-  const [subTab, setSubTab] = useState<'TRANSACTIONS' | 'LEDGER' | 'SETTINGS'>('TRANSACTIONS');
+  const [subTab, setSubTab] = useState<'TRANSACTIONS' | 'LEDGER'>(initialSubTab || 'TRANSACTIONS');
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setSubTab(initialSubTab);
+      if (initialSubTab === 'LEDGER') {
+        loadLedger();
+      }
+    }
+  }, [initialSubTab]);
 
   // Transactions State
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PAID' | 'PAYMENT_SUCCESS' | 'PENDING' | 'PAYMENT_REQUIRED' | 'REFUNDED' | 'FAILED' | 'WAIVED'>('ALL');
-  const [currencyFilter, setCurrencyFilter] = useState<'ALL' | 'YER' | 'USD' | 'SAR'>('ALL');
+  const [currencyFilter, setCurrencyFilter] = useState<'ALL' | 'YER' | 'PTS' | 'USD' | 'SAR'>('ALL');
   const [providerFilter, setProviderFilter] = useState<'ALL' | 'KURAIMI' | 'VISA_MASTERCARD' | 'MADA' | 'APPLE_PAY' | 'CASH' | 'WAIVED'>('ALL');
 
   // Ledger State
   const [ledgerData, setLedgerData] = useState<{
-    summaries: Record<CurrencyCode, { gross: number; fees: number; net: number; refunded: number; count: number }>;
+    summaries: Record<CurrencyCode, { gross: number; fees: number; net: number; refunded: number; count: number; settledCount?: number; pendingCount?: number }>;
     entries: PaymentLedgerEntry[];
   }>({
     summaries: {
-      YER: { gross: 0, fees: 0, net: 0, refunded: 0, count: 0 },
-      USD: { gross: 0, fees: 0, net: 0, refunded: 0, count: 0 },
-      SAR: { gross: 0, fees: 0, net: 0, refunded: 0, count: 0 }
+      YER: { gross: 0, fees: 0, net: 0, refunded: 0, count: 0, settledCount: 0, pendingCount: 0 },
+      USD: { gross: 0, fees: 0, net: 0, refunded: 0, count: 0, settledCount: 0, pendingCount: 0 },
+      SAR: { gross: 0, fees: 0, net: 0, refunded: 0, count: 0, settledCount: 0, pendingCount: 0 }
     },
     entries: []
   });
   const [isLedgerLoading, setIsLedgerLoading] = useState<boolean>(false);
+
+  // Ledger Filters and Actions State
+  const [ledgerSearchQuery, setLedgerSearchQuery] = useState<string>('');
+  const [ledgerCurrencyFilter, setLedgerCurrencyFilter] = useState<'ALL' | 'YER' | 'USD' | 'SAR'>('ALL');
+  const [ledgerSettlementFilter, setLedgerSettlementFilter] = useState<'ALL' | 'PENDING' | 'SETTLED' | 'REFUNDED'>('ALL');
+  const [isSettlingId, setIsSettlingId] = useState<string | null>(null);
+  const [isBatchSettling, setIsBatchSettling] = useState<boolean>(false);
+  const [selectedVoucherEntry, setSelectedVoucherEntry] = useState<PaymentLedgerEntry | null>(null);
+  const [showFullReportModal, setShowFullReportModal] = useState<boolean>(false);
 
   // Settings State
   const [settings, setSettings] = useState<PaymentSettings>({
@@ -137,11 +159,21 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
   const handleApprovePayment = async (payment: Payment) => {
     setApprovingPaymentId(payment.id);
     try {
-      await api.approvePayment(payment.id, 'الإدارة المالية والمحاسبة');
+      await api.approvePayment(payment.id, 'الإدارة المالية والمحاسبة', payment);
+      // Optimistic update of local state so the table immediately updates
+      setPayments(prev => prev.map(p => (p.id === payment.id || (payment.transactionReference && p.transactionReference === payment.transactionReference)) ? {
+        ...p,
+        status: 'PAYMENT_SUCCESS',
+        paymentStatus: 'PAID',
+        paidAt: new Date().toISOString(),
+        confirmedAt: new Date().toISOString(),
+        confirmedBy: 'الإدارة المالية والمحاسبة',
+        isApprovedByAdmin: true
+      } : p));
       if (onShowNotification) {
         onShowNotification(
           'success',
-          `تم اعتماد السداد بنجاح للعملية (${payment.transactionReference || payment.id}) للمريض ${payment.patientName}. تم تحديث الحالة في واجهات الطبيب وخدمة العملاء إلى "تم التسديد ✓".`
+          `تم اعتماد السداد بنجاح للعملية (${payment.transactionReference || payment.id}) للمريض ${payment.patientName || ''}. تم تحديث الحالة في واجهات الطبيب وخدمة العملاء إلى "تم التسديد ✓".`
         );
       }
       if (selectedNoticePayment?.id === payment.id) {
@@ -210,6 +242,54 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
     }
   };
 
+  const handleSettleEntry = async (entry: PaymentLedgerEntry) => {
+    setIsSettlingId(entry.id);
+    try {
+      await api.settlePayment(entry.id);
+      if (onShowNotification) {
+        onShowNotification('success', `تمت تسوية القيد (${entry.id}) بنجاح ومطابقته بالحساب البنكي.`);
+      }
+      await loadLedger();
+      await loadPayments();
+    } catch (err: any) {
+      console.error('Failed to settle entry:', err);
+      if (onShowNotification) {
+        onShowNotification('error', err.message || 'فشلت تسوية القيد.');
+      }
+    } finally {
+      setIsSettlingId(null);
+    }
+  };
+
+  const handleBatchSettle = async (pendingList: PaymentLedgerEntry[]) => {
+    if (!pendingList || pendingList.length === 0) {
+      if (onShowNotification) {
+        onShowNotification('error', 'لا توجد قيود معلقة بحاجة للتسوية حالياً.');
+      }
+      return;
+    }
+
+    setIsBatchSettling(true);
+    try {
+      const res = await api.batchSettlePayments(pendingList.map((e) => e.id));
+      if (onShowNotification) {
+        onShowNotification(
+          'success',
+          `تمت تسوية ومطابقة ${res.settledCount} قيد محاسبي بنجاح.`
+        );
+      }
+      await loadLedger();
+      await loadPayments();
+    } catch (err: any) {
+      console.error('Batch settlement failed:', err);
+      if (onShowNotification) {
+        onShowNotification('error', 'حدث خطأ أثناء تنفيذ عملية التسوية الجماعية.');
+      }
+    } finally {
+      setIsBatchSettling(false);
+    }
+  };
+
   const loadSettings = async () => {
     setIsSettingsLoading(true);
     try {
@@ -273,7 +353,9 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
       }));
 
       if (onShowNotification) {
-        onShowNotification('success', `تم تنفيذ استرداد مبلغ ${formatPaymentAmount(refundAmount, refundTarget.currency as CurrencyCode)} للعملية (${refundTarget.receiptNumber || refundTarget.id}) بنجاح.`);
+        const isPts = refundTarget.currency === 'PTS' || refundTarget.paymentMethod === 'POINTS' || refundTarget.serviceType === 'CONSULTATION' || refundTarget.serviceType === 'APPOINTMENT';
+        const displayVal = isPts ? `${refundAmount} نقطة` : formatPaymentAmount(refundAmount, refundTarget.currency as CurrencyCode);
+        onShowNotification('success', `تم تنفيذ استرداد ${displayVal} وإعادتها إلى رصيد نقاط المريض (${refundTarget.patientName}) بنجاح.`);
       }
       setRefundTarget(null);
       await loadPayments();
@@ -324,6 +406,10 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
     .filter(p => isPaid(p) && (p.currency === 'YER' || !p.currency))
     .reduce((sum, p) => sum + (p.amount || 0), 0);
 
+  const pointsRevenue = payments
+    .filter(p => isPaid(p) && (p.currency === 'PTS' || p.paymentMethod === 'POINTS'))
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
+
   const usdRevenue = payments
     .filter(p => isPaid(p) && p.currency === 'USD')
     .reduce((sum, p) => sum + (p.amount || 0), 0);
@@ -348,7 +434,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
 
     // Currency Filter
     if (currencyFilter !== 'ALL') {
-      const pCurr = p.currency || 'YER';
+      const pCurr = (p.currency === 'PTS' || p.paymentMethod === 'POINTS') ? 'PTS' : (p.currency || 'YER');
       if (pCurr !== currencyFilter) return false;
     }
 
@@ -404,23 +490,11 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
             <BookOpen className="w-4 h-4" />
             <span>سجل الأستاذ المالي والتسويات (Ledger)</span>
           </button>
-
-          <button
-            onClick={() => { setSubTab('SETTINGS'); loadSettings(); }}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-              subTab === 'SETTINGS'
-                ? 'bg-slate-900 text-white dark:bg-emerald-600 dark:text-white shadow-xs'
-                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200'
-            }`}
-          >
-            <Settings className="w-4 h-4" />
-            <span>إعدادات بوابات الدفع والربط البنكي (Gateways)</span>
-          </button>
         </div>
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => { loadPayments(); loadLedger(); loadSettings(); }}
+            onClick={() => { loadPayments(); loadLedger(); }}
             className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -430,11 +504,11 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
       </div>
 
       {/* Multi-Currency Revenue Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* YER Revenue */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border-2 border-emerald-500/30 dark:border-emerald-500/40 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
               <span>🇾🇪</span>
               <span>إيرادات الريال اليمني (YER)</span>
             </span>
@@ -447,7 +521,28 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
           </strong>
           <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1 flex items-center gap-1">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>بنك الكريمي (Al-Kuraimi API) & نقدي</span>
+            <span>بنك الكريمي (API) & نقدي</span>
+          </p>
+        </div>
+
+        {/* Points Revenue (PTS) - يقابل الإيرادات بالريال */}
+        <div className="bg-gradient-to-br from-amber-50 to-orange-50/40 dark:from-amber-950/30 dark:to-slate-900 p-5 rounded-2xl border-2 border-amber-500/40 dark:border-amber-500/50 shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+              <Coins className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span>إيرادات النقاط (PTS) المقابلة</span>
+            </span>
+            <div className="px-2 py-0.5 rounded-lg bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-black text-[11px]">
+              يقابل الريال
+            </div>
+          </div>
+          <strong className="text-2xl font-black text-amber-800 dark:text-amber-300 font-mono flex items-baseline gap-1.5">
+            <span>{pointsRevenue.toLocaleString()}</span>
+            <span className="text-sm font-bold">نقطة</span>
+          </strong>
+          <p className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold mt-1 flex items-center gap-1">
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            <span>تعادل: {(pointsRevenue * 50).toLocaleString()} ر.ي (تسوية فورية)</span>
           </p>
         </div>
 
@@ -560,7 +655,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
               {/* Currency Selector Filter */}
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-bold text-slate-500">العملة:</span>
-                {(['ALL', 'YER', 'USD', 'SAR'] as const).map((curr) => (
+                {(['ALL', 'YER', 'PTS', 'USD', 'SAR'] as const).map((curr) => (
                   <button
                     key={curr}
                     onClick={() => setCurrencyFilter(curr)}
@@ -570,7 +665,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
                     }`}
                   >
-                    {curr === 'ALL' ? 'كل العملات' : curr}
+                    {curr === 'ALL' ? 'كل العملات' : curr === 'PTS' ? 'النقاط (PTS)' : curr}
                   </button>
                 ))}
               </div>
@@ -627,8 +722,8 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {filteredPayments.length > 0 ? (
-                    filteredPayments.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                    filteredPayments.map((p, idx) => (
+                      <tr key={`${p.id}-${idx}`} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="p-3.5">
                           <strong className="block font-mono text-slate-900 dark:text-slate-100">
                             {p.receiptNumber || `INV-${p.id.slice(-6).toUpperCase()}`}
@@ -649,12 +744,19 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                         </td>
 
                         <td className="p-3.5">
-                          <strong className="font-mono text-sm text-blue-900 dark:text-slate-100">
-                            {formatPaymentAmount(p.amount, p.currency as CurrencyCode)}
-                          </strong>
-                          <span className="text-[10px] text-slate-400 block font-bold">
-                            {p.currency || 'YER'}
-                          </span>
+                          {(() => {
+                            const isPointsPay = p.currency === 'PTS' || p.paymentMethod === 'POINTS' || p.serviceType === 'CONSULTATION' || p.serviceType === 'APPOINTMENT';
+                            return (
+                              <>
+                                <strong className="font-mono text-sm text-blue-900 dark:text-slate-100">
+                                  {formatPaymentAmount(p.amount, isPointsPay ? 'PTS' : (p.currency as CurrencyCode))}
+                                </strong>
+                                <span className="text-[10px] text-slate-400 block font-bold">
+                                  {isPointsPay ? 'رصيد النقاط (PTS)' : (p.currency || 'YER')}
+                                </span>
+                              </>
+                            );
+                          })()}
                         </td>
 
                         <td className="p-3.5">
@@ -705,50 +807,41 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                         </td>
 
                         <td className="p-3.5">
-                          <span className={`px-2.5 py-1 rounded-full text-[9px] font-black inline-flex items-center gap-1 ${
-                            p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS'
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                              : p.status === 'REFUNDED'
-                              ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                              : p.status === 'WAIVED'
-                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
-                              : (p.status === 'PENDING' || p.status === 'PAYMENT_REQUIRED') && (p.paymentMethod === 'BANK_TRANSFER_NOTICE' || (p as any).bankTransferDetails)
-                              ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800'
-                              : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                          }`}>
-                            {(p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS') && <><Check className="w-3 h-3" /> تم الدفع بنجاح (تم التسديد)</>}
-                            {p.status === 'REFUNDED' && <><RotateCcw className="w-3 h-3" /> مسترد ({formatPaymentAmount(p.refundAmount || p.amount, p.currency as CurrencyCode)})</>}
-                            {p.status === 'WAIVED' && <><CheckCircle2 className="w-3 h-3" /> إعفاء خيري</>}
-                            {(p.status === 'PENDING' || p.status === 'PAYMENT_REQUIRED') && (
-                              p.paymentMethod === 'BANK_TRANSFER_NOTICE' || (p as any).bankTransferDetails ? (
-                                <><Clock className="w-3 h-3 text-amber-700" /> إشعار بانتظار الاعتماد</>
-                              ) : (
-                                <><Clock className="w-3 h-3" /> بانتظار السداد</>
-                              )
-                            )}
-                            {p.status === 'FAILED' && <><X className="w-3 h-3" /> فشل الدفع</>}
-                          </span>
+                          {(() => {
+                            const isRefundedPayment = p.status === 'REFUNDED' || p.paymentStatus === 'REFUNDED';
+                            const isWaived = p.status === 'WAIVED' || p.paymentStatus === 'WAIVED';
+                            const isPoints = p.paymentMethod === 'POINTS' || p.currency === 'PTS' || p.serviceType === 'CONSULTATION' || p.serviceType === 'APPOINTMENT';
+                            
+                            if (isRefundedPayment) {
+                              return (
+                                <span className="px-2.5 py-1 rounded-full text-[9px] font-black inline-flex items-center gap-1 bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                                  <RotateCcw className="w-3 h-3" />
+                                  {isPoints 
+                                    ? `مسترد لرصيد النقاط (${p.refundAmount || p.amount} نقطة ✓)` 
+                                    : `مسترد (${formatPaymentAmount(p.refundAmount || p.amount, p.currency as CurrencyCode)})`}
+                                </span>
+                              );
+                            }
+
+                            if (isWaived) {
+                              return (
+                                <span className="px-2.5 py-1 rounded-full text-[9px] font-black inline-flex items-center gap-1 bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                                  <CheckCircle2 className="w-3 h-3" /> إعفاء خيري
+                                </span>
+                              );
+                            }
+
+                            return (
+                              <span className="px-2.5 py-1 rounded-full text-[9px] font-black inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                <Check className="w-3 h-3" />
+                                {isPoints ? 'مسدد بالنقاط ✓ (تم التسديد)' : 'مسدد فوراً ✓'}
+                              </span>
+                            );
+                          })()}
                         </td>
 
                         <td className="p-3.5 text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            {/* Action: Approve Manual / Bank Transfer Notice */}
-                            {(p.status === 'PENDING' || p.status === 'PAYMENT_REQUIRED' || p.paymentStatus === 'PENDING') && (
-                              <button
-                                onClick={() => handleApprovePayment(p)}
-                                disabled={approvingPaymentId === p.id}
-                                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] inline-flex items-center gap-1 shadow-xs transition-all cursor-pointer disabled:opacity-50"
-                                title="اعتماد استلام الحوالة وتأكيد (تم السداد ✓)"
-                              >
-                                {approvingPaymentId === p.id ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                )}
-                                <span>اعتماد (تم السداد ✓)</span>
-                              </button>
-                            )}
-
                             {/* View Notice Details Button */}
                             {(p.bankTransferDetails || p.paymentMethod === 'BANK_TRANSFER_NOTICE') && (
                               <button
@@ -768,11 +861,11 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                               <Printer className="w-4 h-4" />
                             </button>
 
-                            {(p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS') && (
+                            {!(p.status === 'REFUNDED' || p.paymentStatus === 'REFUNDED') && !(p.status === 'WAIVED' || p.paymentStatus === 'WAIVED') && (p.status === 'PAID' || p.status === 'PAYMENT_SUCCESS' || p.paymentStatus === 'PAID' || p.paymentStatus === 'PAYMENT_SUCCESS') && (
                               <button
                                 onClick={() => handleOpenRefundModal(p)}
                                 className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 transition-colors cursor-pointer"
-                                title="استرداد المبلغ (Refund)"
+                                title="استرداد الرسوم وإعادة النقاط للمريض (Refund)"
                               >
                                 <RotateCcw className="w-4 h-4" />
                               </button>
@@ -796,160 +889,377 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
       )}
 
       {/* ========================================================= */}
-      {/* SUB-TAB 2: ACCOUNTING LEDGER */}
+      {/* SUB-TAB 2: ACCOUNTING LEDGER & SETTLEMENTS */}
       {/* ========================================================= */}
-      {subTab === 'LEDGER' && (
-        <div className="space-y-6">
-          {/* Summary Cards Per Currency */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {(['YER', 'USD', 'SAR'] as CurrencyCode[]).map((curr) => {
-              const summary = ledgerData.summaries[curr] || { gross: 0, fees: 0, net: 0, refunded: 0, count: 0 };
-              const info = SUPPORTED_CURRENCIES[curr];
+      {subTab === 'LEDGER' && (() => {
+        const filteredLedgerEntries = ledgerData.entries.filter((entry) => {
+          if (ledgerSearchQuery.trim()) {
+            const q = ledgerSearchQuery.toLowerCase();
+            const matchId = entry.id?.toLowerCase().includes(q);
+            const matchPatient = entry.patientName?.toLowerCase().includes(q);
+            const matchRef = entry.transactionReference?.toLowerCase().includes(q) || (entry as any).serviceReferenceId?.toLowerCase().includes(q);
+            const matchDesc = (entry as any).description?.toLowerCase().includes(q) || entry.serviceName?.toLowerCase().includes(q);
+            if (!matchId && !matchPatient && !matchRef && !matchDesc) return false;
+          }
 
-              return (
-                <div key={curr} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{info.flagIcon}</span>
-                      <div>
-                        <strong className="text-sm font-black text-slate-900 dark:text-slate-100">{info.nameAr}</strong>
-                        <span className="text-[10px] text-slate-400 block font-mono">{curr}</span>
+          if (ledgerCurrencyFilter !== 'ALL' && entry.currency !== ledgerCurrencyFilter) {
+            return false;
+          }
+
+          if (ledgerSettlementFilter !== 'ALL') {
+            if (ledgerSettlementFilter === 'PENDING' && entry.settlementStatus !== 'PENDING') return false;
+            if (ledgerSettlementFilter === 'SETTLED' && entry.settlementStatus !== 'SETTLED') return false;
+            if (ledgerSettlementFilter === 'REFUNDED' && entry.settlementStatus !== 'REFUNDED' && entry.status !== 'REFUNDED') return false;
+          }
+
+          return true;
+        });
+
+        const pendingEntries = filteredLedgerEntries.filter(
+          (e) => e.settlementStatus === 'PENDING' && e.status !== 'REFUNDED'
+        );
+
+        return (
+          <div className="space-y-6">
+            {/* Top Summary Cards Per Currency */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {(['YER', 'USD', 'SAR'] as CurrencyCode[]).map((curr) => {
+                const summary = ledgerData.summaries[curr] || { gross: 0, fees: 0, net: 0, refunded: 0, count: 0 };
+                const info = SUPPORTED_CURRENCIES[curr];
+                const currEntries = ledgerData.entries.filter(e => e.currency === curr);
+                const currSettled = currEntries.filter(e => e.settlementStatus === 'SETTLED').length;
+                const currPending = currEntries.filter(e => e.settlementStatus === 'PENDING' && e.status !== 'REFUNDED').length;
+
+                return (
+                  <div key={curr} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{info.flagIcon}</span>
+                        <div>
+                          <strong className="text-sm font-black text-slate-900 dark:text-slate-100">{info.nameAr}</strong>
+                          <span className="text-[10px] text-slate-400 block font-mono">{curr}</span>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">
+                        {summary.count} حركة
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+                        <span>إجمالي التحصيل الإجمالي (Gross):</span>
+                        <strong className="font-mono text-slate-900 dark:text-slate-100 font-bold">
+                          {formatPaymentAmount(summary.gross, curr)}
+                        </strong>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+                        <span>رسوم وعمولات البوابات (Fees):</span>
+                        <span className="font-mono text-rose-600">
+                          - {formatPaymentAmount(summary.fees, curr)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+                        <span>المبالغ المستردة (Refunds):</span>
+                        <span className="font-mono text-amber-600">
+                          - {formatPaymentAmount(summary.refunded, curr)}
+                        </span>
+                      </div>
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-sm">
+                        <strong className="font-bold text-slate-900 dark:text-slate-100">صافي التسوية البنكية (Net):</strong>
+                        <strong className="font-mono font-black text-emerald-600 dark:text-emerald-400">
+                          {formatPaymentAmount(summary.net, curr)}
+                        </strong>
+                      </div>
+
+                      {/* Mini Settlement Counts */}
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
+                        <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-medium">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>تمت التسوية: {currSettled}</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-400 font-medium">
+                          <Clock className="w-3 h-3" />
+                          <span>بانتظار التسوية: {currPending}</span>
+                        </span>
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">
-                      {summary.count} حركة
-                    </span>
                   </div>
-
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-                      <span>إجمالي التحصيل الإجمالي (Gross):</span>
-                      <strong className="font-mono text-slate-900 dark:text-slate-100">
-                        {formatPaymentAmount(summary.gross, curr)}
-                      </strong>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-                      <span>رسوم وعمولات البوابات (Fees):</span>
-                      <span className="font-mono text-rose-600">
-                        - {formatPaymentAmount(summary.fees, curr)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-                      <span>المبالغ المستردة (Refunds):</span>
-                      <span className="font-mono text-amber-600">
-                        - {formatPaymentAmount(summary.refunded, curr)}
-                      </span>
-                    </div>
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-sm">
-                      <strong className="font-bold text-slate-900 dark:text-slate-100">صافي التسوية البنكية (Net):</strong>
-                      <strong className="font-mono font-black text-emerald-600 dark:text-emerald-400">
-                        {formatPaymentAmount(summary.net, curr)}
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Ledger Journal Entries Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-emerald-600" />
-                <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100">
-                  دفتر الأستاذ والقيود المحاسبية الآلية (Financial Journal)
-                </h3>
-              </div>
-              <span className="text-xs font-mono font-bold text-slate-500">
-                إجمالي القيود: {ledgerData.entries.length}
-              </span>
+                );
+              })}
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-start">
-                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-700">
-                  <tr>
-                    <th className="p-3.5">رقم القيد والتاريخ</th>
-                    <th className="p-3.5">نوع القيد</th>
-                    <th className="p-3.5">المرجع والخدمة</th>
-                    <th className="p-3.5">المبلغ الإجمالي (Gross)</th>
-                    <th className="p-3.5">عمولة البوابة (Fee)</th>
-                    <th className="p-3.5">الصافي المالي (Net)</th>
-                    <th className="p-3.5">مزود الدفع</th>
-                    <th className="p-3.5">حالة التسوية</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {ledgerData.entries.length > 0 ? (
-                    ledgerData.entries.map((entry) => (
-                      <tr key={entry.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                        <td className="p-3.5">
-                          <strong className="block font-mono text-slate-900 dark:text-slate-100">{entry.id}</strong>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {new Date(entry.createdAt).toLocaleString('ar-YE')}
-                          </span>
-                        </td>
+            {/* Ledger Toolbar & Settlement Controls */}
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                {/* Search */}
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={ledgerSearchQuery}
+                    onChange={(e) => setLedgerSearchQuery(e.target.value)}
+                    placeholder="بحث في دفتر الأستاذ برقم القيد، المريض، رقم المرجع، أو الخدمة..."
+                    className="w-full pr-9 pl-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-emerald-500"
+                  />
+                  {ledgerSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setLedgerSearchQuery('')}
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
 
-                        <td className="p-3.5">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
-                            entry.entryType === 'CREDIT_COLLECTION'
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                              : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                          }`}>
-                            {entry.entryType === 'CREDIT_COLLECTION' ? '+ تحصيل إيراد' : '- استرداد مالي'}
-                          </span>
-                        </td>
+                {/* Actions: Batch Settlement & Print */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleBatchSettle(pendingEntries)}
+                    disabled={isBatchSettling || pendingEntries.length === 0}
+                    className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-xs disabled:opacity-40 cursor-pointer transition-all"
+                  >
+                    {isBatchSettling ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    )}
+                    <span>تسوية كافة المعلق ({pendingEntries.length})</span>
+                  </button>
 
-                        <td className="p-3.5">
-                          <span className="font-bold text-slate-800 dark:text-slate-200 block">{entry.description}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">Ref: {entry.serviceReferenceId}</span>
-                        </td>
+                  <button
+                    type="button"
+                    onClick={() => setShowFullReportModal(true)}
+                    className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-slate-200" />
+                    <span>طباعة كشف التسوية والمطابقة</span>
+                  </button>
 
-                        <td className="p-3.5 font-mono text-slate-900 dark:text-slate-100 font-bold">
-                          {formatPaymentAmount(entry.grossAmount, entry.currency)}
-                        </td>
+                  <button
+                    type="button"
+                    onClick={() => { loadLedger(); loadPayments(); }}
+                    disabled={isLedgerLoading}
+                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 cursor-pointer"
+                    title="تحديث البيانات"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isLedgerLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
 
-                        <td className="p-3.5 font-mono text-rose-600">
-                          - {formatPaymentAmount(entry.feeAmount, entry.currency)}
-                        </td>
+              {/* Filters */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+                {/* Currency Filter */}
+                <div className="flex items-center gap-1">
+                  <span className="text-slate-500 text-[11px] font-bold ml-1">العملة:</span>
+                  {(['ALL', 'YER', 'USD', 'SAR'] as const).map((curr) => (
+                    <button
+                      key={curr}
+                      type="button"
+                      onClick={() => setLedgerCurrencyFilter(curr)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${
+                        ledgerCurrencyFilter === curr
+                          ? 'bg-slate-900 text-white dark:bg-emerald-600 dark:text-white'
+                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200'
+                      }`}
+                    >
+                      {curr === 'ALL' ? 'كافة العملات' : curr}
+                    </button>
+                  ))}
+                </div>
 
-                        <td className="p-3.5 font-mono text-emerald-600 dark:text-emerald-400 font-black">
-                          {formatPaymentAmount(entry.netAmount, entry.currency)}
-                        </td>
+                {/* Settlement Filter */}
+                <div className="flex items-center gap-1">
+                  <span className="text-slate-500 text-[11px] font-bold ml-1">التسوية:</span>
+                  {(
+                    [
+                      { id: 'ALL', label: `الكل (${ledgerData.entries.length})` },
+                      { id: 'PENDING', label: `بانتظار التسوية (${ledgerData.entries.filter(e => e.settlementStatus === 'PENDING' && e.status !== 'REFUNDED').length})` },
+                      { id: 'SETTLED', label: `تمت التسوية (${ledgerData.entries.filter(e => e.settlementStatus === 'SETTLED').length})` },
+                      { id: 'REFUNDED', label: 'مسترد' }
+                    ] as const
+                  ).map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setLedgerSettlementFilter(item.id)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${
+                        ledgerSettlementFilter === item.id
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
 
-                        <td className="p-3.5">
-                          <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-bold text-[11px]">
-                            {entry.provider === 'KURAIMI' ? 'بنك الكريمي' : entry.provider}
-                          </span>
-                        </td>
+            {/* Ledger Journal Entries Table */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+              <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-emerald-600" />
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100">
+                    دفتر الأستاذ والقيود المحاسبية ومطابقة التسويات
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold text-slate-500">
+                    المعروض: {filteredLedgerEntries.length} قيد
+                  </span>
+                </div>
+              </div>
 
-                        <td className="p-3.5">
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 inline-flex items-center gap-1">
-                            <Check className="w-3 h-3" />
-                            <span>{entry.settlementStatus === 'SETTLED' ? 'تمت التسوية' : 'قيد المقاصة'}</span>
-                          </span>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-start">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-700">
+                    <tr>
+                      <th className="p-3.5">رقم القيد والتاريخ</th>
+                      <th className="p-3.5">نوع القيد</th>
+                      <th className="p-3.5">المريض والخدمة</th>
+                      <th className="p-3.5">المبلغ الإجمالي (Gross)</th>
+                      <th className="p-3.5">العمولة (Fee)</th>
+                      <th className="p-3.5">الصافي (Net)</th>
+                      <th className="p-3.5">مزود الدفع</th>
+                      <th className="p-3.5">حالة التسوية</th>
+                      <th className="p-3.5 text-center">إجراءات التسوية</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {filteredLedgerEntries.length > 0 ? (
+                      filteredLedgerEntries.map((entry, idx) => (
+                        <tr key={`${entry.id}-${idx}`} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="p-3.5">
+                            <strong className="block font-mono text-slate-900 dark:text-slate-100">{entry.id}</strong>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {new Date(entry.createdAt).toLocaleString('ar-YE')}
+                            </span>
+                          </td>
+
+                          <td className="p-3.5">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                              entry.entryType === 'CREDIT_COLLECTION' || entry.status === 'SUCCESS'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                            }`}>
+                              {entry.entryType === 'CREDIT_COLLECTION' || entry.status === 'SUCCESS'
+                                ? '+ تحصيل إيراد'
+                                : '- استرداد مالي'}
+                            </span>
+                          </td>
+
+                          <td className="p-3.5">
+                            <span className="font-bold text-slate-800 dark:text-slate-200 block">
+                              {entry.patientName || 'المريض'}
+                            </span>
+                            <span className="text-[10px] text-slate-500 block">
+                              {(entry as any).description || entry.serviceName || 'خدمة طبية'}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              Ref: {entry.transactionReference || (entry as any).serviceReferenceId}
+                            </span>
+                          </td>
+
+                          <td className="p-3.5 font-mono text-slate-900 dark:text-slate-100 font-bold">
+                            {formatPaymentAmount(entry.grossAmount, entry.currency)}
+                          </td>
+
+                          <td className="p-3.5 font-mono text-rose-600">
+                            {entry.gatewayFee || (entry as any).feeAmount
+                              ? `- ${formatPaymentAmount(entry.gatewayFee || (entry as any).feeAmount, entry.currency)}`
+                              : '0.00'}
+                          </td>
+
+                          <td className="p-3.5 font-mono text-emerald-600 dark:text-emerald-400 font-black">
+                            {formatPaymentAmount(entry.netAmount, entry.currency)}
+                          </td>
+
+                          <td className="p-3.5">
+                            <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-bold text-[11px] text-slate-800 dark:text-slate-200">
+                              {entry.provider === 'KURAIMI' ? 'بنك الكريمي' : entry.provider}
+                            </span>
+                          </td>
+
+                          <td className="p-3.5">
+                            {entry.settlementStatus === 'SETTLED' ? (
+                              <div className="space-y-0.5">
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 inline-flex items-center gap-1">
+                                  <Check className="w-3 h-3" />
+                                  <span>تمت التسوية</span>
+                                </span>
+                                {entry.settledAt && (
+                                  <span className="text-[9px] text-slate-400 block font-mono">
+                                    {new Date(entry.settledAt).toLocaleDateString('ar-YE')}
+                                  </span>
+                                )}
+                              </div>
+                            ) : entry.status === 'REFUNDED' ? (
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 inline-flex items-center gap-1">
+                                <span>مسترد</span>
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 inline-flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                <span>قيد المقاصة</span>
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="p-3.5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {entry.settlementStatus !== 'SETTLED' && entry.status !== 'REFUNDED' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSettleEntry(entry)}
+                                  disabled={isSettlingId === entry.id}
+                                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-black bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-2xs cursor-pointer transition-all disabled:opacity-50"
+                                >
+                                  {isSettlingId === entry.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Check className="w-3 h-3" />
+                                  )}
+                                  <span>تسوية القيد</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedVoucherEntry(entry)}
+                                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-teal-50 hover:bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-200/60 flex items-center gap-1 cursor-pointer transition-all"
+                                  title="عرض إشعار التسوية الرسمية"
+                                >
+                                  <FileText className="w-3 h-3" />
+                                  <span>سند التسوية</span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={9} className="p-8 text-center text-slate-400">
+                          {isLedgerLoading ? 'جارٍ تحميل وتحديث دفتر الأستاذ...' : 'لا توجد قيود مسجلة مطابقة لمعايير البحث الحالية.'}
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={8} className="p-8 text-center text-slate-400">
-                        {isLedgerLoading ? 'جارٍ تحميل دفتر الأستاذ...' : 'لا توجد قيود مسجلة حتى الآن.'}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================= */}
       {/* SUB-TAB 3: PAYMENT SETTINGS & PROVIDER GATEWAYS */}
       {/* ========================================================= */}
-      {subTab === 'SETTINGS' && (
+      {/* Gateways settings removed - payments are processed via points */}
+      {false && (
         <form onSubmit={handleSaveSettings} className="space-y-6">
           {/* General Currency & VAT Configurations */}
           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
@@ -968,7 +1278,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                 <select
                   value={settings.defaultCurrency}
                   onChange={(e) => setSettings({ ...settings, defaultCurrency: e.target.value as CurrencyCode })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-200 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-600"
                 >
                   <option value="YER">YER — الريال اليمني (الرسمي)</option>
                   <option value="USD">USD — الدولار الأمريكي</option>
@@ -976,30 +1286,53 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  نسبة ضريبة القيمة المضافة (VAT %)
-                </label>
-                <input
-                  type="number"
-                  value={settings.vatPercentage}
-                  onChange={(e) => setSettings({ ...settings, vatPercentage: Number(e.target.value) })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold font-mono outline-none"
-                />
-              </div>
+<div>
+  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+    نسبة ضريبة القيمة المضافة (VAT %)
+  </label>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  عمولة بوابات الدفع التقديرية (Fee %)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={settings.gatewayFeePercentage}
-                  onChange={(e) => setSettings({ ...settings, gatewayFeePercentage: Number(e.target.value) })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold font-mono outline-none"
-                />
-              </div>
+  <input
+    type="text"
+    inputMode="decimal"
+    value={String(settings.vatPercentage ?? "")}
+    onChange={(e) => {
+      const value = e.target.value
+        .replace(/[^\d.]/g, "")
+        .replace(/(\..*)\./g, "$1");
+
+      setSettings({
+        ...settings,
+        vatPercentage: value === "" ? 0 : Number(value),
+      });
+    }}
+    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-200 text-xs font-bold font-mono outline-none"
+    placeholder="مثال: 15"
+  />
+</div>
+
+<div>
+  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+    عمولة بوابات الدفع التقديرية (Fee %)
+  </label>
+
+  <input
+    type="text"
+    inputMode="decimal"
+    value={String(settings.gatewayFeePercentage ?? "")}
+    onChange={(e) => {
+      const value = e.target.value
+        .replace(/[^\d.]/g, "")
+        .replace(/(\..*)\./g, "$1");
+
+      setSettings({
+        ...settings,
+        gatewayFeePercentage: value === "" ? 0 : Number(value),
+      });
+    }}
+    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-200 text-xs font-bold font-mono outline-none"
+    placeholder="مثال: 2.5"
+  />
+</div>
             </div>
           </div>
 
@@ -1031,7 +1364,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     kuraimi: { ...settings.kuraimi, environment: e.target.value as any }
                   })}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold bg-slate-50 dark:bg-slate-800 outline-none"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold bg-slate-50 dark:bg-slate-200 outline-none"
                 >
                   <option value="LIVE">الإنتاج المباشر (Production LIVE)</option>
                   <option value="SANDBOX">بيئة الاختبار (Sandbox Test)</option>
@@ -1052,7 +1385,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     kuraimi: { ...settings.kuraimi, merchantId: e.target.value }
                   })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 dark:border-slate-200 bg-slate-50 dark:bg-slate-200 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-600"
                 />
               </div>
 
@@ -1068,7 +1401,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     kuraimi: { ...settings.kuraimi, terminalId: e.target.value }
                   })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 dark:border-slate-200 bg-slate-50 dark:bg-slate-200 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-600"
                 />
               </div>
 
@@ -1083,7 +1416,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     kuraimi: { ...settings.kuraimi, serviceKey: e.target.value }
                   })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 dark:border-slate-200 bg-slate-50 dark:bg-slate-200 text-xs font-mono outline-none"
                 />
               </div>
 
@@ -1099,7 +1432,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     kuraimi: { ...settings.kuraimi, serviceSecret: e.target.value }
                   })}
                   placeholder="••••••••••••••••••••••••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-200 text-xs font-mono outline-none"
                 />
                 <span className="text-[10px] text-slate-400 mt-1 block">
                   * يتم حفظ المفاتيح الحساسة في طبقة الخادم فقط دون كشفها للمتصفح.
@@ -1214,7 +1547,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                       value={settings.hospitalAccounts?.oneCash?.notes || ''}
                       onChange={(e) => updateHospitalAccount('oneCash', 'notes', e.target.value)}
                       placeholder="التحويل المباشر من تطبيق وان كاش لرقم المحفظة"
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none"
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-400 outline-none"
                     />
                   </div>
                 </div>
@@ -1284,7 +1617,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                       value={settings.hospitalAccounts?.mahfazati?.notes || ''}
                       onChange={(e) => updateHospitalAccount('mahfazati', 'notes', e.target.value)}
                       placeholder="التحويل المباشر من تطبيق محفظتي إلى حساب المستشفى"
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none"
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-400 outline-none"
                     />
                   </div>
                 </div>
@@ -1354,7 +1687,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                       value={settings.hospitalAccounts?.jeeb?.notes || ''}
                       onChange={(e) => updateHospitalAccount('jeeb', 'notes', e.target.value)}
                       placeholder="التحويل المباشر من تطبيق جيب (بنك التضامن)"
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none"
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-400 outline-none"
                     />
                   </div>
                 </div>
@@ -1424,7 +1757,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                       value={settings.hospitalAccounts?.floosak?.notes || ''}
                       onChange={(e) => updateHospitalAccount('floosak', 'notes', e.target.value)}
                       placeholder="التحويل من تطبيق فلوسك (بنك اليمن والكويت)"
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none"
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-400 outline-none"
                     />
                   </div>
                 </div>
@@ -1460,7 +1793,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     cardGateway: { ...settings.cardGateway, environment: e.target.value as any }
                   })}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold bg-slate-50 dark:bg-slate-800 outline-none"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold bg-slate-50 dark:bg-slate-400 outline-none"
                 >
                   <option value="LIVE">الإنتاج المباشر (Production LIVE)</option>
                   <option value="SANDBOX">بيئة الاختبار (Sandbox Test)</option>
@@ -1480,7 +1813,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     cardGateway: { ...settings.cardGateway, gatewayProvider: e.target.value }
                   })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-400 text-xs font-bold outline-none"
                 />
               </div>
 
@@ -1495,7 +1828,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     cardGateway: { ...settings.cardGateway, merchantId: e.target.value }
                   })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-400 text-xs font-mono font-bold outline-none"
                 />
               </div>
 
@@ -1510,7 +1843,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     ...settings,
                     cardGateway: { ...settings.cardGateway, publishableKey: e.target.value }
                   })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-400 text-xs font-mono outline-none"
                 />
               </div>
 
@@ -1526,7 +1859,7 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
                     cardGateway: { ...settings.cardGateway, secretKey: e.target.value }
                   })}
                   placeholder="••••••••••••••••••••••••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-400 text-xs font-mono outline-none"
                 />
               </div>
             </div>
@@ -1600,37 +1933,51 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
             </div>
 
             <form onSubmit={handleExecuteRefund} className="p-6 space-y-4">
-              <div className="p-4 bg-rose-50 dark:bg-rose-950/30 rounded-xl border border-rose-200 dark:border-rose-800/60 space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">المريض:</span>
-                  <strong className="text-slate-800 dark:text-slate-200">{refundTarget.patientName}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">الخدمة الطبية:</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200">{refundTarget.serviceName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">المبلغ المدفوع أصلاً:</span>
-                  <strong className="font-mono text-slate-900 dark:text-slate-100">
-                    {formatPaymentAmount(refundTarget.amount, refundTarget.currency as CurrencyCode)}
-                  </strong>
-                </div>
-              </div>
+              {(() => {
+                const isPtsRefund = refundTarget.currency === 'PTS' || refundTarget.paymentMethod === 'POINTS' || refundTarget.serviceType === 'CONSULTATION' || refundTarget.serviceType === 'APPOINTMENT';
+                return (
+                  <>
+                    <div className="p-4 bg-rose-50 dark:bg-rose-950/30 rounded-xl border border-rose-200 dark:border-rose-800/60 space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">المريض:</span>
+                        <strong className="text-slate-800 dark:text-slate-200">{refundTarget.patientName}</strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">الخدمة الطبية:</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{refundTarget.serviceName}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">المبلغ المدفوع أصلاً:</span>
+                        <strong className="font-mono text-slate-900 dark:text-slate-100">
+                          {isPtsRefund ? `${refundTarget.amount} نقطة` : formatPaymentAmount(refundTarget.amount, refundTarget.currency as CurrencyCode)}
+                        </strong>
+                      </div>
+                    </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  المبلغ المطلوب استرداده ({refundTarget.currency || 'YER'})
-                </label>
-                <input
-                  type="number"
-                  required
-                  min={1}
-                  max={refundTarget.amount}
-                  value={refundAmount}
-                  onChange={(e) => setRefundAmount(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 text-sm font-mono font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-rose-500 outline-none"
-                />
-              </div>
+                    {isPtsRefund && (
+                      <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-900 dark:text-amber-200 text-xs flex items-center gap-2 font-medium">
+                        <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>سيتم إرجاع النقاط المستردة فوراً إلى رصيد نقاط المريض وتحديث محفظته تلقائياً.</span>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        المبلغ المطلوب استرداده ({isPtsRefund ? 'نقطة PTS - تُعاد لرصيد المريض' : (refundTarget.currency || 'YER')})
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        min={1}
+                        max={refundTarget.amount}
+                        value={refundAmount}
+                        onChange={(e) => setRefundAmount(Number(e.target.value))}
+                        className="w-full px-3.5 py-2.5 text-sm font-mono font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-rose-500 outline-none"
+                      />
+                    </div>
+                  </>
+                );
+              })()}
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -1855,29 +2202,263 @@ export const AdminPaymentsManager: React.FC<AdminPaymentsManagerProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              {(selectedNoticePayment.status === 'PENDING' || selectedNoticePayment.paymentStatus === 'PENDING' || selectedNoticePayment.status === 'PAYMENT_REQUIRED') && (
-                <button
-                  type="button"
-                  onClick={() => handleApprovePayment(selectedNoticePayment)}
-                  disabled={approvingPaymentId === selectedNoticePayment.id}
-                  className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/20 disabled:opacity-50"
-                >
-                  {approvingPaymentId === selectedNoticePayment.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="w-4 h-4" />
-                  )}
-                  <span>اعتماد السداد وتأكيد (تم السداد ✓)</span>
-                </button>
-              )}
+            <div className="flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setSelectedNoticePayment(null)}
-                className="py-3 px-5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
+                className="w-full py-3 px-5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
               >
                 إغلاق
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Official Settlement Voucher Modal */}
+      {selectedVoucherEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5 animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="text-center pb-4 border-b border-slate-200 dark:border-slate-700">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950 text-teal-600 mb-2">
+                <Landmark className="w-6 h-6" />
+              </div>
+              <h3 className="font-black text-slate-900 dark:text-slate-100 text-base">
+                عيادة الدكتور وهاج المقطري الاستشارية
+              </h3>
+              <p className="text-xs text-slate-500">
+                قسم الإدارة المالية والمحاسبة • إشعار تسوية ومقاصة بنكية
+              </p>
+              <div className="inline-block mt-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-full text-[11px] font-mono font-bold">
+                سند تسوية رقم: VOUCH-{selectedVoucherEntry.id}
+              </div>
+            </div>
+
+            {/* Details */}
+            <div className="space-y-2.5 text-xs bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <div className="flex justify-between">
+                <span className="text-slate-500">رقم القيد في دفتر الأستاذ:</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                  {selectedVoucherEntry.id}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">المرجع المالي / العملية:</span>
+                <span className="font-mono text-slate-700 dark:text-slate-300">
+                  {selectedVoucherEntry.transactionReference || (selectedVoucherEntry as any).serviceReferenceId}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">تاريخ التسوية والمقاصة:</span>
+                <span className="font-mono text-slate-700 dark:text-slate-300">
+                  {selectedVoucherEntry.settledAt
+                    ? new Date(selectedVoucherEntry.settledAt).toLocaleString('ar-YE')
+                    : new Date(selectedVoucherEntry.createdAt).toLocaleString('ar-YE')}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">المريض:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {selectedVoucherEntry.patientName || 'المريض'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">الخدمة الطبية:</span>
+                <span className="text-slate-800 dark:text-slate-200 font-medium">
+                  {(selectedVoucherEntry as any).description || selectedVoucherEntry.serviceName || 'استشارة وخدمات طبية'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">البوابة / المزود:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {selectedVoucherEntry.provider === 'KURAIMI' ? 'بنك الكريمي للتمويل الأصغر الإسلامي' : selectedVoucherEntry.provider}
+                </span>
+              </div>
+
+              {/* Financial Breakdown */}
+              <div className="pt-2.5 mt-2.5 border-t border-slate-200 dark:border-slate-700 space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">المبلغ الإجمالي المحصل (Gross):</span>
+                  <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                    {formatPaymentAmount(selectedVoucherEntry.grossAmount, selectedVoucherEntry.currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-rose-600">
+                  <span>عمولة البوابة البنكية (Gateway Fee):</span>
+                  <span className="font-mono font-bold">
+                    - {formatPaymentAmount(selectedVoucherEntry.gatewayFee || (selectedVoucherEntry as any).feeAmount || 0, selectedVoucherEntry.currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between pt-1.5 border-t border-dashed border-slate-200 dark:border-slate-700 text-sm">
+                  <span className="font-bold text-slate-900 dark:text-slate-100">الصافي المودع بالحساب البنكي (Net):</span>
+                  <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">
+                    {formatPaymentAmount(selectedVoucherEntry.netAmount, selectedVoucherEntry.currency)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Official Stamps */}
+            <div className="p-3 bg-teal-50/50 dark:bg-teal-950/30 rounded-xl border border-teal-200/50 text-[11px] text-teal-800 dark:text-teal-300 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 shrink-0 text-teal-600" />
+              <span>تمت مطابقة هذا القيد وتسويته رسمياً وإيداع صافي المبلغ في حساب العيادة البنكي.</span>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex-1 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              >
+                <Printer className="w-4 h-4" />
+                <span>طباعة السند</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedVoucherEntry(null)}
+                className="py-2.5 px-5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Financial Ledger & Settlement Statement Modal */}
+      {showFullReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col space-y-5 animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 text-teal-600 flex items-center justify-center">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 dark:text-slate-100 text-base">
+                    كشف مطابقة وتسوية دفتر الأستاذ المالي الشامل
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    عيادة الدكتور وهاج المقطري الاستشارية • تاريخ التقرير: {new Date().toLocaleDateString('ar-YE')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>طباعة الكشف</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFullReportModal(false)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Body */}
+            <div className="flex-1 overflow-y-auto space-y-5 pr-1 text-xs">
+              {/* Currency Summary Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {(['YER', 'USD', 'SAR'] as CurrencyCode[]).map((c) => {
+                  const s = ledgerData.summaries[c] || { gross: 0, fees: 0, net: 0, refunded: 0, count: 0 };
+                  const info = SUPPORTED_CURRENCIES[c];
+                  return (
+                    <div key={c} className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1.5">
+                      <div className="flex justify-between font-bold text-slate-800 dark:text-slate-200 pb-1 border-b border-slate-200 dark:border-slate-700">
+                        <span>{info.flagIcon} {info.nameAr} ({c})</span>
+                        <span className="font-mono text-slate-500">{s.count} عملية</span>
+                      </div>
+                      <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                        <span>الإجمالي:</span>
+                        <span className="font-mono">{formatPaymentAmount(s.gross, c)}</span>
+                      </div>
+                      <div className="flex justify-between text-rose-600">
+                        <span>العمولات:</span>
+                        <span className="font-mono">- {formatPaymentAmount(s.fees, c)}</span>
+                      </div>
+                      <div className="flex justify-between font-black text-emerald-600 dark:text-emerald-400 pt-1 border-t border-slate-200 dark:border-slate-700">
+                        <span>الصافي:</span>
+                        <span className="font-mono">{formatPaymentAmount(s.net, c)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Entries Table */}
+              <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                <table className="w-full text-xs text-start">
+                  <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                    <tr>
+                      <th className="p-2.5">رقم القيد</th>
+                      <th className="p-2.5">التاريخ</th>
+                      <th className="p-2.5">المريض والخدمة</th>
+                      <th className="p-2.5">المزود</th>
+                      <th className="p-2.5">الإجمالي</th>
+                      <th className="p-2.5">العمولة</th>
+                      <th className="p-2.5">الصافي</th>
+                      <th className="p-2.5">حالة التسوية</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {ledgerData.entries.map((entry, idx) => (
+                      <tr key={`${entry.id}-${idx}`} className="hover:bg-slate-50/50">
+                        <td className="p-2.5 font-mono font-bold">{entry.id}</td>
+                        <td className="p-2.5 font-mono text-[10px] text-slate-500">
+                          {new Date(entry.createdAt).toLocaleDateString('ar-YE')}
+                        </td>
+                        <td className="p-2.5">
+                          <span className="font-bold block">{entry.patientName || 'مريض'}</span>
+                          <span className="text-[10px] text-slate-500">{(entry as any).description || entry.serviceName}</span>
+                        </td>
+                        <td className="p-2.5">{entry.provider === 'KURAIMI' ? 'بنك الكريمي' : entry.provider}</td>
+                        <td className="p-2.5 font-mono font-bold">
+                          {formatPaymentAmount(entry.grossAmount, entry.currency)}
+                        </td>
+                        <td className="p-2.5 font-mono text-rose-600">
+                          {entry.gatewayFee ? `- ${formatPaymentAmount(entry.gatewayFee, entry.currency)}` : '0.00'}
+                        </td>
+                        <td className="p-2.5 font-mono font-black text-emerald-600">
+                          {formatPaymentAmount(entry.netAmount, entry.currency)}
+                        </td>
+                        <td className="p-2.5">
+                          {entry.settlementStatus === 'SETTLED' ? (
+                            <span className="text-emerald-700 font-bold">تمت التسوية ✓</span>
+                          ) : (
+                            <span className="text-amber-600 font-bold">قيد المقاصة</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Signatures for audit */}
+              <div className="grid grid-cols-3 gap-4 pt-6 text-center text-xs text-slate-600 dark:text-slate-400">
+                <div className="p-3 border-t border-slate-300 dark:border-slate-700">
+                  <span className="font-bold block text-slate-800 dark:text-slate-200 mb-1">المحاسب المالي</span>
+                  <span className="text-[10px] text-slate-400">التوقيع والختم</span>
+                </div>
+                <div className="p-3 border-t border-slate-300 dark:border-slate-700">
+                  <span className="font-bold block text-slate-800 dark:text-slate-200 mb-1">المدير المالي</span>
+                  <span className="text-[10px] text-slate-400">التوقيع والختم</span>
+                </div>
+                <div className="p-3 border-t border-slate-300 dark:border-slate-700">
+                  <span className="font-bold block text-slate-800 dark:text-slate-200 mb-1">إدارة العيادة</span>
+                  <span className="text-[10px] text-slate-400">الاعتماد النهائي</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -78,8 +78,8 @@ export const CustomerServiceDashboard: React.FC = () => {
   const [isNewServiceModalOpen, setIsNewServiceModalOpen] = useState<boolean>(false);
   const [newServiceNameAr, setNewServiceNameAr] = useState<string>('');
   const [newServiceNameEn, setNewServiceNameEn] = useState<string>('');
-  const [newServicePrice, setNewServicePrice] = useState<number>(250);
-  const [newServiceDuration, setNewServiceDuration] = useState<number>();
+const [newServicePrice, setNewServicePrice] = useState<number>(250);
+const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
   const [newServiceCategory, setNewServiceCategory] = useState<string>('قسم العيادات التخصصية');
   const [newServiceDescAr, setNewServiceDescAr] = useState<string>('');
 
@@ -88,7 +88,7 @@ export const CustomerServiceDashboard: React.FC = () => {
   const [editServiceNameAr, setEditServiceNameAr] = useState<string>('');
   const [editServiceNameEn, setEditServiceNameEn] = useState<string>('');
   const [editServicePrice, setEditServicePrice] = useState<number>(250);
-  const [editServiceDuration, setEditServiceDuration] = useState<number>();
+  const [editServiceDuration, setEditServiceDuration] = useState<number>(30);
   const [editServiceCategory, setEditServiceCategory] = useState<string>('قسم العيادات التخصصية');
   const [editServiceDescAr, setEditServiceDescAr] = useState<string>('');
   const [editServiceIsActive, setEditServiceIsActive] = useState<boolean>(true);
@@ -115,7 +115,7 @@ export const CustomerServiceDashboard: React.FC = () => {
     const unsubApts = api.subscribeAppointments({}, (liveApts) => {
       if (liveApts) {
         setAppointments(liveApts);
-        setCoordinatingAppointment(prev => {
+        setCoordinatingAppointment((prev: Appointment | null) => {
           if (!prev) return null;
           const updated = liveApts.find(a => a.id === prev.id);
           return updated || prev;
@@ -159,8 +159,8 @@ export const CustomerServiceDashboard: React.FC = () => {
   };
 
   const getDocName = (docId: string) => {
-    const doc = doctors.find(d => d.id === docId || d.userId === docId);
-    return doc?.fullName || appointments.find(a => a.doctorId === docId)?.doctorName || 'طبيب العيادة';
+    const doc = doctors.find((d: Doctor) => d.id === docId || d.userId === docId);
+    return doc?.fullName || appointments.find((a: Appointment) => a.doctorId === docId)?.doctorName || 'طبيب العيادة';
   };
 
   const getDoctorAppointmentsForDate = (docId: string, targetDate: string) => {
@@ -193,7 +193,10 @@ export const CustomerServiceDashboard: React.FC = () => {
       setAbsentDate(dateStr);
       
       const aptsForDocAndDate = getDoctorAppointmentsForDate(docId, dateStr);
-      const allIds = Array.from(new Set([specificApt.id, ...aptsForDocAndDate.map(a => a.id)]));
+      const allIds = Array.from(new Set([
+        specificApt.id,
+        ...aptsForDocAndDate.map((a: Appointment) => a.id)
+      ]));
       setSelectedAppointmentIdsForAbsence(allIds);
 
       const docName = specificApt.doctorName || getDocName(docId);
@@ -216,7 +219,7 @@ export const CustomerServiceDashboard: React.FC = () => {
     setSelectedAbsentDoctorId(newDocId);
     const docName = getDocName(newDocId);
     const matchingApts = getDoctorAppointmentsForDate(newDocId, absentDate);
-    setSelectedAppointmentIdsForAbsence(matchingApts.map(a => a.id));
+    setSelectedAppointmentIdsForAbsence(matchingApts.map((a: Appointment) => a.id));
     
     // Update message if using default templates
     setAbsentCustomMessage(prev => {
@@ -322,7 +325,24 @@ export const CustomerServiceDashboard: React.FC = () => {
         doctorSpecialty: coordinatingAppointment.doctorSpecialty
       });
 
-      showNotification('success', `تم تحديث وتأكيد موعد المريض (${coordinatingAppointment.patientName}) بنجاح.`);
+      if (actionStatus === 'CANCELLED') {
+        const fee = coordinatingAppointment.paymentAmount || (coordinatingAppointment as any).fee || 50;
+        try {
+          await api.refundPoints(
+            coordinatingAppointment.patientId,
+            fee,
+            `استرداد نقاط حجز موعد عيادي ملغى (${coordinatingAppointment.serviceName || 'موعد عيادة'})`,
+            coordinatingAppointment.id
+          );
+        } catch (rErr) {
+          console.warn('Failed to auto-refund points on CS cancel:', rErr);
+        }
+      }
+
+      showNotification('success', actionStatus === 'CANCELLED' 
+        ? `تم إلغاء الموعد وإعادة نقاط الحجز إلى رصيد المريض (${coordinatingAppointment.patientName}) بنجاح.` 
+        : `تم تحديث وتأكيد موعد المريض (${coordinatingAppointment.patientName}) بنجاح.`
+      );
       playSuccessSound();
       await loadData();
       setCoordinatingAppointment(null);
@@ -721,47 +741,82 @@ export const CustomerServiceDashboard: React.FC = () => {
                             )}
                           </td>
                           <td className="p-3.5">
-                            <div className="flex flex-col gap-1 items-start">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
-                                apt.status === 'CONFIRMED'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : apt.status === 'CONTACTED'
-                                  ? 'bg-purple-100 text-purple-800'
-                                  : apt.status === 'CANCELLED'
-                                  ? 'bg-rose-100 text-rose-800'
-                                  : 'bg-amber-100 text-amber-800 animate-pulse'
-                              }`}>
-                                {apt.status === 'CONFIRMED' ? 'مؤكد' : apt.status === 'CONTACTED' ? 'تم الاتصال' : apt.status === 'CANCELLED' ? 'ملغي' : 'طلب جديد'}
-                              </span>
+<div className="flex flex-col gap-1 items-start">
+  {(() => {
+    const isRefunded =
+      apt.paymentStatus === 'REFUNDED' ||
+      apt.paymentStatus === 'REFUND_SUCCESS' ||
+      (apt as any).refundStatus === 'REFUNDED' ||
+      (apt as any).isRefunded === true;
 
-                              {/* Payment status badge */}
-                              {(() => {
-                                const isAptPaid = Boolean(
-                                  apt.paymentStatus === 'PAID' ||
-                                  apt.paymentStatus === 'PAYMENT_SUCCESS' ||
-                                  (apt.isPaid && apt.paymentStatus !== 'PENDING' && apt.paymentStatus !== 'PAYMENT_REQUIRED')
-                                );
-                                return (
-                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
-                                    isAptPaid
-                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                      : 'bg-amber-50 text-amber-800 border border-amber-200'
-                                  }`}>
-                                    <CheckCircle2 className={`w-3 h-3 ${isAptPaid ? 'text-emerald-600' : 'text-amber-500'}`} />
-                                    <span>
-                                      {isAptPaid ? 'تم السداد' : 'انتظار السداد'}
-                                    </span>
-                                  </span>
-                                );
-                              })()}
+    const isAptPaid = !isRefunded;
 
-                              {apt.isDoctorAbsent && (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 flex items-center gap-1">
-                                  <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
-                                  <span>تم إشعار المريض بالغياب</span>
-                                </span>
-                              )}
-                            </div>
+    return (
+      <>
+        {/* Appointment status badge */}
+        <span
+          className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
+            isRefunded
+              ? 'bg-rose-100 text-rose-800'
+              : apt.status === 'CONFIRMED'
+                ? 'bg-emerald-100 text-emerald-800'
+                : apt.status === 'CONTACTED'
+                  ? 'bg-purple-100 text-purple-800'
+                  : apt.status === 'CANCELLED'
+                    ? 'bg-rose-100 text-rose-800'
+                    : 'bg-amber-100 text-amber-800 animate-pulse'
+          }`}
+        >
+          {isRefunded
+            ? 'ملغي'
+            : apt.status === 'CONFIRMED'
+              ? 'مؤكد'
+              : apt.status === 'CONTACTED'
+                ? 'تم الاتصال'
+                : apt.status === 'CANCELLED'
+                  ? 'ملغي'
+                  : 'طلب جديد'}
+        </span>
+
+        {/* Payment status badge */}
+        <span
+          className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
+            isRefunded
+              ? 'bg-purple-100 text-purple-800 border border-purple-300'
+              : isAptPaid
+                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                : 'bg-amber-50 text-amber-800 border border-amber-200'
+          }`}
+        >
+          <CheckCircle2
+            className={`w-3 h-3 ${
+              isRefunded
+                ? 'text-purple-600'
+                : isAptPaid
+                  ? 'text-emerald-600'
+                  : 'text-amber-500'
+            }`}
+          />
+
+          <span>
+            {isRefunded
+              ? 'المبلغ مسترد'
+              : isAptPaid
+                ? 'تم السداد'
+                : 'انتظار السداد'}
+          </span>
+        </span>
+
+        {apt.isDoctorAbsent && (
+          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+            <span>تم إشعار المريض بالغياب</span>
+          </span>
+        )}
+      </>
+    );
+  })()}
+</div>
                           </td>
                           <td className="p-3.5 text-center">
                             <div className="flex items-center justify-center gap-1.5">
@@ -947,10 +1002,11 @@ export const CustomerServiceDashboard: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   {(() => {
-                    const isCoordinatingPaid = Boolean(
-                      coordinatingAppointment.paymentStatus === 'PAID' ||
-                      coordinatingAppointment.paymentStatus === 'PAYMENT_SUCCESS' ||
-                      (coordinatingAppointment.isPaid && coordinatingAppointment.paymentStatus !== 'PENDING' && coordinatingAppointment.paymentStatus !== 'PAYMENT_REQUIRED')
+                    const isCoordinatingPaid = !Boolean(
+                      coordinatingAppointment.paymentStatus === 'REFUNDED' ||
+                      coordinatingAppointment.paymentStatus === 'REFUND_SUCCESS' ||
+                      (coordinatingAppointment as any).refundStatus === 'REFUNDED' ||
+                      (coordinatingAppointment as any).isRefunded === true
                     );
                     return (
                       <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
@@ -1191,27 +1247,46 @@ export const CustomerServiceDashboard: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1.5">السعر الرسمي (ر.ي) <span className="text-rose-500">*</span></label>
-                  <input
-                    type="number"
-                    value={newServicePrice}
-                    onChange={(e) => setNewServicePrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 font-mono font-bold text-purple-900"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1.5">المدة التقديرية (دقيقة) <span className="text-rose-500">*</span></label>
-                  <input
-                    type="number"
-                    value={newServiceDuration}
-                    onChange={(e) => setNewServiceDuration(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 font-mono"
-                    required
-                  />
-                </div>
-              </div>
+  <div>
+    <label className="block font-bold text-slate-800 mb-1.5">
+      السعر (ر.ي)
+    </label>
+
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={String(newServicePrice)}
+      onChange={(e) => {
+        const value = e.target.value.replace(/\D/g, "");
+        setNewServicePrice(value === "" ? 0 : Number(value));
+      }}
+      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50"
+      placeholder="أدخل السعر"
+      required
+    />
+  </div>
+
+  <div>
+    <label className="block font-bold text-slate-800 mb-1.5">
+      المدة (دقيقة)
+    </label>
+
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={String(newServiceDuration)}
+      onChange={(e) => {
+        const value = e.target.value.replace(/\D/g, "");
+        setNewServiceDuration(value === "" ? 0 : Number(value));
+      }}
+      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50"
+      placeholder="مثال: 30"
+      required
+    />
+  </div>
+</div>
 
               <div>
                 <label className="block font-bold text-slate-800 mb-1.5">القسم / العيادة</label>

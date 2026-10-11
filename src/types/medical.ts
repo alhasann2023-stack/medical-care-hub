@@ -36,7 +36,8 @@ export type PaymentProviderType =
   | 'APPLE_PAY' 
   | 'STC_PAY' 
   | 'CASH' 
-  | 'WAIVED';
+  | 'WAIVED'
+  | 'POINTS_WALLET';
 
 export type KuraimiPaymentChannel = 'KURAIMI_EXPRESS' | 'HASEB_PAY' | 'KURAIMI_APP';
 
@@ -79,7 +80,9 @@ export type PaymentMethod =
   | 'STC_PAY'
   | 'WAIVED'
   | 'CASH'
-  | 'INSURANCE';
+  | 'INSURANCE'
+  | 'POINTS'
+  | 'PACKAGE';
 
 export type NotificationChannel = 'IN_APP' | 'SMS' | 'EMAIL' | 'WHATSAPP' | 'PUSH';
 
@@ -266,12 +269,26 @@ export interface HospitalPaymentAccounts {
   floosak: HospitalAccountConfig;
 }
 
+export interface ManualPaymentAccounts {
+  adminWhatsapp?: string;
+  adminPhone?: string;
+  bankName?: string;
+  accountHolderName?: string;
+  iban?: string;
+  kuraimiAccount?: string;
+  jawwaliAccount?: string;
+  oneCashAccount?: string;
+  jeebAccount?: string;
+  floosakAccount?: string;
+}
+
 export interface PaymentSettings {
   defaultCurrency: CurrencyCode;
   supportedCurrencies: CurrencyConfig[];
   kuraimi: KuraimiMerchantConfig;
   cardGateway: CardGatewayConfig;
   hospitalAccounts?: HospitalPaymentAccounts;
+  manualAccounts?: ManualPaymentAccounts;
   enableCashOnArrival: boolean;
   enableWaiverOption: boolean;
   vatPercentage: number;
@@ -341,6 +358,9 @@ export interface Payment {
   grossAmount?: number;
   gatewayFee?: number;
   vatAmount?: number;
+  taxAmount?: number;
+  taxRate?: number;
+  subtotal?: number;
   netAmount?: number;
   refundAmount?: number;
   paymentProvider?: PaymentProviderType;
@@ -381,6 +401,10 @@ export interface Payment {
   paidAt?: string;
   createdAt: string;
   confirmedAt?: string;
+  confirmedBy?: string;
+  isApprovedByAdmin?: boolean;
+  notes?: string;
+  description?: string;
   updatedAt?: string;
 }
 
@@ -407,7 +431,9 @@ export interface Appointment {
   paymentId?: string;
   paymentStatus?: PaymentStatus;
   isPaid?: boolean;
+  isApprovedByAdmin?: boolean;
   paymentAmount?: number;
+  fee?: number;
   currency?: string;
   paymentMethod?: PaymentMethod;
   transactionReference?: string;
@@ -833,3 +859,166 @@ export interface FreeConsultationPromo {
   updatedAt: string;
   updatedBy?: string;
 }
+
+export interface RewardSettings {
+  consultationRewardPoints: number;
+  appointmentRewardPoints: number;
+  communityPostRewardPoints: number;
+  reviewRewardPoints: number;
+  giftRewardPoints: number;
+  newUserRewardPoints: number;
+  pointValueYer: number;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+// ============================================================
+// POINTS & PACKAGES SYSTEM
+// ============================================================
+
+export interface PointsTransaction {
+  id: string;
+  patientId: string;
+  type: 'EARNED' | 'SPENT' | 'GIFT_SENT' | 'REWARD' | 'PACKAGE_PURCHASE' | 'REFUND';
+  amount: number; // positive or negative
+  descriptionAr: string;
+  referenceId?: string;
+  createdAt: string;
+}
+
+export interface PointsWallet {
+  patientId: string;
+  pointsBalance: number;
+  tier: 'BRONZE' | 'SILVER' | 'GOLD' | 'VIP';
+  totalEarned: number;
+  totalSpent: number;
+  history: PointsTransaction[];
+  updatedAt?: string;
+}
+
+export interface MedicalPackage {
+  id: string;
+  nameAr: string;
+  nameEn: string;
+  badge: string;
+  price: number;
+  currency: CurrencyCode;
+  pointsBonus: number;
+  consultationsQuota: number; // number of consultations included
+  appointmentsQuota: number;  // number of bookings included
+  validityDays: number;
+  featuresAr: string[];
+  colorTheme: string;
+  isPopular?: boolean;
+}
+
+export interface ActivePatientPackage {
+  id: string;
+  patientId: string;
+  packageId: string;
+  packageNameAr: string;
+  remainingConsultations: number;
+  remainingAppointments: number;
+  totalConsultations: number;
+  totalAppointments: number;
+  purchasedAt: string;
+  expiresAt: string;
+  status: 'ACTIVE' | 'EXPIRED' | 'DEPLETED';
+}
+
+// ============================================================
+// GIFTS TO DOCTORS & STAFF
+// ============================================================
+
+export interface GiftCatalogItem {
+  id: string;
+  nameAr: string;
+  icon: string;
+  pointsCost: number;
+  descriptionAr: string;
+  category: 'FLOWERS' | 'COFFEE' | 'SHIELD' | 'MEDAL' | 'VIP';
+  color: string;
+}
+
+export interface SentGift {
+  id: string;
+  senderPatientId: string;
+  senderName: string;
+  recipientType: 'DOCTOR' | 'STAFF';
+  recipientId: string;
+  recipientName: string;
+  recipientTitleOrSpecialty?: string;
+  giftItemId: string;
+  giftNameAr: string;
+  giftIcon: string;
+  pointsAmount: number;
+  message: string;
+  serviceType?: 'CONSULTATION' | 'APPOINTMENT';
+  serviceId?: string;
+  createdAt: string;
+}
+
+// ============================================================
+// SERVICE RATINGS & REVIEWS
+// ============================================================
+
+export interface ServiceReview {
+  id: string;
+  patientId: string;
+  patientName: string;
+  doctorId?: string;
+  doctorName?: string;
+  serviceType: 'CONSULTATION' | 'APPOINTMENT';
+  serviceId?: string;
+  rating: number; // 1-5
+  comment: string;
+  aspects?: {
+    doctorCare: number;
+    speed: number;
+    clarity: number;
+  };
+  createdAt: string;
+}
+
+// ============================================================
+// COMMUNITY POSTS & COMMENTS
+// ============================================================
+
+export interface CommunityPost {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorRole: 'PATIENT' | 'DOCTOR' | 'HOSPITAL_ADMIN';
+  authorTitle?: string;
+  authorAvatar?: string;
+  doctorId?: string;
+  doctorSpecialty?: string;
+  title: string;
+  content: string;
+  category: 'HEALTH_TIP' | 'PATIENT_STORY' | 'DOCTOR_ARTICLE' | 'QUESTION' | 'GRATITUDE';
+  tags?: string[];
+  likesCount: number;
+  likedBy: string[];
+  commentsCount: number;
+  isPinned?: boolean;
+  isHidden?: boolean; // Managed by Admins
+  hiddenReason?: string;
+  hiddenAt?: string;
+  hiddenBy?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface PostComment {
+  id: string;
+  postId: string;
+  authorId: string;
+  authorName: string;
+  authorRole: 'PATIENT' | 'DOCTOR' | 'HOSPITAL_ADMIN';
+  authorTitle?: string;
+  content: string;
+  isHidden?: boolean; // Managed by Admins
+  hiddenReason?: string;
+  createdAt: string;
+}
+

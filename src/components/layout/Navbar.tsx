@@ -104,17 +104,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Top Announcement & Emergency Triage Bar */}
       <div className="bg-slate-900 text-slate-200 text-xs py-1.5 px-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-600 text-white animate-pulse">
-              طوارئ
-            </span>
-            <span className="hidden sm:inline text-slate-300">
-              للحالات الحرجة والإسعاف الفوري اتصل بـ <strong className="text-white">997</strong>
-            </span>
-            <span className="sm:hidden text-slate-300">
-              طوارئ الإسعاف: <strong className="text-white">997</strong>
-            </span>
-          </div>
+
 
           <div className="flex items-center gap-4 text-xs text-slate-300">
             <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px]">
@@ -291,6 +281,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                 لوحة إدارة المستشفى
               </button>
             )}
+
+            {/* Public Community Nav Item */}
+            <button
+              onClick={() => {
+                if (!user) {
+                  onOpenAuth('register');
+                } else {
+                  setCurrentView('community');
+                }
+              }}
+              className={`px-3 py-2 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                currentView === 'community'
+                  ? 'text-teal-700 bg-teal-50/90 font-bold border border-teal-200'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <span>مجتمع الصحة 💬</span>
+            </button>
           </nav>
 
           {/* Quick Actions & Role Switcher */}
@@ -558,6 +566,22 @@ export const Navbar: React.FC<NavbarProps> = ({
               لوحة الإدارة والإحصائيات
             </button>
           )}
+
+          {/* Mobile Community Link */}
+          <button
+            onClick={() => {
+              if (!user) {
+                onOpenAuth('register');
+              } else {
+                setCurrentView('community');
+              }
+              setIsMobileMenuOpen(false);
+            }}
+            className="w-full text-start px-3 py-2 rounded-md text-sm font-bold text-teal-800 bg-teal-50 flex items-center justify-between"
+          >
+            <span>مجتمع الصحة والتجارب</span>
+            <span>💬</span>
+          </button>
 
           {/* Mobile Auth Actions */}
           <div className="pt-3 border-t border-slate-100">

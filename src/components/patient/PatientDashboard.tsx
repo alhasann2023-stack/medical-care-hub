@@ -30,7 +30,10 @@ import {
   AlertTriangle,
   Paperclip,
   Download,
-  Gift
+  Gift,
+  Coins,
+  Package,
+  Award
 } from 'lucide-react';
 import { 
   Patient, 
@@ -41,7 +44,10 @@ import {
   MedicalReport, 
   Prescription,
   FollowUpAppointment,
-  FreeConsultationPromo
+  FreeConsultationPromo,
+  Payment,
+  PointsWallet,
+  ActivePatientPackage
 } from '../../types/medical';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -53,6 +59,8 @@ import { localReminderService, ReminderItem } from '../../services/localReminder
 import { PatientInvoicesModal } from './PatientInvoicesModal';
 import { PaymentCheckoutModal } from '../common/PaymentCheckoutModal';
 import { PatientMedicalProfileModal } from './PatientMedicalProfileModal';
+import { SendGiftModal } from '../common/SendGiftModal';
+import { PatientPointsBalanceCard } from './PatientPointsBalanceCard';
 
 interface PatientDashboardProps {
   onOpenBooking: () => void;
@@ -60,6 +68,7 @@ interface PatientDashboardProps {
   onNavigateToTimeline: () => void;
   onNavigateToTests: () => void;
   onNavigateToReports: () => void;
+  onNavigateToCommunity?: () => void;
 }
 
 export const PatientDashboard: React.FC<PatientDashboardProps> = ({
@@ -67,7 +76,8 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   onOpenConsultation,
   onNavigateToTimeline,
   onNavigateToTests,
-  onNavigateToReports
+  onNavigateToReports,
+  onNavigateToCommunity
 }) => {
   const { user, patientProfile, refreshProfile } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -77,6 +87,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const [tests, setTests] = useState<MedicalTest[]>([]);
   const [reports, setReports] = useState<MedicalReport[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [patientPayments, setPatientPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isClearing, setIsClearing] = useState<boolean>(false);
 
@@ -95,6 +106,11 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
   const [showAllConsultationsModal, setShowAllConsultationsModal] = useState<boolean>(false);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState<boolean>(false);
+
+  // Points & Packages & Gifts State
+  const [wallet, setWallet] = useState<PointsWallet | null>(null);
+  const [activePackage, setActivePackage] = useState<ActivePatientPackage | null>(null);
+  const [isSendGiftModalOpen, setIsSendGiftModalOpen] = useState<boolean>(false);
 
   // Free Consultation Promo State
   const [freePromo, setFreePromo] = useState<FreeConsultationPromo | null>(null);
@@ -139,6 +155,17 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
       setFreePromo(promo);
     });
 
+    api.getPointsWallet(patientId).then(setWallet).catch(() => {});
+    const unsubWallet = api.subscribePointsWallet(patientId, setWallet);
+
+    api.getActivePackage(patientId).then(setActivePackage).catch(() => {});
+    const unsubPkg = api.subscribeActivePackage(patientId, setActivePackage);
+
+    const handlePaymentsUpdated = () => {
+      loadDashboardData();
+    };
+    window.addEventListener('mch_payments_updated', handlePaymentsUpdated);
+
     // Check reminders every 30 seconds
     const interval = setInterval(() => {
       checkForReminders(appointments, consultations, doctorsList);
@@ -148,6 +175,9 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
       unsubApts();
       unsubCns();
       unsubPromo();
+      unsubWallet();
+      unsubPkg();
+      window.removeEventListener('mch_payments_updated', handlePaymentsUpdated);
       clearInterval(interval);
     };
   }, [patientId, user?.id, patientProfile?.phone, user?.phone]);
@@ -232,7 +262,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      const [aptRes, cnsRes, tstRes, repRes, rxRes, docsRes, followUpRes, patRes] = await Promise.all([
+      const [aptRes, cnsRes, tstRes, repRes, rxRes, docsRes, followUpRes, patRes, payRes] = await Promise.all([
         api.getAppointments({ patientId }),
         api.getConsultations({ 
           patientId,
@@ -244,7 +274,8 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
         api.getPrescriptions(patientId),
         api.getDoctors(undefined, true),
         api.getFollowUps({ patientId }),
-        api.getPatient(patientId).catch(() => null)
+        api.getPatient(patientId).catch(() => null),
+        api.getPayments({ patientId }).catch(() => [])
       ]);
 
       if (patRes) {
@@ -255,6 +286,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
       setAppointments(aptRes);
       setConsultations(cnsRes as any);
+      setPatientPayments(payRes || []);
 
       // Strict privacy filter: ensure patient only sees their own tests
       const allowedPatIds = new Set(
@@ -449,14 +481,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
           {/* Primary Quick Action Buttons & Reminder Trigger */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              onClick={onNavigateToTimeline}
-              className="px-3.5 py-2.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/40 text-purple-200 hover:text-white font-bold text-xs transition-all border border-purple-400/40 flex items-center gap-1.5 cursor-pointer shadow-sm"
-              title="عرض السجل الزمني الطبي الشامل"
-            >
-              <Clock className="w-4 h-4 text-purple-300" />
-              <span>السجل الزمني</span>
-            </button>
+
 
             <button
               onClick={() => setIsInvoiceModalOpen(true)}
@@ -522,7 +547,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
               مجاناً
             </span>
           )}
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ${
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-1 group-hover:scale-110 transition-transform ${
             isFreePromoActive ? 'bg-amber-100 text-amber-900' : 'bg-cyan-50 text-cyan-700'
           }`}>
             {isFreePromoActive ? <Gift className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
@@ -535,9 +560,9 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
         <button
           onClick={onNavigateToTimeline}
-          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-purple-300 hover:shadow-md transition-all text-start group cursor-pointer"
+          className="p-4 rounded-2xl bg-white border border-slate-300 shadow-xs hover:border-purple-300 hover:shadow-md transition-all text-start group cursor-pointer"
         >
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
             <Clock className="w-5 h-5" />
           </div>
           <h3 className="font-extrabold text-sm text-slate-900">السجل الزمني</h3>
@@ -546,9 +571,9 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
         <button
           onClick={onNavigateToTests}
-          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all text-start group cursor-pointer"
+          className="p-4 rounded-2xl bg-white border border-slate-300 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all text-start group cursor-pointer"
         >
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
             <TestTube className="w-5 h-5" />
           </div>
           <h3 className="font-extrabold text-sm text-slate-900">فحوصاتي</h3>
@@ -557,9 +582,9 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
         <button
           onClick={onNavigateToReports}
-          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-rose-300 hover:shadow-md transition-all text-start group cursor-pointer"
+          className="p-4 rounded-2xl bg-white border border-slate-300 shadow-xs hover:border-rose-300 hover:shadow-md transition-all text-start group cursor-pointer"
         >
-          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
             <FileText className="w-5 h-5" />
           </div>
           <h3 className="font-extrabold text-sm text-slate-900">تقاريري الطبية</h3>
@@ -568,15 +593,22 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
         <button
           onClick={() => setIsInvoiceModalOpen(true)}
-          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-emerald-400 hover:shadow-md transition-all text-start group cursor-pointer"
+          className="p-4 rounded-2xl bg-white border border-slate-300 shadow-xs hover:border-emerald-400 hover:shadow-md transition-all text-start group cursor-pointer"
         >
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
             <Receipt className="w-5 h-5" />
           </div>
           <h3 className="font-extrabold text-sm text-slate-900">الفواتير والسداد</h3>
           <p className="text-xs text-slate-500 mt-0.5">سجل الدفع وسندات القبض</p>
         </button>
       </div>
+
+      {/* Live Patient Points Balance Component */}
+      <PatientPointsBalanceCard
+        patientId={patientId}
+        onSendGift={() => setIsSendGiftModalOpen(true)}
+        onOpenPackages={() => setIsInvoiceModalOpen(true)}
+      />
 
       {/* Main Grid: Upcoming Appointment & Recent Consultation */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1014,6 +1046,92 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
               <ChevronLeft className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Patient Payments & Tax Invoices Section */}
+          <div className="bg-white rounded-2xl p-6 border border-emerald-300/80 shadow-sm space-y-4 text-start">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
+                  <Receipt className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="font-extrabold text-base text-slate-900">سجل المدفوعات والفواتير الضريبية</h2>
+                  <p className="text-xs text-slate-500">سندات القبض الإلكترونية وفواتير الخدمات الطبية</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsInvoiceModalOpen(true)}
+                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <span>عرض الكل</span>
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {patientPayments && patientPayments.length > 0 ? (
+              <div className="space-y-2.5">
+                {patientPayments.slice(0, 4).map(pm => {
+                  const isRefunded = pm.status === 'REFUNDED' || pm.paymentStatus === 'REFUNDED';
+                  const isPaid = !isRefunded && (pm.status === 'PAYMENT_SUCCESS' || pm.paymentStatus === 'PAID' || pm.status === 'PAID' || pm.paymentStatus === 'PAYMENT_SUCCESS' || pm.isPaid);
+                  const isPending = !isPaid && !isRefunded && (pm.status === 'PENDING' || pm.status === 'PAYMENT_REQUIRED' || pm.paymentStatus === 'PAYMENT_REQUIRED' || pm.paymentStatus === 'PENDING');
+                  const invNum = pm.receiptNumber || pm.transactionReference || pm.id;
+
+                  return (
+                    <div
+                      key={pm.id}
+                      className="p-3 bg-slate-50 hover:bg-emerald-50/40 rounded-xl border border-slate-200 transition-colors flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-slate-800 truncate">{pm.serviceName}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                            isRefunded ? 'bg-rose-100 text-rose-800' :
+                            isPaid ? 'bg-emerald-100 text-emerald-800' :
+                            isPending ? 'bg-amber-100 text-amber-800' :
+                            'bg-slate-100 text-slate-700'
+                          }`}>
+                            {isRefunded ? 'مسترد لرصيد النقاط ✓' : isPaid ? 'مسدد بالنقاط ✓' : isPending ? 'بانتظار السداد' : pm.status}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-0.5">
+                          <span>سند / فاتورة: <strong className="font-mono text-emerald-700 font-bold">{invNum}</strong></span>
+                          <span>{new Date(pm.paidAt || pm.createdAt).toLocaleDateString('ar-YE')}</span>
+                          {pm.doctorName && <span className="truncate">الطبيب: {pm.doctorName}</span>}
+                        </div>
+                      </div>
+
+                      <div className="text-end shrink-0 flex items-center gap-2">
+                        <div>
+                          <div className="text-xs font-black text-slate-900">{pm.amount} <span className="text-[10px] font-normal text-slate-500">نقطة</span></div>
+                          <span className={`text-[9px] block font-medium ${isRefunded ? 'text-rose-600' : 'text-emerald-600'}`}>
+                            {isRefunded ? 'تم إرجاع النقاط للمحفظة ✓' : 'سداد فوري بالنقاط ✓'}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => setIsInvoiceModalOpen(true)}
+                          className="p-1.5 text-emerald-700 hover:bg-emerald-100 rounded-lg transition-colors cursor-pointer"
+                          title="عرض الفاتورة الضريبية وسند القبض"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-slate-400 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200 space-y-2">
+                <Receipt className="w-8 h-8 text-slate-300 mx-auto" />
+                <p>لا توجد مدفوعات مسجلة حالياً في حسابك.</p>
+                <button
+                  onClick={() => setIsInvoiceModalOpen(true)}
+                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 cursor-pointer"
+                >
+                  فتح سجل الفواتير والسداد
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1397,6 +1515,8 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
         <PatientInvoicesModal
           isOpen={isInvoiceModalOpen}
           onClose={() => setIsInvoiceModalOpen(false)}
+          patientId={patientId}
+          patientName={patientProfile?.fullName || user?.fullName || 'المريض'}
         />
       )}
 
@@ -1434,6 +1554,15 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
             refreshProfile();
             loadDashboardData();
           }}
+        />
+      )}
+      {/* Send Gift Modal */}
+      {isSendGiftModalOpen && (
+        <SendGiftModal
+          isOpen={isSendGiftModalOpen}
+          onClose={() => setIsSendGiftModalOpen(false)}
+          patientId={patientId}
+          patientName={patientProfile?.fullName || user?.fullName || 'المريض'}
         />
       )}
     </div>

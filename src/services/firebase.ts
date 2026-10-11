@@ -85,7 +85,14 @@ export const FIRESTORE_COLLECTIONS = {
   NOTIFICATIONS: 'notifications',
   AUDIT_LOGS: 'auditLogs',
   USER_CREDENTIALS: 'userCredentials',
-  SETTINGS: 'settings'
+  SETTINGS: 'settings',
+  POINTS_WALLETS: 'pointsWallets',
+  PACKAGES: 'medicalPackages',
+  ACTIVE_PACKAGES: 'activePatientPackages',
+  SENT_GIFTS: 'sentGifts',
+  SERVICE_REVIEWS: 'serviceReviews',
+  COMMUNITY_POSTS: 'communityPosts',
+  POST_COMMENTS: 'postComments'
 } as const;
 
 // Test Firestore Connection Helper

@@ -83,7 +83,7 @@ const TEST_TEMPLATES: Record<string, {
       { parameter: 'Disc Alignment', value: 'Preserved', unit: '-', referenceRange: 'Intact lordosis', flag: 'NORMAL' }
     ]
   },
-  'صورة الدم الكاملة (CBC)': {
+  '': {
     category: 'LABORATORY',
     sampleType: 'عينة دم وريدي (EDTA)',
     summary: 'تعداد عناصر الدم الكاملة ضمن الحدود المعيارية الطبيعية، لا توجد مؤشرات فقر دم حاد أو التهاب.',
@@ -183,7 +183,7 @@ export const LabDashboard: React.FC = () => {
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>('');
   const [selectedPatientId, setSelectedPatientId] = useState<string>('');
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
-  const [testName, setTestName] = useState<string>(isRadiologyUser ? 'أشعة سينية للصدر (Chest X-Ray)' : 'صورة الدم الكاملة (CBC)');
+  const [testName, setTestName] = useState<string>(isRadiologyUser ? 'أشعة سينية للصدر (Chest X-Ray)' : '   ');
   const [testCategory, setTestCategory] = useState<'LABORATORY' | 'RADIOLOGY' | 'CARDIOLOGY' | 'PATHOLOGY'>(isRadiologyUser ? 'RADIOLOGY' : 'LABORATORY');
   const [sampleType, setSampleType] = useState<string>(isRadiologyUser ? 'صورة أشعة سينية رقمية (Digital X-Ray)' : 'عينة دم وريدي (EDTA)');
   const [testDate, setTestDate] = useState<string>(new Date().toISOString().split('T')[0]);

@@ -18,7 +18,8 @@ import {
 import { Doctor } from '../../types/medical';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { PaymentCheckoutModal } from '../common/PaymentCheckoutModal';
+import { PointsAndPackagesCheckoutModal } from '../common/PointsAndPackagesCheckoutModal';
+import { BookingThankYouModal } from '../common/BookingThankYouModal';
 
 interface NewConsultationModalProps {
   isOpen: boolean;
@@ -40,7 +41,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
   const [title, setTitle] = useState<string>('');
   const [problemDescription, setProblemDescription] = useState<string>('');
   const [symptomsInput, setSymptomsInput] = useState<string>('خفقان، إجهاد خفيف');
-  const [duration, setDuration] = useState<string>('منذ 4 أيام');
+  const [duration, setDuration] = useState<string>('');
   const [attachments, setAttachments] = useState<{ name: string; url: string; type: string; size: string }[]>([]);
   
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -64,6 +65,8 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
   } | null>(null);
   const [isCheckingEligibility, setIsCheckingEligibility] = useState<boolean>(false);
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
+  const [showThankYouModal, setShowThankYouModal] = useState<boolean>(false);
+  const [lastCreatedRef, setLastCreatedRef] = useState<string>('');
 
   useEffect(() => {
     if (isOpen) {
@@ -209,7 +212,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
   };
 
   const selectedDoctor = doctors.find(d => d.id === selectedDoctorId);
-  const baseConsultationFee = selectedDoctor?.consultationFee || 180;
+  const baseConsultationFee = selectedDoctor?.consultationFee !== undefined ? selectedDoctor.consultationFee : 50;
   const isFreeEligible = Boolean(patientEligibility?.isFree);
   const finalFee = isFreeEligible ? 0 : baseConsultationFee;
 
@@ -238,20 +241,19 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
         fee: finalFee,
         consultationFee: finalFee,
         isWaived: isFreeEligible,
-        waiverReason: isFreeEligible ? (patientEligibility?.waiverReason || 'استشارة مجانية معتمدة') : undefined,
-        paymentId: isFreeEligible ? `pay-free-${Date.now()}` : paymentDetails?.paymentId,
-        transactionReference: isFreeEligible ? `FREE-${Date.now().toString().slice(-6)}` : paymentDetails?.transactionRef,
-        isPaid: isFreeEligible ? true : false,
-        paymentStatus: isFreeEligible ? 'WAIVED' : 'PENDING',
+        waiverReason: isFreeEligible ? (patientEligibility?.waiverReason || 'استشارة مجانية معتمدة') : 'تم الخصم عبر رصيد النقاط',
+        paymentId: paymentDetails?.paymentId || (isFreeEligible ? `pay-free-${Date.now()}` : `pay-pts-${Date.now()}`),
+        transactionReference: paymentDetails?.transactionRef || (isFreeEligible ? `FREE-${Date.now().toString().slice(-6)}` : `PTS-${Date.now().toString().slice(-6)}`),
+        isPaid: true,
+        paymentStatus: isFreeEligible ? 'WAIVED' : 'PAID',
+        paymentMethod: isFreeEligible ? 'WAIVED' : 'POINTS',
         attachments,
         attachmentFiles
       });
 
       setIsSubmitted(true);
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2000);
+      setLastCreatedRef(`CNS-${Date.now().toString().slice(-6)}`);
+      setShowThankYouModal(true);
     } catch (err: any) {
       setError(err.message || 'فشل إرسال الاستشارة الطبية.');
     } finally {
@@ -321,7 +323,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
                   : `مبادرة استشارة مجانية واحدة لكل مريض: ${patientEligibility?.promoTitle || freePromo?.occasionTitle || 'العرض العام'}`}
               </p>
               <p className="text-[11px] text-emerald-800/90 mt-0.5">
-                {patientEligibility?.waiverReason} — هذه الاستشارة معفاة تماماً من الرسوم (0 ر.ي). بقية الاستشارات اللاحقة تكون مدفوعة.
+                {patientEligibility?.waiverReason} — هذه الاستشارة معفاة تماماً من الرسوم (0 نقطة). بقية الاستشارات اللاحقة تكون مدفوعة.
               </p>
             </div>
           </div>
@@ -333,7 +335,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
                 تنويه: تم استخدام الاستشارة المجانية المخصصة لحسابك مسبقاً
               </p>
               <p className="text-[11px] text-amber-800/90 mt-0.5">
-                تتيح مبادرة المستشفى استشارة مجانية واحدة فقط لكل حساب مريض. هذه الاستشارة الحالية خاضعة للرسوم الرسمية المقررة ({baseConsultationFee} ر.ي) وسيتم توجيهك للسداد الإلكتروني المباشر.
+                تتيح مبادرة المستشفى استشارة مجانية واحدة فقط لكل حساب مريض. هذه الاستشارة الحالية خاضعة للرسوم المقررة ({baseConsultationFee} نقطة) وسيتم توجيهك للسداد عبر رصيد النقاط.
               </p>
             </div>
           </div>
@@ -383,7 +385,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
               >
                 {doctors.map(d => (
                   <option key={d.id} value={d.id}>
-                    {d.fullName} — {d.specialtyNameAr} ({d.title}) {d.consultationFee ? `— ${d.consultationFee} ر.ي` : ''}
+                    {d.fullName} — {d.specialtyId} ({d.title}) {d.consultationFee !== undefined ? `— ${d.consultationFee} نقطة` : ''}
                   </option>
                 ))}
               </select>
@@ -507,23 +509,23 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
                     <span className="font-bold text-slate-900">رسوم الاستشارة:</span>
                     {isFreeEligible ? (
                       <div className="flex items-center gap-2">
-                        <span className="text-slate-400 line-through text-xs font-mono">{baseConsultationFee} ر.ي</span>
-                        <span className="text-emerald-700 font-extrabold text-base">مجاناً (0 ر.ي)</span>
+                        <span className="text-slate-400 line-through text-xs font-mono">{baseConsultationFee} نقطة</span>
+                        <span className="text-emerald-700 font-extrabold text-base">مجاناً (0 نقطة)</span>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">
                           معفاة بقرار النظام
                         </span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5">
-                        <span className="text-blue-900 font-extrabold text-base">{baseConsultationFee} ر.ي</span>
-                        <span className="text-slate-500 text-xs">(استشارة مدفوعة)</span>
+                        <span className="text-blue-900 font-extrabold text-base">{baseConsultationFee} نقطة</span>
+                        <span className="text-slate-500 text-xs">(استشارة مدفوعة بالنقاط)</span>
                       </div>
                     )}
                   </div>
                   <p className="text-[11px] text-slate-500 mt-1">
                     {isFreeEligible
-                      ? 'لا يتطلب أي دفع إلكتروني. سيتم إرسال الاستشارة مباشرة إلى ملف الطبيب.'
-                      : 'يلزم استكمال السداد الإلكتروني لكي تصل الاستشارة للطبيب للرد عليها وتوثيق التوجيه الطبي.'}
+                      ? 'لا يتطلب أي دفع. سيتم إرسال الاستشارة مباشرة إلى ملف الطبيب.'
+                      : 'يلزم استكمال السداد عبر رصيد النقاط لكي تصل الاستشارة للطبيب للرد عليها وتوثيق التوجيه الطبي.'}
                   </p>
                 </div>
 
@@ -572,7 +574,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
                 ) : (
                   <>
                     <CreditCard className="w-4 h-4" />
-                    <span>متابعة السداد ({finalFee} ر.ي) وإرسال الاستشارة</span>
+                    <span>متابعة السداد ({finalFee} نقطة) وإرسال الاستشارة</span>
                   </>
                 )}
               </button>
@@ -581,12 +583,12 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
         )}
       </div>
 
-      {/* Payment Checkout Modal for subsequent / paid consultations */}
+      {/* Points & Packages Checkout Modal */}
       {showPaymentModal && (
-        <PaymentCheckoutModal
+        <PointsAndPackagesCheckoutModal
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
-          onSuccess={async (payment) => {
+          onSuccess={async (payment, method) => {
             setShowPaymentModal(false);
             await executeCreateConsultation({
               paymentId: payment.id,
@@ -597,11 +599,29 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
           serviceReferenceId={`CNS-TEMP-${Date.now()}`}
           serviceName={`استشارة طبية عن بعد: ${title}`}
           amount={finalFee}
-          currency="YER"
-          patientId={patientProfile?.id || user?.id}
-          patientName={patientProfile?.fullName || user?.fullName}
+          patientId={patientProfile?.id || user?.id || 'pat-1'}
+          patientName={patientProfile?.fullName || user?.fullName || 'المريض'}
           patientPhone={patientProfile?.phone || user?.phone}
-          patientMrn={patientProfile?.mrn}
+          doctorId={selectedDoctorId}
+          doctorName={selectedDoctor?.fullName}
+          doctorSpecialty={selectedDoctor?.specialtyNameAr}
+        />
+      )}
+
+      {/* Thank You & Gifts / Rating / Community Celebration Modal */}
+      {showThankYouModal && (
+        <BookingThankYouModal
+          isOpen={showThankYouModal}
+          onClose={() => {
+            setShowThankYouModal(false);
+            onSuccess();
+            onClose();
+          }}
+          serviceType="CONSULTATION"
+          serviceReferenceId={lastCreatedRef}
+          serviceTitle={`استشارة طبية: ${title}`}
+          patientId={patientProfile?.id || user?.id || 'pat-1'}
+          patientName={patientProfile?.fullName || user?.fullName || 'المريض'}
           doctorId={selectedDoctorId}
           doctorName={selectedDoctor?.fullName}
           doctorSpecialty={selectedDoctor?.specialtyNameAr}

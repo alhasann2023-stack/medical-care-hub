@@ -1180,18 +1180,39 @@ export const firebaseDb = {
 
     try {
       if (patientId?.trim()) {
+        const pId = patientId.trim();
         const filtered = await fetchDocsWithFilter<Payment>(
           COLLECTIONS.PAYMENTS,
           [
             where(
               'patientId',
               '==',
-              patientId.trim()
+              pId
             )
           ]
         );
         if (filtered.length > 0) return filtered;
-        return INITIAL_PAYMENTS.filter(p => p.patientId === patientId.trim());
+        
+        // If exact where query returned 0, also check the whole collection for patientUserId / patientPhone match
+        try {
+          const snap = await getDocs(collection(db, COLLECTIONS.PAYMENTS));
+          if (!snap.empty) {
+            const allDocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
+            const matched = allDocs.filter(p => 
+              p.patientId === pId || 
+              (p as any).patientUserId === pId || 
+              (p as any).patientPhone === pId ||
+              ((p as any).patientPhone && pId && String((p as any).patientPhone).includes(pId))
+            );
+            if (matched.length > 0) {
+              return matched.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+            }
+          }
+        } catch (snapErr) {
+          console.warn('[Firestore] getPayments fallback scan error:', snapErr);
+        }
+
+        return INITIAL_PAYMENTS.filter(p => p.patientId === pId || (p as any).patientUserId === pId);
       }
 
       const snapshot =
@@ -1228,7 +1249,7 @@ export const firebaseDb = {
       );
 
       return patientId?.trim() 
-        ? INITIAL_PAYMENTS.filter(p => p.patientId === patientId.trim())
+        ? INITIAL_PAYMENTS.filter(p => p.patientId === patientId.trim() || (p as any).patientUserId === patientId.trim())
         : INITIAL_PAYMENTS;
     }
   },

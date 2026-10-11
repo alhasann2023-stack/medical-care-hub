@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Printer, Calendar, Clock, MapPin, User, CheckCircle2, ShieldCheck, QrCode, Stethoscope, Building2, Phone } from 'lucide-react';
 import { Appointment } from '../../types/medical';
 
@@ -13,6 +14,17 @@ export const PrintableBookingModal: React.FC<PrintableBookingModalProps> = ({
   onClose,
   appointment
 }) => {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('has-printable-modal');
+    } else {
+      document.body.classList.remove('has-printable-modal');
+    }
+    return () => {
+      document.body.classList.remove('has-printable-modal');
+    };
+  }, [isOpen]);
+
   if (!isOpen || !appointment) return null;
 
   const handlePrint = () => {
@@ -26,7 +38,7 @@ export const PrintableBookingModal: React.FC<PrintableBookingModalProps> = ({
   const visitDate = appointment.confirmedDate || appointment.preferredDate;
   const visitTime = appointment.confirmedTime || (appointment.preferredPeriod === 'EVENING' ? '05:00 م' : '10:00 ص');
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 font-cairo">
       <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
         {/* Modal Controls (Hidden in Print) */}
@@ -208,4 +220,6 @@ export const PrintableBookingModal: React.FC<PrintableBookingModalProps> = ({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };

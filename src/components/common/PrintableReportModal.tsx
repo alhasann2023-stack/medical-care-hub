@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Printer, Download, Building2, ShieldCheck, QrCode, FileText, CheckCircle2 } from 'lucide-react';
 import { MedicalReport } from '../../types/medical';
 
@@ -13,13 +14,24 @@ export const PrintableReportModal: React.FC<PrintableReportModalProps> = ({
   onClose,
   report
 }) => {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('has-printable-modal');
+    } else {
+      document.body.classList.remove('has-printable-modal');
+    }
+    return () => {
+      document.body.classList.remove('has-printable-modal');
+    };
+  }, [isOpen]);
+
   if (!isOpen || !report) return null;
 
   const handlePrint = () => {
     window.print();
   };
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Controls Header (Hidden in Print) */}
@@ -160,4 +172,6 @@ export const PrintableReportModal: React.FC<PrintableReportModalProps> = ({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };

@@ -48,7 +48,9 @@ import { Doctor, MedicalService, AuditLog, Staff, FreeConsultationPromo, Patient
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { AdminPaymentsManager } from './AdminPaymentsManager';
-import { Receipt, CreditCard } from 'lucide-react';
+import { AdminPointsAndPackagesManager } from './AdminPointsAndPackagesManager';
+import { CommunityView } from '../community/CommunityView';
+import { Receipt, CreditCard, BookOpen, MessageSquare, Coins } from 'lucide-react';
 
 export const HospitalAdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -58,7 +60,7 @@ export const HospitalAdminDashboard: React.FC = () => {
   const [services, setServices] = useState<MedicalService[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PAYMENTS' | 'DOCTORS' | 'STAFF' | 'SERVICES' | 'AUDIT_LOGS'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PAYMENTS' | 'LEDGER' | 'DOCTORS' | 'STAFF' | 'SERVICES' | 'AUDIT_LOGS' | 'COMMUNITY' | 'POINTS_PACKAGES'>('OVERVIEW');
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [notificationMsg, setNotificationMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -91,7 +93,7 @@ export const HospitalAdminDashboard: React.FC = () => {
   const [docPhone, setDocPhone] = useState<string>('');
   const [docSpecialtyId, setDocSpecialtyId] = useState<string>('spec-1');
   const [docTitle, setDocTitle] = useState<string>('استشاري أول');
-const [docFee, setDocFee] = useState<number | ''>(300);
+const [docFee, setDocFee] = useState<number | ''>(50);
   const [docRoom, setDocRoom] = useState<string>('عيادة 105');
 const [docExperience, setDocExperience] = useState('10');
   const [docBio, setDocBio] = useState<string>('استشاري معتمد ذو خبرة إكلينيكية واسعة.');
@@ -105,7 +107,7 @@ const [docExperience, setDocExperience] = useState('10');
   const [editDocPhone, setEditDocPhone] = useState<string>('');
   const [editDocSpecialtyId, setEditDocSpecialtyId] = useState<string>('spec-1');
   const [editDocTitle, setEditDocTitle] = useState<string>('استشاري أول');
-const [editDocFee, setEditDocFee] = useState<number | ''>(300);
+const [editDocFee, setEditDocFee] = useState<number | ''>(50);
   const [editDocRoom, setEditDocRoom] = useState<string>('عيادة 105');
 
 const [editDocExperience, setEditDocExperience] = useState<string>("10");
@@ -279,8 +281,8 @@ const [editDocExperience, setEditDocExperience] = useState<string>("10");
   const [isNewServiceModalOpen, setIsNewServiceModalOpen] = useState<boolean>(false);
   const [newServiceNameAr, setNewServiceNameAr] = useState<string>('');
   const [newServiceNameEn, setNewServiceNameEn] = useState<string>('');
-  const [newServicePrice, setNewServicePrice] = useState<number>(250);
-  const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
+const [newServicePrice, setNewServicePrice] = useState<number>(250);
+const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
   const [newServiceCategory, setNewServiceCategory] = useState<string>('قسم العيادات التخصصية');
   const [newServiceDescAr, setNewServiceDescAr] = useState<string>('');
 
@@ -522,7 +524,7 @@ consultationFee: docFee === '' ? 0 : docFee,
     setEditDocPhone(doctor.phone || '');
     setEditDocSpecialtyId(doctor.specialtyId || 'spec-1');
     setEditDocTitle(doctor.title || 'استشاري أول');
-    setEditDocFee(doctor.consultationFee || 300);
+    setEditDocFee(doctor.consultationFee !== undefined ? doctor.consultationFee : 50);
     setEditDocRoom(doctor.roomNumber || 'عيادة 105');
     setEditDocExperience(doctor.experienceYears || 10);
     setEditDocBio(doctor.bioAr || '');
@@ -979,6 +981,18 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
         </button>
 
         <button
+          onClick={() => setActiveTab('LEDGER')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === 'LEDGER'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white text-teal-800 border border-teal-300/60 hover:bg-teal-50'
+          }`}
+        >
+          <BookOpen className="w-4 h-4 text-teal-600" />
+          <span>سجل الأستاذ المالي والتسويات</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('DOCTORS')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
             activeTab === 'DOCTORS'
@@ -1024,6 +1038,30 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
         >
           <ShieldCheck className="w-4 h-4" />
           <span>سجل التدقيق الأمني (Audit Logs)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('COMMUNITY')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === 'COMMUNITY'
+              ? 'bg-teal-700 text-white shadow-xs'
+              : 'bg-white text-slate-700 border border-slate-200 hover:bg-teal-50 hover:text-teal-800'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4 text-teal-600" />
+          <span>إدارة المجتمع والمنشورات 💬</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('POINTS_PACKAGES')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === 'POINTS_PACKAGES'
+              ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-xs'
+              : 'bg-white text-amber-900 border border-amber-300 hover:bg-amber-50'
+          }`}
+        >
+          <Coins className="w-4 h-4 text-amber-500" />
+          <span>شحن نقاط وباقات المرضى 🪙</span>
         </button>
       </div>
 
@@ -1515,8 +1553,11 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
       )}
 
       {/* Tab: Financial & Payments Management */}
-      {activeTab === 'PAYMENTS' && (
-        <AdminPaymentsManager onShowNotification={showNotification} />
+      {(activeTab === 'PAYMENTS' || activeTab === 'LEDGER') && (
+        <AdminPaymentsManager 
+          initialSubTab={activeTab === 'LEDGER' ? 'LEDGER' : 'TRANSACTIONS'}
+          onShowNotification={showNotification} 
+        />
       )}
 
       {/* Tab 2: Doctors Management */}
@@ -1595,12 +1636,12 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
                         </div>
                       </td>
                       <td className="p-3.5 font-medium text-slate-700">
-                        <span className="font-bold text-slate-900 block">{d.specialtyNameAr}</span>
+                        <span className="font-bold text-slate-900 block">{d.specialtyId}</span>
                         <span className="text-[10px] text-emerald-700 font-medium">{d.title}</span>
                       </td>
                       <td className="p-3.5">
                         <div className="text-slate-900 font-medium">{d.roomNumber}</div>
-                        <span className="text-xs font-bold font-mono text-emerald-700">{d.consultationFee} ر.ي</span>
+                        <span className="text-xs font-bold font-mono text-emerald-700">{d.consultationFee} نقطة</span>
                       </td>
                       <td className="p-3.5">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
@@ -2190,6 +2231,23 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
         </div>
       )}
 
+      {/* Tab 8: Community Moderation & Management */}
+      {activeTab === 'COMMUNITY' && (
+        <div className="space-y-4">
+          <CommunityView />
+        </div>
+      )}
+
+      {/* Tab 9: Patient Points & Packages Management */}
+      {activeTab === 'POINTS_PACKAGES' && (
+        <div className="space-y-4">
+          <AdminPointsAndPackagesManager
+            patients={patients}
+            onRefreshPatients={loadAdminData}
+          />
+        </div>
+      )}
+
       {/* CREATE DOCTOR MODAL WITH EMAIL & PASSWORD */}
       {isNewDoctorModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -2305,19 +2363,20 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
   <div className="grid grid-cols-3 gap-2">
   <div>
     <label className="block font-bold text-slate-700 mb-1">
-      رسوم الكشف (ر.ي)
+      رسوم الكشف (بالنقاط)
     </label>
 
     <input
       type="number"
-      inputMode="decimal"
+      inputMode="numeric"
+      min="0"
       value={docFee}
       onChange={(e) => {
         const value = e.target.value;
         setDocFee(value === '' ? '' : Number(value));
       }}
       className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
-      placeholder="300"
+      placeholder="50"
     />
   </div>
 
@@ -2489,12 +2548,12 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
               <div className="grid grid-cols-3 gap-2">
 <div>
   <label className="block font-bold text-slate-700 mb-1">
-    رسوم الكشف
+    رسوم الكشف (بالنقاط)
   </label>
 
   <input
     type="number"
-    inputMode="decimal"
+    inputMode="numeric"
     min="0"
     value={editDocFee}
     onChange={(e) => {
@@ -2502,7 +2561,7 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
       setEditDocFee(value === '' ? '' : Number(value));
     }}
     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 outline-none"
-    placeholder="مثال: 300"
+    placeholder="مثال: 50"
   />
 </div>
 
@@ -3263,27 +3322,46 @@ consultationFee: editDocFee === '' ? 0 : editDocFee,
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1.5">السعر (ر.ي)</label>
-                  <input
-                    type="number"
-                    value={newServicePrice}
-                    onChange={(e) => setNewServicePrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1.5">المدة (دقيقة)</label>
-                  <input
-                    type="number"
-                    value={newServiceDuration}
-                    onChange={(e) => setNewServiceDuration(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50"
-                    required
-                  />
-                </div>
-              </div>
+  <div>
+    <label className="block font-bold text-slate-800 mb-1.5">
+      السعر (ر.ي)
+    </label>
+
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={String(newServicePrice)}
+      onChange={(e) => {
+        const value = e.target.value.replace(/\D/g, "");
+        setNewServicePrice(value === "" ? 0 : Number(value));
+      }}
+      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50"
+      placeholder="أدخل السعر"
+      required
+    />
+  </div>
+
+  <div>
+    <label className="block font-bold text-slate-800 mb-1.5">
+      المدة (دقيقة)
+    </label>
+
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={String(newServiceDuration)}
+      onChange={(e) => {
+        const value = e.target.value.replace(/\D/g, "");
+        setNewServiceDuration(value === "" ? 0 : Number(value));
+      }}
+      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50"
+      placeholder="مثال: 30"
+      required
+    />
+  </div>
+</div>
 
               <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-3">
                 <button

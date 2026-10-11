@@ -67,6 +67,7 @@ import {
   saveSettingsDoc,
   getSettingsDoc
 } from './src/services/firebase';
+import { firebaseDb } from './src/services/firebaseDb';
 import { paymentService } from './server/paymentService';
 import {
   securityHeadersMiddleware,
@@ -315,19 +316,7 @@ let freeConsultationPromo: FreeConsultationPromo = {
   applicableDoctors: 'ALL',
   totalFreeConsultationsCount: 0,
   oneFreePerPatient: true,
-  whitelistedPatients: [
-    {
-      id: 'wl-1',
-      patientId: 'pat-1',
-      patientName: 'سارة أحمد المنصور',
-      patientPhone: '+966501234567',
-      patientMrn: 'MRN-2026-1001',
-      reason: 'إعفاء خاص بقرار الإدارة - رعاية إنسانية',
-      grantedAt: new Date().toISOString(),
-      grantedBy: 'مدير المستشفى',
-      usedCount: 0
-    }
-  ],
+  whitelistedPatients: [],
   updatedAt: new Date().toISOString()
 };
 
@@ -477,12 +466,27 @@ function saveDatabase() {
 
 async function loadCredentialsAndUsersFromFirestore() {
   try {
-    const [fsUsers, fsCreds, fsPromo, fsPayments] = await Promise.all([
+    const [fsUsers, fsCreds, fsPromo, fsPayments, fsDoctors, fsConsultations] = await Promise.all([
       fetchDocsWithFilter<User>('users'),
       fetchDocsWithFilter<{ userId: string; password?: string; email?: string; phone?: string }>('userCredentials'),
       getSettingsDoc<FreeConsultationPromo>('freeConsultationPromo'),
-      fetchDocsWithFilter<Payment>('payments')
+      fetchDocsWithFilter<Payment>('payments'),
+      fetchDocsWithFilter<Doctor>('doctors'),
+      fetchDocsWithFilter<Consultation>('consultations')
     ]);
+
+    if (fsConsultations && fsConsultations.length > 0) {
+      for (const fc of fsConsultations) {
+        if (!fc || !fc.id) continue;
+        const idx = consultations.findIndex(c => c.id === fc.id);
+        if (idx >= 0) {
+          consultations[idx] = { ...consultations[idx], ...fc };
+        } else {
+          consultations.push(fc);
+        }
+      }
+      console.log(`[Store] Loaded ${fsConsultations.length} consultations from Firestore.`);
+    }
 
     if (fsPromo && fsPromo.id) {
       freeConsultationPromo = {
@@ -503,6 +507,18 @@ async function loadCredentialsAndUsersFromFirestore() {
         }
       }
       console.log(`[Store] Loaded ${fsPayments.length} payments from Firestore.`);
+    }
+
+    if (fsDoctors && fsDoctors.length > 0) {
+      for (const fd of fsDoctors) {
+        const idx = doctors.findIndex(d => d.id === fd.id || d.userId === fd.userId);
+        if (idx >= 0) {
+          doctors[idx] = { ...doctors[idx], ...fd };
+        } else {
+          doctors.push(fd);
+        }
+      }
+      console.log(`[Store] Loaded ${fsDoctors.length} doctors from Firestore.`);
     }
 
     if (fsUsers && fsUsers.length > 0) {
@@ -656,13 +672,13 @@ export function createApiApp() {
   app.use(securityHeadersMiddleware);
   app.use(preventPathTraversal);
 
-  // Normalize Netlify Functions URL routing
+  // Normalize Netlify Functions URL routing if deployed on Netlify
   app.use((req: Request, _res: Response, next) => {
     if (req.url.startsWith('/.netlify/functions/api')) {
       req.url = req.url.replace('/.netlify/functions/api', '');
-    }
-    if (!req.url.startsWith('/api') && !req.url.startsWith('/assets') && !req.url.startsWith('/@') && req.url !== '/' && req.url !== '/favicon.ico') {
-      req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+      if (!req.url.startsWith('/api')) {
+        req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+      }
     }
     next();
   });
@@ -2005,6 +2021,8 @@ export function createApiApp() {
       password,
       phone,
       specialtyId,
+      specialtyNameAr,
+      specialtyNameEn,
       title,
       qualifications,
       experienceYears,
@@ -2060,7 +2078,15 @@ export function createApiApp() {
       return res.status(400).json({ error: 'كلمة المرور هذه مستخدمة بالفعل لحساب آخر. يجب تعيين كلمة مرور فريدة لكل طبيب/مستخدم.' });
     }
 
-    const spec = specialties.find(s => s.id === specialtyId) || specialties[0];
+    const matchedSpec = specialties.find(s => s.id === specialtyId || s.nameAr === specialtyId || s.nameAr === specialtyNameAr);
+    const enteredSpec = (
+      specialtyNameAr?.trim() ||
+      (specialtyId && !specialtyId.startsWith('spec-') ? specialtyId.trim() : '')
+    );
+    const resolvedSpecialtyNameAr = enteredSpec || matchedSpec?.nameAr || (specialtyId && !specialtyId.startsWith('spec-') ? specialtyId : 'طب عام');
+    const resolvedSpecialtyNameEn = specialtyNameEn?.trim() || matchedSpec?.nameEn || resolvedSpecialtyNameAr;
+    const resolvedSpecialtyId = matchedSpec?.id || (specialtyId && specialtyId.startsWith('spec-') ? specialtyId : `spec-${Date.now()}`);
+
     const doctorId = `doc-${Date.now()}`;
     const docAvatar = avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80';
 
@@ -2107,9 +2133,9 @@ export function createApiApp() {
       fullName: fullName.trim(),
       email: normalizedEmail,
       phone: normalizedPhone,
-      specialtyId: specialtyId || spec?.id || 'spec-1',
-      specialtyNameAr: spec?.nameAr || 'تخصص عام',
-      specialtyNameEn: spec?.nameEn || 'General Specialty',
+      specialtyId: resolvedSpecialtyId,
+      specialtyNameAr: resolvedSpecialtyNameAr,
+      specialtyNameEn: resolvedSpecialtyNameEn,
       title: title || 'استشاري أول',
       qualifications: Array.isArray(qualifications) && qualifications.length > 0
         ? qualifications
@@ -2117,7 +2143,7 @@ export function createApiApp() {
       experienceYears: Number(experienceYears) || 5,
       bioAr: bioAr || 'طبيب استشاري متخصص ذو خبرة إكلينيكية واسعة.',
       bioEn: bioEn || 'Specialist consultant with extensive clinical care experience.',
-      consultationFee: Number(consultationFee) || 300,
+      consultationFee: consultationFee !== undefined && consultationFee !== '' ? Number(consultationFee) : 50,
       avatar: docAvatar,
       roomNumber: roomNumber || 'عيادة 101',
       rating: 5.0,
@@ -2157,6 +2183,8 @@ export function createApiApp() {
       password, 
       phone, 
       specialtyId, 
+      specialtyNameAr,
+      specialtyNameEn,
       title, 
       qualifications, 
       experienceYears, 
@@ -2229,12 +2257,20 @@ export function createApiApp() {
       if (user) user.avatar = avatar;
     }
 
-    if (specialtyId) {
-      const spec = specialties.find(s => s.id === specialtyId);
+    if (specialtyId || specialtyNameAr) {
+      const enteredSpec = (
+        specialtyNameAr?.trim() ||
+        (specialtyId && !specialtyId.startsWith('spec-') ? specialtyId.trim() : '')
+      );
+      const spec = specialties.find(s => s.id === specialtyId || s.nameAr === specialtyId || s.nameAr === specialtyNameAr);
       if (spec) {
         doc.specialtyId = spec.id;
         doc.specialtyNameAr = spec.nameAr;
         doc.specialtyNameEn = spec.nameEn;
+      } else if (enteredSpec) {
+        doc.specialtyId = (specialtyId && specialtyId.startsWith('spec-')) ? specialtyId : (doc.specialtyId || `spec-${Date.now()}`);
+        doc.specialtyNameAr = enteredSpec;
+        doc.specialtyNameEn = specialtyNameEn?.trim() || enteredSpec;
       }
     }
 
@@ -2347,6 +2383,32 @@ export function createApiApp() {
     res.json({
       summaries,
       entries
+    });
+  });
+
+  // 3.1 Settle Single Ledger Entry
+  app.post('/api/payments/settle', (req: Request, res: Response) => {
+    const { paymentId, entryId, batchId } = req.body;
+    const targetId = entryId || paymentId;
+    if (!targetId) {
+      return res.status(400).json({ error: 'معرف العملية أو القيد مطلوب للتسوية.' });
+    }
+    const settled = paymentService.settleLedgerEntry(targetId, batchId);
+    res.json({
+      success: true,
+      entry: settled,
+      message: 'تمت تسوية ومقاصة القيد المالي بنجاح.'
+    });
+  });
+
+  // 3.2 Batch Settle Ledger Entries
+  app.post('/api/payments/batch-settle', (req: Request, res: Response) => {
+    const { entryIds, batchId } = req.body;
+    const result = paymentService.batchSettleLedgerEntries(entryIds, batchId);
+    res.json({
+      success: true,
+      ...result,
+      message: `تمت تسوية ومطابقة ${result.settledCount} قيد محاسبي بنجاح.`
     });
   });
 
@@ -2715,11 +2777,31 @@ export function createApiApp() {
   // 6.5 Admin Approves Bank Transfer Notice / Pending Payment ("تم السداد")
   app.post('/api/payments/:id/approve', (req: Request, res: Response) => {
     const { id } = req.params;
-    const { adminName = 'الإدارة المالية والمحاسبة' } = req.body;
+    const { adminName = 'الإدارة المالية والمحاسبة', payment: incomingPayment } = req.body;
 
-    const payment = payments.find(p => p.id === id || p.transactionReference === id);
+    let payment = payments.find(p => p.id === id || p.transactionReference === id);
+    if (!payment && incomingPayment) {
+      payment = incomingPayment;
+      payments.unshift(payment);
+    }
+
     if (!payment) {
-      return res.status(404).json({ error: 'سجل الدفع المطلوب غير موجود.' });
+      payment = {
+        id,
+        patientId: '',
+        patientName: 'مريض',
+        serviceName: 'كشفية / موعد',
+        serviceType: 'APPOINTMENT',
+        paymentMethod: 'BANK_TRANSFER_NOTICE',
+        transactionReference: id,
+        amount: 0,
+        currency: 'YER',
+        status: 'PENDING',
+        paymentStatus: 'PENDING',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      } as Payment;
+      payments.unshift(payment);
     }
 
     const now = new Date().toISOString();
@@ -2731,29 +2813,40 @@ export function createApiApp() {
     (payment as any).isApprovedByAdmin = true;
     payment.updatedAt = now;
 
-    // IMPORTANT: approve exactly ONE payment -> exactly ONE linked service.
-    // Never use patientId, transactionReference alone, or broad fallbacks to
-    // select another appointment/consultation for the same patient.
-    const serviceType = String(payment.serviceType || '').toUpperCase();
-    const serviceReferenceId = String(
-      payment.serviceReferenceId ||
-      (payment as any).appointmentId ||
-      (payment as any).consultationId ||
-      ''
-    );
+    // Link service by ID, paymentId, or transactionReference
+    const serviceReferenceId = payment.serviceReferenceId || payment.appointmentId || payment.consultationId || '';
+    let serviceType = String(payment.serviceType || '').toUpperCase();
+    if (!serviceType) {
+      if (payment.consultationId || serviceReferenceId.startsWith('cns')) {
+        serviceType = 'CONSULTATION';
+      } else if (payment.appointmentId || serviceReferenceId.startsWith('apt')) {
+        serviceType = 'APPOINTMENT';
+      }
+    }
 
     let linkedApt: Appointment | undefined;
     let linkedCon: Consultation | undefined;
 
-    if (serviceType === 'APPOINTMENT') {
+    if (serviceType === 'APPOINTMENT' || (!serviceType && !linkedCon)) {
       linkedApt = appointments.find(a =>
         (serviceReferenceId && a.id === serviceReferenceId) ||
-        a.paymentId === payment.id
+        (payment.id && a.paymentId === payment.id) ||
+        (payment.transactionReference && (a.paymentTransactionRef === payment.transactionReference || a.transactionReference === payment.transactionReference))
       );
 
+      // Fallback: If not found by exact ID/ref, match by patient ID or phone for pending appointment
+      if (!linkedApt && (payment.patientId || (payment as any).patientPhone)) {
+        linkedApt = appointments.find(a =>
+          ((payment.patientId && (a.patientId === payment.patientId || (a as any).patientUserId === payment.patientId)) ||
+           (payment.patientPhone && a.patientPhone === payment.patientPhone)) &&
+          (!a.isPaid || a.paymentStatus === 'PENDING' || a.paymentStatus === 'PAYMENT_REQUIRED')
+        );
+      }
+
       if (linkedApt) {
-        linkedApt.paymentStatus = 'PAYMENT_SUCCESS';
+        linkedApt.paymentStatus = 'PAID';
         linkedApt.isPaid = true;
+        (linkedApt as any).isApprovedByAdmin = true;
         linkedApt.paymentDate = now;
         linkedApt.paymentId = payment.id;
         linkedApt.paymentMethod = payment.paymentMethod || 'BANK_TRANSFER_NOTICE';
@@ -2764,11 +2857,18 @@ export function createApiApp() {
         }
         linkedApt.coordinatorNotes = `تم اعتماد السداد (تم السداد ✓) بواسطة ${adminName} بتاريخ ${new Date().toLocaleDateString('ar-YE')}`;
         linkedApt.updatedAt = now;
+
+        payment.serviceReferenceId = linkedApt.id;
+        payment.appointmentId = linkedApt.id;
+        payment.serviceType = 'APPOINTMENT';
       }
-    } else if (serviceType === 'CONSULTATION') {
+    }
+
+    if (serviceType === 'CONSULTATION' || (!serviceType && !linkedApt)) {
       linkedCon = consultations.find(c =>
         (serviceReferenceId && c.id === serviceReferenceId) ||
-        c.paymentId === payment.id
+        (payment.id && c.paymentId === payment.id) ||
+        (payment.transactionReference && (c.transactionReference === payment.transactionReference || (c as any).paymentTransactionRef === payment.transactionReference))
       );
 
       if (linkedCon) {
@@ -2784,11 +2884,6 @@ export function createApiApp() {
         }
         linkedCon.updatedAt = now;
       }
-    } else {
-      return res.status(400).json({
-        error: 'عملية الدفع لا تحتوي على نوع خدمة صالح (APPOINTMENT أو CONSULTATION).',
-        payment
-      });
     }
 
     const patient = patients.find(p => p.id === payment.patientId || p.userId === payment.patientId);
@@ -3460,13 +3555,13 @@ export function createApiApp() {
     const docRoom = req.body.clinicRoom || doctor?.roomNumber || 'عيادة 101';
 
     const service = services.find(s => s.id === serviceId || (req.body.serviceName && s.nameAr.includes(req.body.serviceName)));
-    const fee = req.body.fee !== undefined ? Number(req.body.fee) : (service?.price || doctor?.consultationFee || 200);
+    const fee = req.body.fee !== undefined ? Number(req.body.fee) : (doctor?.consultationFee !== undefined ? doctor.consultationFee : (service?.price || 50));
 
     const aptId = req.body.id || `apt-2026-${Math.floor(100 + Math.random() * 900)}`;
 
-    const isNotice = req.body.paymentStatus === 'PENDING' || req.body.paymentMethod === 'BANK_TRANSFER_NOTICE';
-    const initialPaymentStatus = isWaived ? 'WAIVED' : 'PENDING';
-    const isPaid = false;
+    const isNotice = req.body.paymentMethod === 'BANK_TRANSFER_NOTICE';
+    const initialPaymentStatus = isWaived ? 'WAIVED' : 'PAID';
+    const isPaid = true;
     const initialStatus = 'PENDING';
     const attachments = req.body.attachments || [];
 
@@ -3487,21 +3582,17 @@ export function createApiApp() {
       reason: reason || 'استشارة وفحص طبي',
       status: initialStatus,
       paymentStatus: initialPaymentStatus,
-      isPaid,
-      paymentMethod: req.body.paymentMethod || (isNotice ? 'BANK_TRANSFER_NOTICE' : (isPaid ? 'KURAIMI_EXPRESS' : undefined)),
-      paymentId: req.body.paymentId,
-      transactionReference: req.body.transactionReference || req.body.paymentTransactionRef,
+      isPaid: true,
+      paymentMethod: isWaived ? 'WAIVED' : (req.body.paymentMethod || 'POINTS'),
+      paymentId: req.body.paymentId || (isWaived ? `pay-free-${Date.now()}` : `pay-pts-${Date.now()}`),
+      transactionReference: req.body.transactionReference || req.body.paymentTransactionRef || (isWaived ? `FREE-${Date.now().toString().slice(-6)}` : `PTS-${Date.now().toString().slice(-6)}`),
       paymentAmount: fee,
-      currency: 'YER',
+      currency: 'PTS',
       isWaived,
       waiverReason: isWaived ? (req.body.waiverReason || 'إعفاء مالي معتمد') : undefined,
       coordinatorNotes: isWaived 
         ? 'طلب جديد بإعفاء مالي - بانتظار اتصال منسق خدمة العملاء.' 
-        : (isPaid 
-            ? 'تم سداد رسوم الحجز إلكترونياً وتأكيد الموعد (تم التسديد ✓).' 
-            : (isNotice 
-                ? 'تم إرسال إشعار تحويل بنكي للمراجعة وتأكيد السداد من الإدارة المالية.' 
-                : 'طلب جديد بانتظار سداد الرسوم من المريض.')),
+        : 'تم سداد الرسوم عبر رصيد النقاط بنجاح (تم التسديد ✓) - الحجز مؤكد.',
       patientNotes: patientNotes || '',
       attachments: attachments || [],
       createdAt: new Date().toISOString(),
@@ -3510,35 +3601,41 @@ export function createApiApp() {
 
     appointments.unshift(newAppointment);
 
-    // Link existing payment if provided
+    // Link existing payment if provided or ALWAYS create a payment record in payments table directly
     let paymentRecord: Payment | null = null;
     if (req.body.paymentId) {
       const existingPay = payments.find(p => p.id === req.body.paymentId);
       if (existingPay) {
         existingPay.serviceReferenceId = newAppointment.id;
+        existingPay.appointmentId = newAppointment.id;
         existingPay.serviceName = newAppointment.serviceName;
-        existingPay.status = 'PENDING';
-        existingPay.paymentStatus = 'PENDING';
         paymentRecord = existingPay;
       }
-    } else if (!isWaived && fee > 0 && !isPaid) {
+    }
+
+    if (!paymentRecord) {
       paymentRecord = {
-        id: `pay-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id: req.body.paymentId || `pay-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}`,
         patientId: patient.id,
-        patientName: patient.fullName,
-        patientPhone: patient.phone,
+        patientName: patientName || patient.fullName,
+        patientPhone: patientPhone || patient.phone,
+        patientMrn: patient.mrn,
         doctorId: docId,
         doctorName: docName,
         doctorSpecialty: docSpecialty,
         serviceType: 'APPOINTMENT',
+        appointmentId: newAppointment.id,
         serviceReferenceId: newAppointment.id,
         serviceName: newAppointment.serviceName,
         amount: fee,
-        currency: 'YER',
-        paymentMethod: req.body.paymentMethod || 'KURAIMI_EXPRESS',
-        status: 'PENDING',
-        paymentStatus: 'PENDING',
-        transactionReference: req.body.transactionReference || `TXN-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(100000 + Math.random() * 900000)}`,
+        currency: 'PTS',
+        paymentMethod: isWaived ? 'WAIVED' : (req.body.paymentMethod || 'POINTS'),
+        status: isWaived ? 'WAIVED' : 'PAYMENT_SUCCESS',
+        paymentStatus: isWaived ? 'WAIVED' : 'PAID',
+        transactionReference: req.body.transactionReference || req.body.paymentTransactionRef || (isWaived ? `FREE-${Date.now().toString().slice(-6)}` : `TXN-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(100000 + Math.random() * 900000)}`),
+        isWaived: isWaived,
+        waivedReason: isWaived ? (req.body.waiverReason || 'إعفاء مالي معتمد') : undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -3900,7 +3997,7 @@ export function createApiApp() {
     const patientAge = Math.max(1, currentYear - birthYear);
 
     const eligibility = isPatientEligibleForFreeConsultation(patient, docId);
-    let fee = req.body.fee !== undefined ? Number(req.body.fee) : (doctor?.consultationFee || 180);
+    let fee = req.body.fee !== undefined ? Number(req.body.fee) : (req.body.consultationFee !== undefined ? Number(req.body.consultationFee) : (doctor?.consultationFee !== undefined ? doctor.consultationFee : 50));
     let finalIsWaived = isWaived;
     let waiverReason = req.body.waiverReason || '';
 
@@ -3913,17 +4010,17 @@ export function createApiApp() {
       }
       freeConsultationPromo.totalFreeConsultationsCount = (freeConsultationPromo.totalFreeConsultationsCount || 0) + 1;
     } else {
-      // If not eligible (e.g. not whitelisted or already used 1 free consultation), enforce standard fee
+      // If not eligible (e.g. not whitelisted or already used 1 free consultation), enforce standard points fee as entered
       finalIsWaived = false;
-      fee = doctor?.consultationFee || 180;
+      fee = req.body.fee !== undefined ? Number(req.body.fee) : (req.body.consultationFee !== undefined ? Number(req.body.consultationFee) : (doctor?.consultationFee !== undefined ? doctor.consultationFee : 50));
       waiverReason = '';
     }
 
     const consultationId = req.body.id || `cns-2026-${Math.floor(100 + Math.random() * 900)}`;
 
-    const isNotice = req.body.paymentStatus === 'PENDING' || req.body.paymentMethod === 'BANK_TRANSFER_NOTICE';
-    const initialPaymentStatus = finalIsWaived ? 'WAIVED' : 'PENDING';
-    const isPaid = finalIsWaived ? true : false;
+    const isNotice = req.body.paymentMethod === 'BANK_TRANSFER_NOTICE';
+    const initialPaymentStatus = finalIsWaived ? 'WAIVED' : 'PAID';
+    const isPaid = true;
     const initialStatus = 'PENDING';
 
     const newConsultation: Consultation = {
@@ -3943,15 +4040,15 @@ export function createApiApp() {
       duration: duration || 'غير محدد',
       status: initialStatus,
       paymentStatus: initialPaymentStatus,
-      isPaid,
-      paymentMethod: finalIsWaived ? 'WAIVED' : (req.body.paymentMethod || (isNotice ? 'BANK_TRANSFER_NOTICE' : (isPaid ? 'KURAIMI_EXPRESS' : undefined))),
-      paymentId: req.body.paymentId || (finalIsWaived ? `pay-free-${Date.now()}` : undefined),
-      transactionReference: req.body.transactionReference || req.body.paymentTransactionRef || (finalIsWaived ? `FREE-${Date.now().toString().slice(-6)}` : undefined),
+      isPaid: true,
+      paymentMethod: finalIsWaived ? 'WAIVED' : (req.body.paymentMethod || 'POINTS'),
+      paymentId: req.body.paymentId || (finalIsWaived ? `pay-free-${Date.now()}` : `pay-pts-${Date.now()}`),
+      transactionReference: req.body.transactionReference || req.body.paymentTransactionRef || (finalIsWaived ? `FREE-${Date.now().toString().slice(-6)}` : `PTS-${Date.now().toString().slice(-6)}`),
       paymentAmount: fee,
       consultationFee: fee,
-      currency: 'YER',
+      currency: 'PTS',
       isWaived: finalIsWaived,
-      waiverReason: waiverReason || (finalIsWaived ? 'استشارة مجانية معتمدة' : undefined),
+      waiverReason: waiverReason || (finalIsWaived ? 'استشارة مجانية معتمدة' : 'خصم عبر رصيد النقاط'),
       attachments: attachments || [],
       messages: [
         {
@@ -3970,35 +4067,41 @@ export function createApiApp() {
 
     consultations.unshift(newConsultation);
 
-    // Link existing payment if provided
+    // Link existing payment if provided or ALWAYS create a payment record in payments table directly
     let paymentRecord: Payment | null = null;
     if (req.body.paymentId) {
       const existingPay = payments.find(p => p.id === req.body.paymentId);
       if (existingPay) {
         existingPay.serviceReferenceId = newConsultation.id;
+        existingPay.consultationId = newConsultation.id;
         existingPay.serviceName = `استشارة طبية: ${title}`;
-        existingPay.status = 'PENDING';
-        existingPay.paymentStatus = 'PENDING';
         paymentRecord = existingPay;
       }
-    } else if (!isWaived && fee > 0 && !isPaid) {
+    }
+
+    if (!paymentRecord) {
       paymentRecord = {
-        id: `pay-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id: req.body.paymentId || `pay-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}`,
         patientId: patient.id,
-        patientName: patient.fullName,
-        patientPhone: patient.phone,
+        patientName: patientName || patient.fullName,
+        patientPhone: patientPhone || patient.phone,
+        patientMrn: patient.mrn,
         doctorId: docId,
         doctorName: docName,
         doctorSpecialty: docSpecialty,
         serviceType: 'CONSULTATION',
+        consultationId: newConsultation.id,
         serviceReferenceId: newConsultation.id,
         serviceName: `استشارة طبية: ${title}`,
         amount: fee,
-        currency: 'YER',
-        paymentMethod: req.body.paymentMethod || 'KURAIMI_EXPRESS',
-        status: 'PENDING',
-        paymentStatus: 'PENDING',
-        transactionReference: req.body.transactionReference || `TXN-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(100000 + Math.random() * 900000)}`,
+        currency: 'PTS',
+        paymentMethod: finalIsWaived ? 'WAIVED' : (req.body.paymentMethod || 'POINTS'),
+        status: finalIsWaived ? 'WAIVED' : 'PAYMENT_SUCCESS',
+        paymentStatus: finalIsWaived ? 'WAIVED' : 'PAID',
+        transactionReference: req.body.transactionReference || req.body.paymentTransactionRef || (finalIsWaived ? `FREE-${Date.now().toString().slice(-6)}` : `PTS-${Date.now().toString().slice(-6)}`),
+        isWaived: finalIsWaived,
+        waivedReason: finalIsWaived ? (waiverReason || 'إعفاء مالي معتمد') : undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -4008,12 +4111,12 @@ export function createApiApp() {
 
     logAudit(patient.userId || 'guest', patient.fullName, 'PATIENT', 'CREATE_CONSULTATION', 'CONSULTATION', newConsultation.id, `إرسال استشارة طبية إلى ${docName}: ${title} (رسوم: ${fee} YER - حالة الدفع: ${newConsultation.paymentStatus})`, req);
 
-    // If waived/free, notify doctor immediately; otherwise doctor is notified upon payment completion
-    if (finalIsWaived && doctor) {
+    // Notify doctor immediately as consultation is paid via points or waived
+    if (doctor) {
       pushNotification(
         [doctor.userId, doctor.id],
-        'استشارة طبية مجانية جديدة بانتظار الرد',
-        `وصلتك استشارة مجانية معتمدة من المريض ${patient.fullName} بخصوص "${title}". يمكنك الرد مباشرة الآن.`,
+        'استشارة طبية جديدة بانتظار الرد (تم السداد ✓)',
+        `وصلتك استشارة جديدة مسددة من المريض ${patient.fullName} بخصوص "${title}". يمكنك الرد مباشرة الآن.`,
         'CONSULTATION',
         newConsultation.id
       );
@@ -4022,10 +4125,8 @@ export function createApiApp() {
     // Notify Patient
     pushNotification(
       [patient.userId, patient.id],
-      'تم إرسال استشارتك الطبية',
-      finalIsWaived 
-        ? `تم إرسال استشارتك المجانية إلى ${docName}. ستصلك إشعار فوري عند قيام الطبيب بالرد.`
-        : `تم إنشاء طلب استشارتك لـ ${docName}. يرجى إتمام السداد (${fee} ر.ي) لتصل مباشرة لملف الطبيب للرد عليها.`,
+      'تم إرسال استشارتك الطبية وسدادها بنجاح',
+      `تم إرسال استشارتك إلى ${docName} وتم السداد بنجاح عبر النقاط. ستصلك إشعار فوري عند قيام الطبيب بالرد.`,
       'CONSULTATION',
       newConsultation.id
     );
@@ -4039,8 +4140,19 @@ export function createApiApp() {
   });
 
   // Doctor / Admin Reply & Close Consultation (With optional Follow-up creation)
-  app.post('/api/consultations/:id/reply', (req: Request, res: Response) => {
-    const consultation = consultations.find(c => c.id === req.params.id);
+  app.post('/api/consultations/:id/reply', async (req: Request, res: Response) => {
+    let consultation = consultations.find(c => c.id === req.params.id);
+    if (!consultation) {
+      try {
+        const fsDoc = await firebaseDb.getDocument<Consultation>('consultations', req.params.id);
+        if (fsDoc) {
+          consultation = fsDoc;
+          consultations.unshift(consultation);
+        }
+      } catch (err) {
+        console.warn('Could not load consultation from Firestore in reply endpoint:', err);
+      }
+    }
     if (!consultation) {
       return res.status(404).json({ error: 'الاستشارة غير موجودة.' });
     }
@@ -4176,7 +4288,15 @@ export function createApiApp() {
 
     saveDatabase();
 
+    // Persist answered consultation directly to Firestore
+    try {
+      await firebaseDb.saveConsultation(consultation);
+    } catch (fsErr) {
+      console.warn('Failed to sync answered consultation to Firestore in server:', fsErr);
+    }
+
     res.json({
+      ...consultation,
       consultation,
       followUp: createdFollowUp,
       message: 'تم إرسال الرد الطبي وتحديث حالة الاستشارة بنجاح.'

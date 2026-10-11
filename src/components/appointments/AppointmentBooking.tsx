@@ -33,11 +33,11 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({
     preselectedSpecialty || 'cardiology'
   );
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor>(DOCTORS[0]);
-  const [selectedDate, setSelectedDate] = useState<string>('2026-03-15');
-  const [selectedTime, setSelectedTime] = useState<string>('10:30 ص');
-  const [patientName, setPatientName] = useState<string>('محمد عبدالله الشمري');
-  const [patientPhone, setPatientPhone] = useState<string>('+966 50 123 4567');
-  const [visitReason, setVisitReason] = useState<string>('متابعة دورية وفحص سريري مع تقييم الفحوصات');
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedTime, setSelectedTime] = useState<string>('');
+  const [patientName, setPatientName] = useState<string>('');
+  const [patientPhone, setPatientPhone] = useState<string>('');
+  const [visitReason, setVisitReason] = useState<string>('');
   const [confirmedBooking, setConfirmedBooking] = useState<Appointment | null>(null);
 
   const timeSlots = [

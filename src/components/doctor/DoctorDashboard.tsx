@@ -14,14 +14,18 @@ import {
   Paperclip,
   Download,
   Clock,
-  Sparkles
+  Sparkles,
+  Gift,
+  Heart,
+  Award
 } from 'lucide-react';
 
 import {
   Doctor,
   Appointment,
   Consultation,
-  Patient
+  Patient,
+  SentGift
 } from '../../types/medical';
 
 import { api } from '../../services/api';
@@ -32,6 +36,7 @@ import { CreatePrescriptionModal } from './CreatePrescriptionModal';
 import { PatientFileModal } from './PatientFileModal';
 import { ScheduleFollowUpModal } from './ScheduleFollowUpModal';
 import { MedicalTimeline } from '../patient/MedicalTimeline';
+import { CommunityView } from '../community/CommunityView';
 
 interface DoctorDashboardProps {
   initialTab?: 'CONSULTATIONS' | 'APPOINTMENTS' | 'PATIENTS' | 'TIMELINE';
@@ -53,8 +58,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
   const [activeTab, setActiveTab] =
     useState<
-      'CONSULTATIONS' | 'APPOINTMENTS' | 'PATIENTS' | 'TIMELINE'
+      'CONSULTATIONS' | 'APPOINTMENTS' | 'PATIENTS' | 'TIMELINE' | 'GIFTS' | 'COMMUNITY'
     >(initialTab);
+
+  const [receivedGifts, setReceivedGifts] = useState<SentGift[]>([]);
 
   const [selectedPatientForTimeline, setSelectedPatientForTimeline] =
     useState<string>('pat-1');
@@ -119,10 +126,14 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     consultation: Consultation
   ): Consultation => {
     const rawStatus = consultation?.status;
+    const hasAdvice = Boolean(
+      consultation?.doctorAdvice &&
+      consultation.doctorAdvice.trim().length > 0
+    );
 
     let normalizedStatus: Consultation['status'];
 
-    if (rawStatus === 'ANSWERED') {
+    if (rawStatus === 'ANSWERED' || hasAdvice) {
       normalizedStatus = 'ANSWERED';
     } else if (rawStatus === 'CLOSED') {
       normalizedStatus = 'CLOSED';
@@ -140,19 +151,21 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       (consultation?.waiverReason && consultation.waiverReason.includes('مجاني'))
     );
 
-    const isPaid = Boolean(
-      isFree ||
-      consultation?.paymentStatus === 'PAID' ||
-      consultation?.paymentStatus === 'PAYMENT_SUCCESS' ||
-      consultation?.paymentStatus === 'WAIVED' ||
-      (consultation?.isPaid && consultation?.paymentStatus !== 'PENDING' && consultation?.paymentStatus !== 'PAYMENT_REQUIRED')
+    const isRefunded = Boolean(
+      (consultation?.paymentStatus as string) === 'REFUNDED' ||
+      (consultation?.paymentStatus as string) === 'REFUND_SUCCESS' ||
+      (consultation as any)?.refundStatus === 'REFUNDED' ||
+      (consultation as any)?.isRefunded === true
     );
+
+    // All active consultations are paid via points, allowing immediate doctor reply
+    const isPaid = !isRefunded;
 
     return {
       ...consultation,
       isPaid,
       isWaived: isFree || Boolean(consultation.isWaived),
-      paymentStatus: isFree ? 'WAIVED' : (isPaid ? 'PAID' : (consultation.paymentStatus || 'PENDING')),
+      paymentStatus: isRefunded ? 'REFUNDED' : (isFree ? 'WAIVED' : 'PAID'),
       status: normalizedStatus,
       patientName: safeText(
         consultation.patientName,
@@ -195,34 +208,37 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   // ==========================================================
 
   const getConsultationStatus = (
-    status?: Consultation['status']
+    status?: Consultation['status'],
+    doctorAdvice?: string
   ) => {
-    switch (status) {
-      case 'ANSWERED':
-        return {
-          label: 'تم الرد',
-          className:
-            'bg-emerald-100 text-emerald-800 border border-emerald-200',
-          isAnswered: true
-        };
+    const isAnswered =
+      status === 'ANSWERED' ||
+      Boolean(doctorAdvice && doctorAdvice.trim().length > 0);
 
-      case 'CLOSED':
-        return {
-          label: 'مغلقة',
-          className:
-            'bg-slate-100 text-slate-700 border border-slate-200',
-          isAnswered: true
-        };
-
-      case 'PENDING':
-      default:
-        return {
-          label: 'قيد الانتظار',
-          className:
-            'bg-amber-100 text-amber-800 border border-amber-200',
-          isAnswered: false
-        };
+    if (isAnswered) {
+      return {
+        label: 'تم الرد',
+        className:
+          'bg-emerald-100 text-emerald-800 border border-emerald-200',
+        isAnswered: true
+      };
     }
+
+    if (status === 'CLOSED') {
+      return {
+        label: 'مغلقة',
+        className:
+          'bg-slate-100 text-slate-700 border border-slate-200',
+        isAnswered: true
+      };
+    }
+
+    return {
+      label: 'قيد الانتظار',
+      className:
+        'bg-amber-100 text-amber-800 border border-amber-200',
+      isAnswered: false
+    };
   };
 
   // ==========================================================
@@ -449,12 +465,20 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       }
     );
 
+    const unsubGifts = api.subscribeSentGifts(
+      { recipientId: currentDoctorId || selectedDoctorId },
+      (liveGifts) => {
+        setReceivedGifts(liveGifts || []);
+      }
+    );
+
     return () => {
       window.removeEventListener('mch_payments_updated', handleUpdate);
       window.removeEventListener('mch_appointments_updated', handleUpdate);
       window.removeEventListener('mch_consultations_updated', handleUpdate);
       unsubApts();
       unsubCns();
+      unsubGifts();
     };
   }, [
     currentDoctorId,
@@ -579,17 +603,16 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const pendingConsultations =
     consultations.filter(
       (consultation) =>
-        consultation.status !==
-          'ANSWERED' &&
-        consultation.status !==
-          'CLOSED'
+        consultation.status !== 'ANSWERED' &&
+        consultation.status !== 'CLOSED' &&
+        !Boolean(consultation.doctorAdvice && consultation.doctorAdvice.trim())
     );
 
   const answeredConsultations =
     consultations.filter(
       (consultation) =>
-        consultation.status ===
-        'ANSWERED'
+        consultation.status === 'ANSWERED' ||
+        Boolean(consultation.doctorAdvice && consultation.doctorAdvice.trim())
     );
 
   // ==========================================================
@@ -934,10 +957,35 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
           }`}
         >
           <Activity className="w-4 h-4" />
+          <span>السجل الزمني للمريض</span>
+        </button>
 
-          <span>
-            السجل الزمني للمريض
-          </span>
+        <button
+          onClick={() =>
+            setActiveTab('GIFTS')
+          }
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === 'GIFTS'
+              ? 'bg-rose-600 text-white shadow-xs'
+              : 'bg-white text-slate-700 border border-slate-200 hover:bg-rose-50 hover:text-rose-700'
+          }`}
+        >
+          <Heart className="w-4 h-4 text-rose-500" />
+          <span>الهدايا والتقديرات المستلمة ({receivedGifts.length})</span>
+        </button>
+
+        <button
+          onClick={() =>
+            setActiveTab('COMMUNITY')
+          }
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === 'COMMUNITY'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-white text-slate-700 border border-slate-200 hover:bg-blue-50 hover:text-blue-700'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4 text-blue-500" />
+          <span>مجتمع الصحة والمقالات 💬</span>
         </button>
 
       </div>
@@ -986,7 +1034,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
                 const consultationStatus =
                   getConsultationStatus(
-                    cns.status
+                    cns.status,
+                    cns.doctorAdvice
                   );
 
                 const safeSymptoms =
@@ -1007,68 +1056,89 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
                     <div>
 
-                      <div className="flex items-start justify-between gap-2 mb-3">
+         <div className="flex items-start justify-between gap-2 mb-3">
 
-                        <div className="flex items-center gap-2 min-w-0">
+  <div className="flex items-center gap-2 min-w-0">
 
-                          <span className="font-bold text-slate-900 text-sm truncate">
-                            {safeText(
-                              cns.patientName,
-                              'المريض'
-                            )}
-                          </span>
+    <span className="font-bold text-slate-900 text-sm truncate">
+      {safeText(
+        cns.patientName,
+        'المريض'
+      )}
+    </span>
 
-                          <span className="text-xs text-slate-400 font-mono">
-                            (
-                            {safeText(
-                              cns.patientMrn,
-                              ''
-                            )}
-                            )
-                          </span>
+    <span className="text-xs text-slate-400 font-mono">
+      (
+      {safeText(
+        cns.patientMrn,
+        ''
+      )}
+      )
+    </span>
 
-                        </div>
+  </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
+  <div className="flex items-center gap-1.5 shrink-0">
 
-                          {cns.isWaived || cns.paymentStatus === 'WAIVED' || (cns.consultationFee === 0 && cns.consultationFee !== undefined) || (cns.paymentAmount === 0 && cns.paymentAmount !== undefined) || (cns.waiverReason && cns.waiverReason.includes('مجاني')) ? (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200">
-                              <Sparkles className="w-3 h-3 text-blue-600 shrink-0" />
-                              <span>استشارة مجانية</span>
-                            </span>
-                          ) : (
-                            <span
-                              className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1 ${
-                                cns.paymentStatus === 'PAID' || cns.paymentStatus === 'PAYMENT_SUCCESS' || cns.isPaid
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
-                                  : 'bg-rose-50 text-rose-700 border border-rose-200'
-                              }`}
-                            >
-                              {cns.paymentStatus === 'PAID' || cns.paymentStatus === 'PAYMENT_SUCCESS' || cns.isPaid ? (
-                                <>
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                                  <span>تم السداد</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Clock className="w-3 h-3 text-rose-500 shrink-0" />
-                                  <span>انتظار السداد</span>
-                                </>
-                              )}
-                            </span>
-                          )}
+    {cns.isWaived ||
+    cns.paymentStatus === 'WAIVED' ||
+    (cns.consultationFee === 0 &&
+      cns.consultationFee !== undefined) ||
+    (cns.paymentAmount === 0 &&
+      cns.paymentAmount !== undefined) ||
+    (cns.waiverReason &&
+      cns.waiverReason.includes('مجاني')) ? (
 
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${consultationStatus.className}`}
-                          >
-                            {
-                              consultationStatus.label
-                            }
-                          </span>
+      <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200">
+        <Sparkles className="w-3 h-3 text-blue-600 shrink-0" />
+        <span>استشارة مجانية</span>
+      </span>
 
-                        </div>
+    ) : (
 
-                      </div>
+      <span
+        className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1 ${
+          cns.paymentStatus === 'REFUNDED' ||
+          cns.paymentStatus === 'REFUND_SUCCESS' ||
+          (cns as any).refundStatus === 'REFUNDED' ||
+          (cns as any).isRefunded === true
+            ? 'bg-purple-50 text-purple-700 border border-purple-300'
+            : 'bg-emerald-50 text-emerald-700 border border-emerald-300'
+        }`}
+      >
+
+        {cns.paymentStatus === 'REFUNDED' ||
+        cns.paymentStatus === 'REFUND_SUCCESS' ||
+        (cns as any).refundStatus === 'REFUNDED' ||
+        (cns as any).isRefunded === true ? (
+
+          <>
+            <CheckCircle2 className="w-3 h-3 text-purple-600 shrink-0" />
+            <span>المبلغ مسترد</span>
+          </>
+
+        ) : (
+
+          <>
+            <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+            <span>تم السداد</span>
+          </>
+
+        )}
+
+      </span>
+
+    )}
+
+    <span
+      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${consultationStatus.className}`}
+    >
+      {consultationStatus.label}
+    </span>
+
+  </div>
+
+</div>
 
                       <h4 className="font-extrabold text-sm text-emerald-950 mb-1.5">
                         {safeText(
@@ -1191,7 +1261,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         </span>
                       </button>
 
-                      {cns.paymentStatus === 'PAID' || cns.paymentStatus === 'PAYMENT_SUCCESS' || cns.paymentStatus === 'WAIVED' || cns.isWaived || cns.isPaid ? (
+                      {!(cns.paymentStatus === 'REFUNDED' || cns.paymentStatus === 'REFUND_SUCCESS' || (cns as any).refundStatus === 'REFUNDED' || (cns as any).isRefunded === true) ? (
                         <button
                           onClick={() =>
                             setSelectedConsultationForReply(
@@ -1199,7 +1269,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                             )
                           }
                           className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                          title={cns.isWaived || cns.paymentStatus === 'WAIVED' ? "استشارة مجانية معتمدة - يمكنك الرد مباشرة" : "تم سداد الرسوم - يمكنك الرد على الاستشارة"}
+                          title="تم السداد عبر النقاط - يمكنك الرد على الاستشارة مباشرة"
                         >
                           <Send className="w-3.5 h-3.5" />
                           <span>
@@ -1210,22 +1280,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         </button>
                       ) : (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg font-bold flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-amber-600" />
-                            انتظار السداد للرد
+                          <span className="text-[11px] text-purple-800 bg-purple-50 border border-purple-200 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-purple-600" />
+                            المبلغ مسترد
                           </span>
-                          <button
-                            onClick={() =>
-                              setSelectedConsultationForReply(
-                                cns
-                              )
-                            }
-                            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
-                            title="معاينة أو رد استثنائي"
-                          >
-                            <Send className="w-3 h-3 text-slate-500" />
-                            <span>معاينة / رد</span>
-                          </button>
                         </div>
                       )}
 
@@ -1344,45 +1402,66 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                           'استشارة وفحص طبي'
                         )}
                       </td>
+<td className="p-3">
+  {(() => {
+    const isRefunded =
+      apt.paymentStatus === 'REFUNDED' ||
+      apt.paymentStatus === 'REFUND_SUCCESS' ||
+      (apt as any).refundStatus === 'REFUNDED' ||
+      (apt as any).isRefunded === true;
 
-                      <td className="p-3">
-                        {(() => {
-                          const isAptPaid = Boolean(
-                            apt.paymentStatus === 'PAID' ||
-                            apt.paymentStatus === 'PAYMENT_SUCCESS' ||
-                            (apt.isPaid && apt.paymentStatus !== 'PENDING' && apt.paymentStatus !== 'PAYMENT_REQUIRED')
-                          );
-                          return (
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                isAptPaid
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-rose-100 text-rose-800'
-                              }`}
-                            >
-                              {isAptPaid ? 'تم السداد' : 'انتظار السداد'}
-                            </span>
-                          );
-                        })()}
-                      </td>
+    const isAptPaid = !isRefunded;
 
-                      <td className="p-3">
+    return (
+      <span
+        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+          isRefunded
+            ? 'bg-purple-100 text-purple-800'
+            : isAptPaid
+              ? 'bg-emerald-100 text-emerald-800'
+              : 'bg-rose-100 text-rose-800'
+        }`}
+      >
+        {isRefunded
+          ? 'المبلغ مسترد'
+          : isAptPaid
+            ? 'تم السداد'
+            : 'انتظار السداد'}
+      </span>
+    );
+  })()}
+</td>
 
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            apt.status ===
-                            'CONFIRMED'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {apt.status ===
-                          'CONFIRMED'
-                            ? 'مؤكد'
-                            : 'قيد التنسيق'}
-                        </span>
+<td className="p-3">
+  {(() => {
+    const isRefunded =
+      apt.paymentStatus === 'REFUNDED' ||
+      apt.paymentStatus === 'REFUND_SUCCESS' ||
+      (apt as any).refundStatus === 'REFUNDED' ||
+      (apt as any).isRefunded === true;
 
-                      </td>
+    const isConfirmed =
+      !isRefunded && apt.status === 'CONFIRMED';
+
+    return (
+      <span
+        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+          isRefunded
+            ? 'bg-red-100 text-red-800'
+            : isConfirmed
+              ? 'bg-emerald-100 text-emerald-800'
+              : 'bg-amber-100 text-amber-800'
+        }`}
+      >
+        {isRefunded
+          ? 'إلغاء الموعد'
+          : isConfirmed
+            ? 'مؤكد'
+            : 'قيد التنسيق'}
+      </span>
+    );
+  })()}
+</td>
 
                       <td className="p-3 text-center space-x-1 space-x-reverse">
 
@@ -1832,6 +1911,85 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       )}
 
       {/* =====================================================
+          GIFTS & APPRECIATION TAB
+      ====================================================== */}
+      {activeTab === 'GIFTS' && (
+        <div className="space-y-4">
+          <div className="bg-gradient-to-r from-rose-700 via-pink-700 to-purple-800 rounded-3xl p-6 text-white shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="p-2 rounded-xl bg-white/20">
+                  <Heart className="w-5 h-5 text-rose-200 fill-rose-200" />
+                </span>
+                <h3 className="text-lg font-black">سجل هدايا ودروع التقدير المستلمة من المرضى</h3>
+              </div>
+              <p className="text-xs text-rose-100 max-w-xl">
+                هدايا رقمية ودروع تكريم أرسلها لك المراجعون تعبيراً عن شكرهم وامتنانهم لحسن الرعاية والجهود الطبية المتميزة
+              </p>
+            </div>
+
+            <div className="bg-white/15 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/20 text-center shrink-0">
+              <span className="text-2xl font-black">{receivedGifts.length}</span>
+              <span className="text-xs font-bold mr-1 block text-rose-100">هدايا وتكريمات مستلمة</span>
+            </div>
+          </div>
+
+          {receivedGifts.length === 0 ? (
+            <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3">
+              <Gift className="w-12 h-12 text-slate-300 mx-auto" />
+              <h4 className="font-extrabold text-sm text-slate-800">لا توجد هدايا مستلمة حتى الآن</h4>
+              <p className="text-xs text-slate-500">
+                عندما يقوم مريض بإرسال باقة ورد أو درع شكر بالنقاط بعد الاستشارة أو الكشف، ستظهر هنا فورياً مع رسالته التقديرية.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {receivedGifts.map((gift) => (
+                <div
+                  key={gift.id}
+                  className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all space-y-3 text-right"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-3xl">{gift.giftIcon || '💐'}</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-100 text-amber-900 border border-amber-300">
+                      +{gift.pointsAmount} نقطة
+                    </span>
+                  </div>
+
+                  <div>
+                    <h4 className="font-extrabold text-sm text-slate-900">{gift.giftNameAr}</h4>
+                    <div className="text-xs text-slate-500 mt-0.5">
+                      مُهداة من: <span className="font-bold text-slate-800">{gift.senderName || 'مريض ممتن'}</span>
+                    </div>
+                  </div>
+
+                  {gift.message && (
+                    <div className="p-3 bg-rose-50/60 border border-rose-200/80 rounded-xl text-xs text-rose-950 italic">
+                      "{gift.message}"
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-400 flex items-center justify-between">
+                    <span>{new Date(gift.createdAt).toLocaleDateString('ar-YE', { dateStyle: 'medium' })}</span>
+                    <span className="text-emerald-700 font-bold">✓ مُستلمة وموثقة</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* =====================================================
+          COMMUNITY TAB
+      ====================================================== */}
+      {activeTab === 'COMMUNITY' && (
+        <div className="space-y-4">
+          <CommunityView />
+        </div>
+      )}
+
+      {/* =====================================================
           PATIENT FILE MODAL
       ====================================================== */}
 
@@ -1900,7 +2058,14 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
           selectedConsultationForReply
         }
         onSuccess={async () => {
-
+          if (selectedConsultationForReply) {
+            const repliedId = selectedConsultationForReply.id;
+            setConsultations(prev => prev.map(c => 
+              c.id === repliedId 
+                ? { ...c, status: 'ANSWERED' as const, doctorAdvice: c.doctorAdvice || 'تم الرد' } 
+                : c
+            ));
+          }
           setSelectedConsultationForReply(
             null
           );

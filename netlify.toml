@@ -1,19 +1,25 @@
 [build]
   command = "npm run build"
   publish = "dist"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "20"
 
 [functions]
-  directory = "netlify/functions"
   node_bundler = "esbuild"
   included_files = ["firebase-applet-config.json"]
 
-# Forward all /api/* requests to the API Function
+# Forward all /api/* requests to Netlify Serverless API Function
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api"
+  status = 200
+
+# Direct access to .netlify/functions
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
   status = 200
 
 # SPA client-side routing fallback

@@ -24,7 +24,8 @@ import {
 
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { PaymentCheckoutModal } from '../common/PaymentCheckoutModal';
+import { PointsAndPackagesCheckoutModal } from '../common/PointsAndPackagesCheckoutModal';
+import { BookingThankYouModal } from '../common/BookingThankYouModal';
 
 interface AppointmentBookingModalProps {
   isOpen: boolean;
@@ -89,6 +90,8 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
     useState<boolean>(false);
 
   const [checkoutRef, setCheckoutRef] = useState<string>('');
+  const [showThankYouModal, setShowThankYouModal] = useState<boolean>(false);
+  const [createdBookingRef, setCreatedBookingRef] = useState<string>('');
 
   // File input refs MUST be before the early return
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -194,8 +197,9 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
     ) || services[0];
 
   const calculatedFee =
-    selectedService?.price ??
-    (services.length > 0 ? services[0].price : 200);
+    selectedDoctor?.consultationFee !== undefined
+      ? selectedDoctor.consultationFee
+      : (selectedService?.price ?? (services.length > 0 ? services[0].price : 50));
 
   // ============================================================
   // FILE PROCESSING
@@ -508,16 +512,18 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
       setIsLoading(true);
 
       try {
-        await api.createAppointment(
-          payload
-        );
+        await api.createAppointment({
+          ...payload,
+          isPaid: true,
+          paymentStatus: 'WAIVED',
+          paymentMethod: 'WAIVED',
+          isWaived: true,
+          waiverReason: 'إعفاء مالي معتمد'
+        });
 
         setIsSubmitted(true);
-
-        setTimeout(() => {
-          onSuccess();
-          onClose();
-        }, 2500);
+        setCreatedBookingRef(`APT-${Date.now().toString().slice(-6)}`);
+        setShowThankYouModal(true);
       } catch (err: any) {
         console.error(
           'Create appointment error:',
@@ -576,6 +582,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
       // IMPORTANT:
       // pendingAppointmentPayload still contains attachmentFiles
       // so api.createAppointment() can upload them NOW.
+      // Since it was paid via points, mark it as PAID directly.
       // ========================================================
 
       await api.createAppointment({
@@ -585,21 +592,21 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
           payment.id,
 
         paymentStatus:
-          'PENDING',
+          'PAID',
 
         transactionReference:
           payment.transactionReference,
 
         isPaid:
-          false
+          true,
+
+        paymentMethod:
+          'POINTS'
       });
 
       setIsSubmitted(true);
-
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2500);
+      setCreatedBookingRef(`APT-${Date.now().toString().slice(-6)}`);
+      setShowThankYouModal(true);
     } catch (err: any) {
       console.error(
         'Appointment confirmation after payment error:',
@@ -625,7 +632,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
   return (
     <>
       <div
-        className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+        className="mb-0 fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
         dir="rtl"
       >
         <div className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
@@ -634,7 +641,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
           {/* HEADER */}
           {/* ================================================= */}
 
-          <div className="p-5 bg-gradient-to-r from-blue-700 via-indigo-700 to-emerald-700 text-white flex items-center justify-between">
+          <div className="p-3 bg-gradient-to-r from-blue-700 via-indigo-700 to-emerald-700 text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-white/10 backdrop-blur-md">
                 <Calendar className="w-6 h-6 text-cyan-300" />
@@ -646,7 +653,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                 </h3>
 
                 <p className="text-xs text-blue-100 font-medium">
-                  حجز مباشر ومؤكد عبر بوابات الدفع الرسمية المعتمدة
+                  حجز مباشر ومؤكد عبر رصيد النقاط
                 </p>
               </div>
             </div>
@@ -711,7 +718,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
               {/* ================================================= */}
 
               <div>
-                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-0">
                   1. اختر الطبيب المعالج / التخصص{' '}
                   <span className="text-rose-500">*</span>
                 </label>
@@ -731,13 +738,13 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                       key={d.id}
                       value={d.id}
                     >
-                      {d.fullName} — {d.specialtyNameAr}
+                      {d.fullName} — {d.specialtyId}
                     </option>
                   ))}
                 </select>
 
                 {selectedDoctor && (
-                  <div className="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                  <div className="mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
 
                     <div className="flex items-center gap-2.5">
                       <img
@@ -767,7 +774,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
 
                       <span className="text-blue-600 dark:text-blue-400 text-[10px]">
                         رسوم استشارة الطبيب:{' '}
-                        {selectedDoctor.consultationFee} ر.ي
+                        {selectedDoctor.consultationFee} نقطة
                       </span>
                     </div>
                   </div>
@@ -779,7 +786,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
               {/* ================================================= */}
 
               <div>
-                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-0">
                   2. نوع الخدمة الطبية المطلوبة (السعر الرسمي){' '}
                   <span className="text-rose-500">*</span>
                 </label>
@@ -799,7 +806,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                       key={s.id}
                       value={s.id}
                     >
-                      {s.nameAr} — السعرتتت الرسمي: {s.price} ر.ي{' '}
+                      {s.nameAr} — السعر الرسمي: {s.price} نقطة{' '}
                       {s.durationMinutes
                         ? `(${s.durationMinutes} دقيقة)`
                         : ''}
@@ -814,7 +821,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                     </span>
 
                     <strong className="text-emerald-700 dark:text-emerald-400 font-black">
-                      {selectedService.price} ر.ي
+                      {selectedService.price} نقطة
                     </strong>
                   </div>
                 )}
@@ -836,7 +843,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
                   <div>
-                    <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                    <label className="block font-bold text-slate-800 dark:text-slate-200 mb-0">
                       3. اليوم المفضل للزيارة{' '}
                       <span className="text-rose-500">*</span>
                     </label>
@@ -860,7 +867,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                   </div>
 
                   <div>
-                    <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                    <label className="block font-bold text-slate-800 dark:text-slate-200 mb-0">
                       4. الفترة المفضلة{' '}
                       <span className="text-rose-500">*</span>
                     </label>
@@ -917,7 +924,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
               {/* ================================================= */}
 
               <div>
-                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-0">
                   5. سبب الزيارة أو الأعراض التي تشعر بها{' '}
                   <span className="text-rose-500">*</span>
                 </label>
@@ -940,7 +947,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
               {/* ATTACHMENTS */}
               {/* ================================================= */}
 
-              <div className="p-3 rounded-2xl bg-blue-50/40 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/40 space-y-2">
+              <div className="p-3 rounded-2xl bg-blue-50/40 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/40 space-y-1">
 
                 <div className="flex items-center justify-between">
 
@@ -952,14 +959,14 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                     </span>
                   </label>
 
-                  <span className="text-[11px] text-blue-700 dark:text-blue-400 font-semibold">
+                  <span className="text-[10px] text-blue-700 dark:text-blue-400 font-semibold">
                     {attachments.length > 0
                       ? `${attachments.length} مرفق`
                       : 'اختياري'}
                   </span>
                 </div>
 
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">
                   يمكنك إرفاق صور الأشعة السابقة (X-Ray / MRI / CT) ليتسنى للطبيب الاطلاع عليها مسبقاً قبل وصولك للعيادة.
                 </p>
 
@@ -996,7 +1003,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                     onClick={() =>
                       cameraInputRef.current?.click()
                     }
-                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-dashed border-cyan-500 bg-white dark:bg-slate-800 hover:bg-cyan-50 dark:hover:bg-slate-750 text-cyan-800 dark:text-cyan-200 text-xs font-bold cursor-pointer transition-colors shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-cyan-500 bg-white dark:bg-slate-800 hover:bg-cyan-50 dark:hover:bg-slate-750 text-cyan-800 dark:text-cyan-200 text-xs font-bold cursor-pointer transition-colors shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Camera className="w-4 h-4 text-cyan-600" />
 
@@ -1176,11 +1183,11 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
 
                   <div>
                     <span className="text-xs font-bold text-emerald-950 dark:text-emerald-200 block">
-                      سعر الخدمة الطبية للموعد (السعر الرسمي)
+                      رسوم الكشف بالنقاط
                     </span>
 
                     <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
-                      لا يتم إرسال طلب الحجز للعيادة إلا بعد اكتمال السداد الإلكتروني
+                      يتم الخصم مباشرة من رصيد النقاط واعتماد الحجز فوراً
                     </span>
                   </div>
 
@@ -1189,7 +1196,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                 <div className="text-left font-black text-emerald-600 dark:text-emerald-400 text-base">
                   {calculatedFee}{' '}
                   <span className="text-xs font-bold">
-                    ر.ي
+                    نقطة
                   </span>
                 </div>
 
@@ -1231,7 +1238,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                       <ShieldCheck className="w-4 h-4" />
 
                       <span>
-                        متابعة السداد الإلكتروني وتأكيد الحجز ({calculatedFee} ر.ي)
+                        متابعة السداد بالنقاط وتأكيد الحجز ({calculatedFee} نقطة)
                       </span>
                     </>
                   )}
@@ -1296,82 +1303,52 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
 
       {showPaymentCheckout &&
         pendingAppointmentPayload && (
-          <PaymentCheckoutModal
-            isOpen={
-              showPaymentCheckout
-            }
-
+          <PointsAndPackagesCheckoutModal
+            isOpen={showPaymentCheckout}
             onClose={() => {
-              // Cancel checkout only.
-              // Appointment is NOT created.
-              setShowPaymentCheckout(
-                false
-              );
+              setShowPaymentCheckout(false);
             }}
-
-            onSuccess={
-              handlePaymentSuccess
-            }
-
+            onSuccess={handlePaymentSuccess}
             serviceType="APPOINTMENT"
-
-            serviceReferenceId={
-              checkoutRef
-            }
-
+            serviceReferenceId={checkoutRef}
             serviceName={
               selectedService?.nameAr ||
               pendingAppointmentPayload.serviceName ||
-              'خدمة طبية عيادية'
+              'كشف واستشارة عيادية'
             }
-
-            amount={
-              calculatedFee
-            }
-
-            multiCurrencyPricing={
-              selectedService?.multiCurrencyPricing ||
-              selectedDoctor?.multiCurrencyPricing
-            }
-
-            initialCurrency="YER"
-
-            patientId={
-              patientProfile?.id ||
-              user?.id ||
-              'pat-1'
-            }
-
-            patientName={
-              patientProfile?.fullName ||
-              user?.fullName ||
-              'المريض'
-            }
-
-            patientPhone={
-              patientProfile?.phone ||
-              user?.phone ||
-              ''
-            }
-
-            patientMrn={
-              patientProfile?.mrn ||
-              'MRN-2026-8801'
-            }
-
-            doctorId={
-              selectedDoctorId
-            }
-
-            doctorName={
-              selectedDoctor?.fullName
-            }
-
-            doctorSpecialty={
-              selectedDoctor?.specialtyNameAr
-            }
+            amount={calculatedFee}
+            patientId={patientProfile?.id || user?.id || 'pat-1'}
+            patientName={patientProfile?.fullName || user?.fullName || 'المريض'}
+            patientPhone={patientProfile?.phone || user?.phone || ''}
+            doctorId={selectedDoctorId}
+            doctorName={selectedDoctor?.fullName}
+            doctorSpecialty={selectedDoctor?.specialtyNameAr}
           />
         )}
+
+      {/* Thank You & Gifts / Rating / Community Celebration Modal */}
+      {showThankYouModal && (
+        <BookingThankYouModal
+          isOpen={showThankYouModal}
+          onClose={() => {
+            setShowThankYouModal(false);
+            onSuccess();
+            onClose();
+          }}
+          serviceType="APPOINTMENT"
+          serviceReferenceId={createdBookingRef}
+          serviceTitle={
+            selectedService?.nameAr ||
+            pendingAppointmentPayload?.serviceName ||
+            'حجز موعد عيادي'
+          }
+          patientId={patientProfile?.id || user?.id || 'pat-1'}
+          patientName={patientProfile?.fullName || user?.fullName || 'المريض'}
+          doctorId={selectedDoctorId}
+          doctorName={selectedDoctor?.fullName}
+          doctorSpecialty={selectedDoctor?.specialtyNameAr}
+        />
+      )}
     </>
   );
 };

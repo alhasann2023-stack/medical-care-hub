@@ -29,39 +29,17 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({ language }) 
   const [prescribedMed, setPrescribedMed] = useState<string>('');
   const [successNote, setSuccessNote] = useState<string | null>(null);
 
-  // Simulated queue of patients
-  const patientQueue = [
-    {
-      id: 'p1',
-      name: 'محمد عبدالله الشمري',
-      mrn: 'MRN-849201',
-      time: '10:30 ص',
-      reason: 'متابعة ضغط الدم ومراجعة فحص الدهون الشامل',
-      status: 'في الانتظار',
-      triageLevel: 'معتدل',
-      aiSummary: 'المريض أجرى فحص دهون مؤخراً ويشير إلى استقرار عام، بحاجة لمراجعة نمط الحياة.',
-    },
-    {
-      id: 'p2',
-      name: 'سارة خالد العتيبي',
-      mrn: 'MRN-921045',
-      time: '11:00 ص',
-      reason: 'خفقان متكرر وضيق تنفس عند بذل الجهد',
-      status: 'حالة عاجلة',
-      triageLevel: 'أولوية قصوى',
-      aiSummary: 'فرز Gemini: خفقان متكرر، موصى بإجراء تخطيط قلب فوري (ECG) وقياس إنزيمات القلب.',
-    },
-    {
-      id: 'p3',
-      name: 'عبدالعزيز إبراهيم الدوسري',
-      mrn: 'MRN-334182',
-      time: '11:30 ص',
-      reason: 'تجديد وصفة علاجية واستشارة وقائية',
-      status: 'مجدول',
-      triageLevel: 'روتيني',
-      aiSummary: 'متابعة دورية مستقرة.',
-    },
-  ];
+  // Patient queue
+  const patientQueue: Array<{
+    id: string;
+    name: string;
+    mrn: string;
+    time: string;
+    reason: string;
+    status: string;
+    triageLevel: string;
+    aiSummary: string;
+  }> = [];
 
   const handleSaveAssessment = (e: React.FormEvent) => {
     e.preventDefault();
